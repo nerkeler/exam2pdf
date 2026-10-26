@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>exam2pdf · 阶段 1 技术验证</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #202938; background: #f4f6f9; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .page { width: min(1040px, 100% - 28px); margin: 28px auto; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+    h1 { margin: 0; font-size: 24px; }
+    header p { margin: 6px 0 0; color: #647186; }
+    .tag { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 999px; background: #e9effb; color: #365c9e; font-size: 12px; white-space: nowrap; }
+    .panel { margin: 14px 0; padding: 18px; border: 1px solid #dce2eb; border-radius: 14px; background: white; box-shadow: 0 4px 14px #24334b0b; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    h2 { margin: 0; font-size: 17px; }
+    .muted { color: #647186; font-size: 13px; line-height: 1.55; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button, .file-button { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; padding: 8px 13px; border: 1px solid #cbd4e1; border-radius: 9px; background: #fff; color: #263247; font: inherit; cursor: pointer; }
+    button.primary, .file-button.primary { border-color: #2764e8; background: #2764e8; color: #fff; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .file-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+    .lan-link { overflow-wrap: anywhere; padding: 10px 12px; border-radius: 9px; background: #f4f6fa; color: #3a567f; font: 12px/1.5 ui-monospace, monospace; }
+    .status { min-height: 21px; margin-top: 10px; color: #647186; font-size: 13px; }
+    .status.error { color: #b42318; }
+    .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; }
+    .image-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid #dce2eb; border-radius: 10px; background: #f9fafc; cursor: grab; }
+    .image-card.dragging { opacity: .45; }
+    .image-card img { display: block; width: 100%; height: 190px; object-fit: contain; background: #eef1f5; }
+    .image-meta { display: flex; justify-content: space-between; gap: 8px; padding: 8px; color: #5b6678; font-size: 11px; }
+    .image-meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .remove { min-height: 25px; padding: 2px 7px; border-radius: 6px; color: #9b2c2c; font-size: 11px; }
+    .empty { padding: 28px 12px; border: 1px dashed #ccd5e2; border-radius: 10px; color: #788499; text-align: center; font-size: 13px; }
+    .print-list { display: grid; gap: 8px; }
+    .print-sheet { display: flex; min-height: 170px; align-items: center; justify-content: center; overflow: hidden; padding: 12px; border: 1px solid #dce2eb; border-radius: 10px; background: white; }
+    .print-sheet img { display: block; width: 100%; max-height: 265mm; object-fit: contain; }
+    @media (max-width: 600px) {
+      .page { width: 100%; margin: 0; padding: 18px 12px calc(24px + env(safe-area-inset-bottom)); }
+      header { align-items: flex-start; }
+      h1 { font-size: 20px; }
+      .panel { padding: 14px; }
+      .actions > button, .actions > .file-button { flex: 1 1 calc(50% - 8px); }
+      .image-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .image-card img { height: 150px; }
+    }
+    @page { size: A4 portrait; margin: 10mm; }
+    @media print {
+      :root, body { background: #fff; }
+      .page { width: 100%; margin: 0; padding: 0; }
+      header, .controls, .panel:not(.print-panel), .print-panel > .panel-head, .print-panel > p { display: none !important; }
+      .print-panel { margin: 0; padding: 0; border: 0; box-shadow: none; }
+      .print-list { display: block; }
+      .print-sheet { display: flex; width: 100%; height: 277mm; min-height: 0; padding: 0; border: 0; border-radius: 0; break-after: page; page-break-after: always; }
+      .print-sheet:last-child { break-after: auto; page-break-after: auto; }
+      .print-sheet img { max-width: 100%; max-height: 277mm; object-fit: contain; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div><h1>图片导入与手机上传验证</h1><p>阶段 1 技术验证 · 本机图片、局域网照片、打印为 PDF</p></div>
+      <span class="tag">仅本地验证</span>
+    </header>
+
+    <section class="panel controls">
+      <div class="panel-head"><h2>从电脑导入</h2><span class="muted">支持常见图片格式</span></div>
+      <div class="actions">
+        <label class="file-button primary">选择图片<input id="desktopFiles" type="file" accept="image/*" multiple /></label>
+        <button id="refreshButton" type="button">刷新手机上传</button>
+        <button id="printButton" type="button">打印 / 保存 PDF</button>
+      </div>
+      <div class="status" id="status" role="status" aria-live="polite">正在连接本机验证服务…</div>
+    </section>
+
+    <section class="panel controls">
+      <div class="panel-head"><h2>手机上传</h2><span class="muted">手机和电脑连接同一 Wi-Fi</span></div>
+      <p class="muted">在手机浏览器打开下面的地址，可从相册选择图片或尝试直接拍照。上传后图片会出现在电脑页面，可与电脑导入的图片一起打印。</p>
+      <div class="lan-link" id="lanLink">正在获取手机地址…</div>
+      <div class="actions" style="margin-top:12px">
+        <label class="file-button">从相册选择<input id="mobileGallery" type="file" accept="image/*" multiple /></label>
+        <label class="file-button">拍照上传<input id="mobileCamera" type="file" accept="image/*" capture="environment" multiple /></label>
+      </div>
+      <div class="status" id="uploadStatus" role="status" aria-live="polite">此处也可在当前设备上选择图片，模拟手机上传。</div>
+    </section>
+
+    <section class="panel controls">
+      <div class="panel-head"><h2>待打印图片</h2><span class="muted">拖动卡片调整顺序</span></div>
+      <div class="image-grid" id="imageGrid"><div class="empty">先从电脑导入图片，或用手机上传。</div></div>
+    </section>
+
+    <section class="panel print-panel">
+      <div class="panel-head"><h2>打印预览</h2><span class="muted">每张图片占一页 A4，可在系统打印窗口保存为 PDF</span></div>
+      <p class="muted" id="printEmpty">导入图片后，这里会生成分页预览。</p>
+      <div class="print-list" id="printList"></div>
+    </section>
+  </main>
+  <script>
+    const token = new URLSearchParams(location.search).get("token") || "";
+    const localItems = [];
+    let remoteItems = [];
+    let displayOrder = [];
+    let draggingId = null;
+    const statusEl = document.querySelector("#status");
+    const uploadStatusEl = document.querySelector("#uploadStatus");
+
+    function setStatus(element, message, isError = false) {
+      element.textContent = message;
+      element.classList.toggle("error", isError);
+    }
+
+    function allItems() {
+      const items = [...localItems, ...remoteItems];
+      if (!displayOrder.length) return items;
+      const rank = new Map(displayOrder.map((id, index) => [id, index]));
+      return items.sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+    }
+
+    function render() {
+      const items = allItems();
+      const grid = document.querySelector("#imageGrid");
+      const printList = document.querySelector("#printList");
+      grid.replaceChildren();
+      printList.replaceChildren();
+      document.querySelector("#printEmpty").hidden = items.length > 0;
+
+      if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "先从电脑导入图片，或用手机上传。";
+        grid.append(empty);
+        return;
+      }
+
+      for (const item of items) {
+        const card = document.createElement("article");
+        card.className = "image-card";
+        card.draggable = item.origin === "computer";
+        card.dataset.id = item.id;
+        const image = document.createElement("img");
+        image.src = item.url;
+        image.alt = item.name;
+        image.addEventListener("error", () => {
+          image.alt = "此格式无法在当前浏览器预览：" + item.name;
+          image.title = image.alt;
+        }, { once: true });
+        const meta = document.createElement("div");
+        meta.className = "image-meta";
+        const name = document.createElement("span");
+        name.textContent = item.name;
+        name.title = item.name;
+        const action = document.createElement("span");
+        action.textContent = item.origin === "phone" ? "手机上传" : "拖动排序";
+        meta.append(name, action);
+        if (item.origin === "computer") {
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "remove";
+          remove.textContent = "移除";
+          remove.addEventListener("click", () => {
+            const index = localItems.findIndex((entry) => entry.id === item.id);
+            if (index >= 0) {
+              URL.revokeObjectURL(localItems[index].url);
+              localItems.splice(index, 1);
+              render();
+            }
+          });
+          meta.append(remove);
+        }
+        card.append(image, meta);
+        card.addEventListener("dragstart", () => { draggingId = item.id; card.classList.add("dragging"); });
+        card.addEventListener("dragend", () => { draggingId = null; card.classList.remove("dragging"); });
+        card.addEventListener("dragover", (event) => event.preventDefault());
+        card.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const ordered = allItems();
+          const from = ordered.findIndex((entry) => entry.id === draggingId);
+          const to = ordered.findIndex((entry) => entry.id === item.id);
+          if (from >= 0 && to >= 0 && from !== to) {
+            const [moved] = ordered.splice(from, 1);
+            ordered.splice(to, 0, moved);
+            displayOrder = ordered.map((entry) => entry.id);
+            render();
+          }
+        });
+        grid.append(card);
+
+        const sheet = document.createElement("div");
+        sheet.className = "print-sheet";
+        const printImage = document.createElement("img");
+        printImage.src = item.url;
+        printImage.alt = item.name;
+        sheet.append(printImage);
+        printList.append(sheet);
+      }
+    }
+
+    async function refreshRemote() {
+      if (!token) throw new Error("地址缺少令牌，请从服务窗口复制完整地址后重新打开。");
+      const response = await fetch("/api/files?token=" + encodeURIComponent(token), { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "读取手机上传列表失败。");
+      remoteItems = data.files.map((file) => ({
+        id: "phone:" + file.name,
+        name: file.name,
+        origin: "phone",
+        url: file.url
+      }));
+      render();
+      setStatus(statusEl, "验证服务已连接。电脑导入 " + localItems.length + " 张，手机上传 " + remoteItems.length + " 张。");
+    }
+
+    async function uploadFiles(files) {
+      if (!files.length) return;
+      if (!token) {
+        setStatus(uploadStatusEl, "地址缺少令牌，请从服务窗口复制完整地址。", true);
+        return;
+      }
+      const images = Array.from(files).filter((file) => file.type.startsWith("image/"));
+      if (!images.length) {
+        setStatus(uploadStatusEl, "没有选到可识别的图片文件。", true);
+        return;
+      }
+      setStatus(uploadStatusEl, "正在上传 " + images.length + " 张图片…");
+      try {
+        for (const image of images) {
+          const body = new FormData();
+          body.append("file", image, image.name);
+          const response = await fetch("/api/upload?token=" + encodeURIComponent(token), { method: "POST", body });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "上传失败。");
+        }
+        await refreshRemote();
+        setStatus(uploadStatusEl, "上传完成：" + images.length + " 张图片。");
+      } catch (error) {
+        setStatus(uploadStatusEl, error.message || "上传失败。", true);
+      }
+    }
+
+    document.querySelector("#desktopFiles").addEventListener("change", (event) => {
+      for (const file of Array.from(event.target.files || [])) {
+        if (!file.type.startsWith("image/")) continue;
+        localItems.push({ id: "local-" + Date.now() + "-" + Math.random().toString(36).slice(2), name: file.name, origin: "computer", url: URL.createObjectURL(file) });
+      }
+      event.target.value = "";
+      render();
+      setStatus(statusEl, "电脑导入 " + localItems.length + " 张图片，可拖动卡片排序。");
+    });
+    document.querySelector("#mobileGallery").addEventListener("change", (event) => { uploadFiles(event.target.files || []); event.target.value = ""; });
+    document.querySelector("#mobileCamera").addEventListener("change", (event) => { uploadFiles(event.target.files || []); event.target.value = ""; });
+    document.querySelector("#refreshButton").addEventListener("click", () => refreshRemote().catch((error) => setStatus(statusEl, error.message, true)));
+    document.querySelector("#printButton").addEventListener("click", () => {
+      if (!allItems().length) { setStatus(statusEl, "请先导入至少一张图片。", true); return; }
+      window.print();
+    });
+    async function initialize() {
+      try {
+        const response = await fetch("/api/info?token=" + encodeURIComponent(token), { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "验证服务不可用。");
+        document.querySelector("#lanLink").textContent = data.lanUrl;
+        await refreshRemote();
+      } catch (error) {
+        setStatus(statusEl, error.message || "验证服务不可用。", true);
+        document.querySelector("#lanLink").textContent = "请用服务窗口显示的完整地址打开此页面。";
+      }
+    }
+
+    initialize();
+    setInterval(() => refreshRemote().catch(() => {}), 5000);
+  </script>
+</body>
+</html>

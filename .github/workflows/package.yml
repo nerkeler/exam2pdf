@@ -1,0 +1,62 @@
+name: Build test installers
+
+# Run manually to build unsigned evaluation installers with offline PDF.js.
+# Artifacts are for testing; this workflow does not publish a GitHub Release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: mac
+            arch: arm64
+          - os: macos-15-intel
+            target: mac
+            arch: x64
+          - os: windows-2022
+            target: win
+            arch: x64
+          - os: ubuntu-24.04
+            target: linux
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      EXAM2PDF_BUILD_ARCH: ${{ matrix.arch }}
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install Linux desktop libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libgbm1
+      - run: npm ci
+      - run: npm test
+      - name: Build unsigned test installers with offline PDF.js
+        shell: bash
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: node scripts/package-app.cjs "$BUILD_TARGET"
+      - name: Upload installers for manual acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam2pdf-${{ matrix.target }}-${{ matrix.arch }}-test-installers
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.blockmap
+            release/*.AppImage
+            release/*.deb

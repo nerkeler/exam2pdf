@@ -1,0 +1,3458 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f6f8" />
+  <title>exam2pdf · 家庭试卷工作台</title>
+  <link rel="stylesheet" href="../node_modules/katex/dist/katex.min.css">
+  <script defer src="../node_modules/katex/dist/katex.min.js"></script>
+  <script defer src="../node_modules/katex/dist/contrib/auto-render.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f8;
+      --surface: #fff;
+      --surface-subtle: #f8f9fb;
+      --sidebar: #f0f2f5;
+      --line: #e2e5ea;
+      --line-strong: #cdd2db;
+      --text: #20242b;
+      --muted: #626d7d;
+      --brand: #165dff;
+      --brand-soft: #edf3ff;
+      --danger: #b4232b;
+      --danger-soft: #fff0f0;
+      --success: #0e6840;
+      --success-soft: #eaf7ef;
+      --warning: #956200;
+      --warning-soft: #fff7e5;
+      --xhs: #d81735;
+      --radius: 12px;
+      --shadow: 0 12px 32px rgba(26, 36, 54, .08);
+      --ease-out: cubic-bezier(.22, 1, .36, 1);
+      --ease-soft: cubic-bezier(.4, 0, .2, 1);
+      --dur-fast: .14s;
+      --dur-base: .22s;
+      --dur-slow: .34s;
+    }
+    /* 深色模式：覆盖 CSS 变量与个别硬编码亮色组件；打印强制浅色 */
+    body[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0f1319;
+      --surface: #171d26;
+      --surface-subtle: #1c232e;
+      --sidebar: #131820;
+      --line: #262e3a;
+      --line-strong: #3a4452;
+      --text: #e6eaf0;
+      --muted: #8b97a6;
+      --brand: #4d94ff;
+      --brand-soft: #16283f;
+      --danger: #ff7a72;
+      --danger-soft: #3a1d1f;
+      --success: #4ade80;
+      --success-soft: #12301e;
+      --warning: #fbbf24;
+      --warning-soft: #33290f;
+    }
+    body[data-theme="dark"] .btn { background: #1c232e; border-color: var(--line-strong); color: var(--text); }
+    body[data-theme="dark"] .btn:hover { background: #232b37; border-color: #4a5563; }
+    body[data-theme="dark"] .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    body[data-theme="dark"] .btn.primary:hover { background: #3b7fe8; }
+    body[data-theme="dark"] .btn.danger { border-color: #5c2a2a; color: var(--danger); }
+    body[data-theme="dark"] .btn.danger:hover { background: var(--danger-soft); }
+    body[data-theme="dark"] .btn.ghost:hover { background: #1c232e; color: var(--text); }
+    body[data-theme="dark"] .field, body[data-theme="dark"] select, body[data-theme="dark"] textarea { background: #10151c; border-color: var(--line-strong); color: var(--text); }
+    body[data-theme="dark"] .nav-item { color: #a7b1bf; }
+    body[data-theme="dark"] .nav-item:hover { background: rgba(255,255,255,.06); color: var(--text); }
+    body[data-theme="dark"] .nav-item.active { background: var(--surface); color: var(--brand); }
+    body[data-theme="dark"] .nav-icon { color: #7f8b9b; }
+    body[data-theme="dark"] .learning-stat { background: var(--surface); }
+    body[data-theme="dark"] details.history, body[data-theme="dark"] .dialog { background: var(--surface); color: var(--text); }
+    body[data-theme="dark"] .dialog::backdrop { background: rgba(0,0,0,.62); }
+    body[data-theme="dark"] .review-question { background: var(--surface-subtle); border-color: var(--line); }
+    body[data-theme="dark"] .page-tile { background: var(--surface-subtle); border-color: var(--line); }
+    body[data-theme="dark"] .page-preview { background: linear-gradient(160deg, #1c232e, #171d26); }
+    body[data-theme="dark"] .page-drag-hint, body[data-theme="dark"] .page-tile-remove { background: rgba(40,48,60,.92); border-color: var(--line-strong); color: var(--muted); }
+    body[data-theme="dark"] .dropzone { background: var(--surface-subtle); border-color: var(--line-strong); }
+    body[data-theme="dark"] .dropzone.over { background: var(--brand-soft); }
+    body[data-theme="dark"] .empty { border-color: var(--line-strong); }
+    body[data-theme="dark"] .empty strong { color: var(--text); }
+    body[data-theme="dark"] .mistake-row { border-color: var(--line); }
+    body[data-theme="dark"] .mistake-selected { background: var(--brand-soft); }
+    body[data-theme="dark"] .switch { background: #3a4452; }
+    body[data-theme="dark"] .switch[aria-checked="true"] { background: var(--brand); }
+    body[data-theme="dark"] .tag { background: #1c232e; border-color: var(--line); color: var(--muted); }
+    body[data-theme="dark"] .training-result { background: var(--surface-subtle); border-color: var(--line); }
+    body[data-theme="dark"] .bar-track { background: #262e3a; }
+    body[data-theme="dark"] .account-avatar { background: #262e3a; color: var(--muted); }
+    body[data-theme="dark"] .side-account { background: rgba(255,255,255,.04); border-color: var(--line); }
+    body[data-theme="dark"] .sidebar-foot { border-top-color: rgba(255,255,255,.08); }
+    body[data-theme="dark"] .side-util { color: #a7b1bf; }
+    body[data-theme="dark"] .side-util:hover { background: rgba(255,255,255,.06); color: var(--text); }
+    body[data-theme="dark"] .post-card:hover, body[data-theme="dark"] .page-tile:hover { border-color: var(--line-strong); box-shadow: 0 10px 24px rgba(0,0,0,.38); }
+    body[data-theme="dark"] .mistake-row:not(.mistake-selected):hover,
+    body[data-theme="dark"] .embedded-settings > summary:hover { background: rgba(255,255,255,.04); }
+    body[data-theme="dark"] details.history summary:hover { background: #1c232e; }
+    body[data-theme="dark"] .form-grid label { color: var(--muted); }
+    body[data-theme="dark"] .xhs-loading { background: #10151c; color: var(--muted); }
+    body[data-theme="dark"] .xhs-loading strong { color: var(--text); }
+    body[data-theme="dark"] .xhs-loading[data-status="error"] { background: #1c1214; color: var(--danger); }
+    body[data-theme="dark"] #s0 .p-top { background: rgba(23,29,38,.92); border-color: var(--line); }
+    body[data-theme="dark"] .image-stage { background: #0d1015; border-color: var(--line); }
+    body[data-theme="dark"] .stage-nav { background: rgba(40,48,60,.92); color: var(--text); border-color: var(--line-strong); }
+    body[data-theme="dark"] .context-menu { background: var(--surface); border-color: var(--line-strong); }
+    body[data-theme="dark"] .context-menu button:hover { background: var(--brand-soft); }
+    body[data-theme="dark"] #guideDialog { background: var(--surface); }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+      outline: 3px solid rgba(22, 93, 255, .28);
+      outline-offset: 2px;
+    }
+    .app {
+      width: min(1360px, calc(100% - 40px));
+      min-height: 760px;
+      margin: 22px auto;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+    .shell { display: flex; min-height: 720px; }
+    .sidebar {
+      width: 218px;
+      flex: 0 0 218px;
+      padding: 22px 12px 16px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      transition: width .26s var(--ease-out), flex-basis .26s var(--ease-out), padding .26s var(--ease-out);
+    }
+    .brand {
+      padding: 0 12px 22px;
+      max-height: 96px;
+      overflow: hidden;
+      transition: opacity .16s ease, max-height .26s var(--ease-out), padding-bottom .26s var(--ease-out);
+    }
+    .brand strong { display: block; font-size: 18px; letter-spacing: -.02em; }
+    .brand span { color: var(--muted); font-size: 12px; }
+    .nav-label {
+      margin: 18px 12px 7px;
+      max-height: 24px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      transition: opacity .16s ease, max-height .26s var(--ease-out), margin .26s var(--ease-out);
+    }
+    .nav-list { display: grid; gap: 3px; align-content: start; width: 100%; }
+    .nav-item {
+      display: flex;
+      width: 100%;
+      min-height: 40px;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: #454d59;
+      text-align: left;
+      cursor: pointer;
+      transition: background .16s ease, color .16s ease, transform var(--dur-fast) var(--ease-out), gap .26s var(--ease-out), padding .26s var(--ease-out);
+    }
+    .nav-caption-mobile { display: none; }
+    .nav-caption-desktop { max-width: 200px; min-width: 0; flex: 0 1 auto; overflow: hidden; white-space: nowrap; transition: opacity .16s ease, max-width .26s var(--ease-out); }
+    .nav-icon { display: inline-flex; flex: 0 0 auto; color: #6d7686; transition: color .16s ease, transform .18s var(--ease-out); }
+    .nav-item:hover .nav-icon, .nav-item.active .nav-icon { color: inherit; }
+    .nav-item:hover .nav-icon { transform: translateX(1px); }
+    .nav-item:active { transform: scale(.985); }
+    .nav-item:hover { background: rgba(255,255,255,.72); color: var(--text); }
+    .nav-item.active { background: #fff; color: var(--brand); font-weight: 650; box-shadow: 0 1px 3px rgba(20,30,45,.06); animation: nav-pop .26s var(--ease-out) backwards; }
+    @keyframes nav-pop { from { transform: scale(.975); } to { transform: none; } }
+    /* 底部区域：本机数据 + 次级操作，与导航共用同一套缩进和行高 */
+    .sidebar-foot {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid rgba(205,210,219,.6);
+      display: grid;
+      gap: 8px;
+      transition: gap .26s var(--ease-out), padding-top .26s var(--ease-out), border-top-width .26s var(--ease-out);
+    }
+    .foot-label { margin: 0 12px; max-height: 24px; overflow: hidden; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; transition: opacity .16s ease, max-height .26s var(--ease-out); }
+    .side-account {
+      display: flex;
+      min-width: 0;
+      max-height: 220px;
+      overflow: hidden;
+      padding: 12px;
+      border: 1px solid #dfe3e9;
+      border-radius: 10px;
+      background: rgba(255,255,255,.56);
+      transition: opacity .16s ease, max-height .26s var(--ease-out), padding .26s var(--ease-out), border-width .26s var(--ease-out);
+    }
+    .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 6px; width: 100%; }
+    .overview-cell { display: grid; justify-items: start; gap: 1px; min-width: 0; }
+    .overview-cell strong { font-size: 16px; line-height: 1.2; letter-spacing: -.01em; }
+    .overview-cell small { color: var(--muted); font-size: 10.5px; }
+    .side-utils { display: grid; gap: 1px; }
+    .side-util {
+      display: flex;
+      width: 100%;
+      min-height: 34px;
+      max-height: 44px;
+      overflow: hidden;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12.5px;
+      text-align: left;
+      cursor: pointer;
+      transition: background .16s ease, color .16s ease, transform var(--dur-fast) var(--ease-out), gap .26s var(--ease-out), padding .26s var(--ease-out), max-height .26s var(--ease-out), opacity .16s ease;
+    }
+    .side-util-label { max-width: 200px; min-width: 0; flex: 0 1 auto; overflow: hidden; white-space: nowrap; transition: opacity .16s ease, max-width .26s var(--ease-out); }
+    .side-util svg { flex: 0 0 auto; transition: color .16s ease, transform .18s var(--ease-out); }
+    .side-util:hover { background: rgba(255,255,255,.72); color: var(--text); }
+    .side-util:hover svg { transform: translateX(1px); }
+    .side-util:active { transform: scale(.985); }
+    .guide-steps { margin: 10px 0; padding-left: 20px; }
+    .guide-steps li { margin: 9px 0; line-height: 1.6; }
+    #guideDialog { position: fixed !important; top: 90px !important; bottom: auto !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important; margin: 0 !important; }
+    @media (min-width: 881px) {
+      .sidebar { position: sticky; top: 0; height: 100vh; align-self: flex-start; overflow-y: auto; scrollbar-width: thin; }
+    }
+    @media (min-width: 881px) {
+      body.sidebar-collapsed .sidebar { width: 64px; flex-basis: 64px; padding: 14px 8px; }
+      body.sidebar-collapsed .brand { opacity: 0; max-height: 0; padding-bottom: 0; pointer-events: none; }
+      body.sidebar-collapsed .nav-label { opacity: 0; max-height: 0; margin-top: 0; margin-bottom: 0; pointer-events: none; }
+      body.sidebar-collapsed .nav-item { padding: 9px 15.5px; gap: 0; }
+      body.sidebar-collapsed .nav-caption-desktop { opacity: 0; max-width: 0; }
+      body.sidebar-collapsed .sidebar-foot { width: 100%; padding-top: 0; border-top-width: 0; gap: 0; }
+      body.sidebar-collapsed .foot-label { opacity: 0; max-height: 0; pointer-events: none; }
+      body.sidebar-collapsed .side-account { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; border-width: 0; pointer-events: none; }
+      body.sidebar-collapsed .side-util { padding: 8px 15.5px; gap: 0; min-height: 0; }
+      body.sidebar-collapsed #guideButton,
+      body.sidebar-collapsed #themeToggle { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; pointer-events: none; }
+      body.sidebar-collapsed .side-util .side-util-label { opacity: 0; max-width: 0; }
+      body.sidebar-collapsed #sidebarToggle svg { transform: rotate(180deg); }
+    }
+    .main { flex: 1; min-width: 0; padding: 28px 34px 40px; }
+    .page-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .page-head h1 { margin: 0; font-size: 23px; line-height: 1.25; letter-spacing: -.02em; }
+    .page-head p { margin: 6px 0 0; color: var(--muted); }
+    .page-meta { color: var(--muted); font-size: 12px; white-space: nowrap; padding-top: 5px; }
+    .screen { display: none; }
+    /* 页面切换：整体淡入，内容块按顺序轻微上浮；前进/后退带一点方向感 */
+    .screen.active { display: block; animation: screen-in var(--dur-base) var(--ease-out) backwards; }
+    .screen.active > * { animation: section-in calc(var(--dur-base) + .06s) var(--ease-out) backwards; }
+    .screen.active > :nth-child(2) { animation-delay: .025s; }
+    .screen.active > :nth-child(3) { animation-delay: .05s; }
+    .screen.active > :nth-child(4) { animation-delay: .075s; }
+    .screen.active > :nth-child(5) { animation-delay: .1s; }
+    .screen.enter-forward > * { --enter-x: 12px; }
+    .screen.enter-back > * { --enter-x: -12px; }
+    /* 采集页内嵌的是原生小红书视图，不做位移，避免与原生层错位 */
+    #s0.active > * { animation: none; }
+    @keyframes screen-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes section-in {
+      from { opacity: 0; transform: translate3d(var(--enter-x, 0px), 7px, 0); }
+      to { opacity: 1; transform: none; }
+    }
+    .page-head.head-switch h1 { animation: head-in var(--dur-base) var(--ease-out) backwards; }
+    .page-head.head-switch p { animation: head-in var(--dur-base) var(--ease-out) .03s backwards; }
+    @keyframes head-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    h2, h3, p { margin-top: 0; }
+    h2 { margin-bottom: 12px; font-size: 17px; letter-spacing: -.01em; }
+    h3 { margin-bottom: 7px; font-size: 14px; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+    .section-head h2 { margin: 0; }
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+    .surface {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+    .panel { padding: 18px; }
+    .btn {
+      display: inline-flex;
+      min-height: 36px;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 7px 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fff;
+      color: #343b47;
+      text-decoration: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color .15s, background .15s, color .15s, box-shadow .15s, transform var(--dur-fast) var(--ease-out);
+    }
+    .btn:hover { border-color: #9aa6b7; background: #f9fafc; }
+    .btn:active { transform: translateY(1px) scale(.985); }
+    .btn.primary { border-color: var(--brand); background: var(--brand); color: #fff; }
+    .btn.primary:hover { border-color: #0e4bd6; background: #0e4bd6; }
+    .btn.danger { border-color: #f2c8c8; background: #fff; color: var(--danger); }
+    .btn.danger:hover { background: var(--danger-soft); }
+    .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+    .btn.ghost:hover { border-color: var(--line); background: #fff; color: var(--text); }
+    .btn.small-btn { min-height: 29px; padding: 4px 9px; font-size: 12px; }
+    .btn:disabled { opacity: .52; cursor: not-allowed; transform: none; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-subtle);
+      color: #586273;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: border-color .18s, background-color .18s, color .18s;
+    }
+    .pill.blue { border-color: #d8e4ff; background: var(--brand-soft); color: #2856a8; }
+    .pill.green { border-color: #cae9d4; background: var(--success-soft); color: var(--success); }
+    .pill.amber { border-color: #f0dfb8; background: var(--warning-soft); color: var(--warning); }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    /* 筛选栏：搜索框与下拉框统一固定宽度，避免随文字长短出现参差 */
+    .filter-search, .field.filter-search { width: 280px; max-width: 100%; }
+    .filter-select, .field.filter-select { width: 148px; }
+    .field, select, textarea {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+    }
+    .field:focus, select:focus, textarea:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px rgba(22, 93, 255, .1); }
+    /* 下拉框统一外观：隐藏系统箭头，改用与界面图标一致的细箭头 */
+    select, select.field {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 32px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236d7686' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 11px center;
+      background-size: 12px 12px;
+      cursor: pointer;
+      text-overflow: ellipsis;
+      transition: border-color .15s, background-color .15s, box-shadow .15s;
+    }
+    select:hover, select.field:hover { border-color: #9aa6b7; }
+    select:disabled, select.field:disabled { cursor: not-allowed; opacity: .55; }
+    select option { background: var(--surface); color: var(--text); }
+    body[data-theme="dark"] select, body[data-theme="dark"] select.field {
+      background-color: #10151c;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b97a6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    }
+    body[data-theme="dark"] select option { background: #171d26; color: var(--text); }
+    .field-row { display: flex; align-items: center; gap: 8px; }
+    .dropzone {
+      padding: 24px;
+      border: 1px dashed #aeb8c7;
+      border-radius: 11px;
+      background: #fafbfc;
+      text-align: center;
+      transition: border-color .15s, background .15s;
+    }
+    .dropzone.over { border-color: var(--brand); background: var(--brand-soft); }
+    .dropzone strong { display: block; margin-bottom: 4px; font-size: 14px; }
+    .dropzone p { margin: 0 0 14px; color: var(--muted); font-size: 12px; }
+    .dropzone .toolbar { justify-content: center; }
+    .file-input { display: none; }
+    .empty {
+      padding: 32px 20px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty strong { display: block; margin-bottom: 5px; color: var(--text); }
+
+    /* Full-width XHS browsing canvas */
+    .collector-wrap { position: relative; display: block; min-width: 0; }
+    .bpage {
+      position: relative;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      height: min(78vh, 940px);
+      min-height: 560px;
+      overflow: hidden;
+      border: 1px solid #d8dce3;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .xhs-viewport {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      margin: 1px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .xhs-loading {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 10px;
+      padding: 24px;
+      background: #f8f9fb;
+      color: var(--muted);
+      text-align: center;
+    }
+    .xhs-loading::before {
+      content: "";
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(22,93,255,.18);
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    .xhs-loading[data-status="error"]::before { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .xhs-loading strong { color: var(--text); font-size: 14px; }
+    .xhs-loading[data-status="error"] { background: #fffafa; color: var(--danger); }
+    .xhs-browser-fallback {
+      display: grid;
+      min-height: 100%;
+      align-content: center;
+      justify-items: center;
+      gap: 12px;
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .xhs-browser-fallback strong { color: var(--text); font-size: 18px; }
+    .xhs-browser-fallback p { max-width: 420px; margin: 0; line-height: 1.7; }
+    .electron-only { display: none; }
+    body.electron-shell .electron-only { display: inline-flex; }
+    body.electron-shell .xhs-browser-fallback { display: none; }
+    body.browser-preview .xhs-loading { display: none; }
+    body.browser-preview .xhs-browser-fallback { display: grid; }
+    /* Electron 满幅：去掉外壳内边距与卡片边框，让内容占满窗口；
+       overflow 必须可见，否则 sticky 侧边栏不会跟随视口固定 */
+    body.electron-shell .app {
+      width: 100%;
+      min-height: 100vh;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      overflow: visible;
+    }
+    body.electron-shell .shell { min-height: 100vh; }
+    /* 采集浏览全出血：小红书页面占满主区域，工具条悬浮在页面上 */
+    body.electron-shell.screen-s0 .main { padding: 0; }
+    body.electron-shell.screen-s0 .page-head { display: none; }
+    body.electron-shell #s0.active { display: flex; flex-direction: column; height: 100vh; }
+    body.electron-shell #s0 .collector-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+    body.electron-shell #s0 .bpage { flex: 1 1 auto; height: auto; min-height: 0; border: 0; border-radius: 0; }
+    body.electron-shell #s0 .p-top {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      right: 14px;
+      z-index: 3;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid rgba(15, 23, 42, .08);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .9);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .12);
+      opacity: .4;
+      transition: opacity .15s ease;
+    }
+    body.electron-shell #s0 .bpage:hover .p-top { opacity: 1; }
+    .p-top {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 20px;
+      border-bottom: 1px solid #eceef2;
+      background: #fff;
+      font-weight: 650;
+      flex: 0 0 48px;
+    }
+    .p-top .brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--xhs); }
+    .p-top .spacer { flex: 1; }
+    .p-top .embed-state { color: var(--muted); font-size: 12px; font-weight: 500; }
+    .xhs-open-card {
+      display: grid;
+      flex: 1 1 auto;
+      align-content: center;
+      justify-items: center;
+      gap: 12px;
+      padding: 32px;
+      background: linear-gradient(180deg, #fff, #fafbfc);
+      text-align: center;
+    }
+    .xhs-open-logo {
+      display: grid;
+      width: 54px;
+      height: 54px;
+      place-items: center;
+      border-radius: 17px;
+      background: var(--xhs);
+      color: #fff;
+      font-size: 25px;
+      font-weight: 750;
+    }
+    .xhs-open-card h2 { margin: 3px 0 0; }
+    .xhs-open-card p { max-width: 470px; margin: 0; color: var(--muted); }
+    .xhs-open-card .btn { min-height: 42px; margin-top: 5px; }
+    .xhs-open-card small { color: var(--muted); }
+    /* Lists and image pages */
+    .post-list { display: grid; gap: 10px; }
+    .pager { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; margin-top: 14px; }
+    .pager .pager-info { margin-left: 8px; }
+    .post-card { padding: 0; overflow: hidden; transition: border-color .18s, box-shadow .2s var(--ease-out), transform .2s var(--ease-out); }
+    .post-card:hover { border-color: #d3dae5; box-shadow: 0 9px 22px rgba(24,35,54,.07); transform: translateY(-1px); }
+    .post-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 17px; }
+    .post-open { flex: 1; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
+    .post-open:hover strong { color: var(--brand); }
+    .post-open strong { display: block; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+    .post-meta { display: flex; flex-wrap: wrap; gap: 7px 12px; margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .post-author { color: #46566e; }
+    .missing-count { color: var(--warning); font-weight: 650; }
+    .post-ops { display: flex; flex: 0 0 auto; gap: 6px; }
+    .detail-actions { margin: 18px 0; }
+    .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
+    /* 作答记录顶部：训练关联与科目，标签与下拉同一行并居中，上下留出空间 */
+    .answer-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 16px 0 20px; }
+    .answer-field { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+    .answer-field > span { flex: 0 0 auto; white-space: nowrap; }
+    .answer-field .field { width: auto; }
+    #answerTraining { width: 420px; max-width: 60vw; }
+    #answerSubject { width: 180px; max-width: 45vw; }
+    .page-tile {
+      min-height: 172px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f7f8fa;
+      transition: border-color .18s, box-shadow .2s var(--ease-out), transform .2s var(--ease-out);
+    }
+    .page-tile:hover { border-color: #d3dae5; box-shadow: 0 8px 18px rgba(24,35,54,.07); transform: translateY(-1px); }
+    .page-tile.dragging { transform: none; box-shadow: none; }
+    .page-tile[draggable="true"] { cursor: grab; }
+    .page-tile[draggable="true"]:active { cursor: grabbing; }
+    .page-tile.dragging { opacity: .45; }
+    .page-tile.drop-target { border: 2px dashed var(--brand); background: var(--brand-soft); }
+    .page-drag-hint {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      z-index: 1;
+      width: 22px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #dfe4ec;
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1;
+      user-select: none;
+      touch-action: none;
+      cursor: grab;
+      opacity: 0;
+      transition: opacity .12s ease;
+    }
+    .page-tile:hover .page-drag-hint { opacity: .8; }
+    .page-drag-hint:active { cursor: grabbing; }
+    .page-tile-remove {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border: 1px solid #dfe4ec;
+      border-radius: 50%;
+      background: rgba(255,255,255,.92);
+      color: #7c8698;
+      font-size: 11px;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity .12s ease;
+    }
+    .page-tile:hover .page-tile-remove { opacity: 1; }
+    .page-tile-remove:hover { color: var(--danger); border-color: #f2c8c8; }
+    @media (hover: none) {
+      .page-drag-hint, .page-tile-remove { opacity: .55; }
+    }
+    .page-preview {
+      position: relative;
+      width: 100%;
+      height: 132px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 0;
+      background: linear-gradient(160deg, #edf0f4, #fafbfc);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .page-preview img { display: block; width: 100%; height: 100%; object-fit: contain; transition: transform .3s var(--ease-out); }
+    .page-tile:hover .page-preview img { transform: scale(1.015); }
+    dialog.image-dialog { width: min(1080px, calc(100% - 28px)); }
+    .image-wrap { position: relative; }
+    .image-stage {
+      height: 74vh;
+      display: flex;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      cursor: grab;
+    }
+    .image-stage.grabbing { cursor: grabbing; }
+    .image-stage img {
+      margin: auto;
+      height: auto;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .stage-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(15, 23, 42, .14);
+      border-radius: 50%;
+      background: rgba(255,255,255,.92);
+      color: #343b47;
+      font-size: 17px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,.16);
+    }
+    .stage-nav:hover { background: #fff; }
+    .stage-nav-prev { left: 12px; }
+    .stage-nav-next { right: 12px; }
+    .image-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+    .image-toolbar .spacer { flex: 1; }
+    .page-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .page-caption { position: relative; display: flex; justify-content: center; padding: 0 2px; }
+    .page-caption strong { font-size: 14px; color: var(--text); }
+    .page-caption .page-ops-buttons { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); }
+    .page-ops-buttons { display: inline-flex; gap: 2px; }
+    .context-menu {
+      position: fixed;
+      z-index: 60;
+      min-width: 132px;
+      padding: 4px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .context-menu button {
+      display: block;
+      width: 100%;
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .context-menu button:hover { background: var(--brand-soft); }
+    .context-menu button.danger { color: var(--danger); }
+    .context-menu button.danger:hover { background: var(--danger-soft); }
+    .context-menu .context-sep { height: 1px; margin: 4px 6px; background: var(--line); }
+    .history-list { display: grid; gap: 10px; }
+    details.history {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+    details.history summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      cursor: pointer;
+      list-style: none;
+    }
+    details.history summary::-webkit-details-marker { display: none; }
+    details.history summary:hover { background: #fafbfc; }
+    .history-title { min-width: 0; }
+    .history-title strong { display: block; }
+    .history-title small { display: block; margin-top: 3px; color: var(--muted); }
+    .history-body { padding: 0 16px 16px; border-top: 1px solid var(--line); }
+    .review-list { display: grid; gap: 10px; }
+    .review-question { padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: #fafbfc; }
+    .review-question-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .review-fields { display: grid; grid-template-columns: 110px 150px 150px minmax(180px, 1fr); gap: 8px; }
+    .review-fields label { display: grid; align-content: start; gap: 4px; color: var(--muted); font-size: 11px; }
+    .review-fields .wide { grid-column: span 2; }
+    .review-fields textarea { min-height: 62px; resize: vertical; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag { padding: 3px 8px; border: 1px solid #dce4f2; border-radius: 999px; background: #f5f8fd; color: #53647d; font-size: 11px; }
+    mark.key-point { background: #ffe9a8; color: #7a5b00; padding: 0 4px; border-radius: 4px; font-weight: 650; }
+    .katex { font-size: 1.02em; }
+    #reportQuestions .katex-display { margin: 6px 0; }
+    .mistake-list { display: grid; gap: 8px; }
+    .mistake-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 13px 15px;
+      border-bottom: 1px solid #edf0f3;
+      transition: background-color .16s ease;
+    }
+    .mistake-row:not(.mistake-selected):hover { background: #fafbfd; }
+    .report-question-row { grid-template-columns: minmax(0, 1fr) 72px; align-items: center; }
+    .solution-text { line-height: 1.75; }
+    .solution-caption { display: block; margin-bottom: 2px; }
+    .report-question-row > .report-question-status {
+      display: flex;
+      width: 100%;
+      height: 48px;
+      align-items: center;
+      justify-content: center;
+      justify-self: stretch;
+      align-self: center;
+      border-radius: 10px;
+      padding: 8px 4px;
+      font-size: 12px;
+    }
+    .mistake-check { width: 16px; height: 16px; accent-color: var(--brand); cursor: pointer; flex: 0 0 auto; }
+    .mistake-selected { background: #f5f8fd; }
+    .mistake-row:last-child { border-bottom: 0; }
+    .mistake-row p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .mistake-open { cursor: pointer; min-width: 0; }
+    .mistake-open:hover strong { color: var(--brand); }
+    .mistake-open:focus-visible { outline: 3px solid rgba(22, 93, 255, .28); outline-offset: 2px; border-radius: 6px; }
+    #mistakeDetailBody p { margin: 8px 0; line-height: 1.7; }
+    #mistakeDetailBody .muted.small { margin-right: 4px; }
+    #mistakePrintArea { display: none; }
+    @media print {
+      body.printing-mistakes .app { display: none !important; }
+      body.printing-mistakes #mistakePrintArea { display: block !important; }
+      #mistakePrintArea h1 { margin: 0 0 4px; font-size: 20px; }
+      #mistakePrintArea .print-meta { margin: 0 0 18px; color: #626d7d; font-size: 12px; }
+      #mistakePrintArea .print-item { padding: 10px 0 14px; border-top: 1px solid #e2e5ea; page-break-inside: avoid; break-inside: avoid; }
+      #mistakePrintArea .print-item h3 { margin: 0 0 6px; font-size: 14px; }
+      #mistakePrintArea .print-item h3 .print-source { color: #626d7d; font-weight: 500; }
+      #mistakePrintArea .print-item p { margin: 4px 0; line-height: 1.7; }
+    }
+    .learning-overview { margin-bottom: 16px; }
+    .overview-meta { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+    .learning-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .learning-stat { min-width: 0; padding: 14px; font: inherit; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: inherit; text-align: left; cursor: pointer; transition: border-color .16s, box-shadow .16s, transform .16s; }
+    .learning-stat:hover { border-color: #b9c9e8; box-shadow: 0 5px 16px rgba(31,54,91,.08); transform: translateY(-1px); }
+    .learning-stat span, .learning-stat strong, .learning-stat small { display: block; }
+    .learning-stat span { color: var(--muted); font-size: 12px; }
+    .learning-stat strong { margin: 7px 0 4px; font-size: 23px; line-height: 1.1; }
+    .learning-stat small { color: var(--muted); font-size: 11px; }
+    .bar-row { display: grid; grid-template-columns: 150px 1fr 34px; align-items: center; gap: 12px; margin: 14px 0; }
+    .bar-track { height: 9px; overflow: hidden; border-radius: 999px; background: #edf0f4; }
+    .bar-track i { display: block; height: 100%; border-radius: inherit; background: #6c91df; transition: width .5s var(--ease-out); }
+    .embedded-settings { margin-top: 16px; overflow: hidden; }
+    .embedded-settings > summary { display: flex; min-height: 60px; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; color: #343b47; font-weight: 650; cursor: pointer; list-style: none; transition: background-color .16s ease; }
+    .embedded-settings > summary:hover { background: #fbfcfe; }
+    .embedded-settings > summary::-webkit-details-marker { display: none; }
+    .embedded-settings > summary::after { content: "展开 +"; color: var(--muted); font-size: 12px; font-weight: 500; }
+    .embedded-settings[open] > summary::after { content: "收起 −"; }
+    .embedded-settings-body { padding: 20px 14px 14px; border-top: 1px solid var(--line); }
+    .form-grid { display: grid; grid-template-columns: 96px minmax(0, 420px); gap: 12px 16px; align-items: center; }
+    .form-grid label { color: #515b69; font-weight: 600; }
+    .settings-note { max-width: 620px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .settings-note p { margin: 0 0 6px; }
+    .settings-note p:last-child { margin-bottom: 0; }
+    /* 变式训练：知识点与生成动作同一行，说明文字单独成行，不再和按钮互相压住 */
+    .training-controls { align-items: flex-end; gap: 10px; }
+    .training-topic { display: grid; flex: 0 1 270px; gap: 5px; min-width: 180px; }
+    .training-topic select { width: 100%; max-width: 270px; }
+    .training-hint { max-width: 760px; margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: #b8c0cc;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.17);
+      transition: transform .15s;
+    }
+    .switch[aria-checked="true"] { background: var(--brand); }
+    .switch[aria-checked="true"]::after { transform: translateX(18px); }
+    .inline-notice { margin-top: 14px; padding: 11px 13px; border-radius: 8px; background: var(--brand-soft); color: #3a5e9a; font-size: 12px; }
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 20;
+      max-width: min(420px, calc(100vw - 32px));
+      padding: 11px 15px;
+      border: 1px solid #cbd4e2;
+      border-radius: 9px;
+      background: #263142;
+      box-shadow: var(--shadow);
+      color: #fff;
+      opacity: 0;
+      transform: translateY(10px) scale(.98);
+      pointer-events: none;
+      transition: opacity .2s var(--ease-out), transform .24s var(--ease-out);
+    }
+    .toast.show { opacity: 1; transform: translateY(0) scale(1); }
+    .boot-fatal {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      z-index: 2147483647;
+      width: min(680px, calc(100vw - 24px));
+      padding: 14px 16px;
+      transform: translateX(-50%);
+      border: 1px solid #efc4c4;
+      border-radius: 10px;
+      background: #fff8f8;
+      box-shadow: 0 8px 30px rgba(39, 25, 25, .2);
+      color: #7e2630;
+    }
+    .boot-fatal strong { display: block; margin-bottom: 5px; }
+    .boot-fatal p { margin: 0; font-size: 13px; }
+    .boot-fatal pre { max-height: 180px; margin: 8px 0 0; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+    .boot-fatal[hidden] { display: none; }
+    .dialog {
+      width: min(480px, calc(100% - 32px));
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      box-shadow: 0 22px 70px rgba(12,20,34,.22);
+      opacity: 0;
+      transform: translateY(10px) scale(.98);
+      transition: opacity .18s var(--ease-soft), transform .24s var(--ease-out), overlay .24s allow-discrete, display .24s allow-discrete;
+    }
+    .dialog[open] { opacity: 1; transform: translateY(0) scale(1); }
+    @starting-style {
+      .dialog[open] { opacity: 0; transform: translateY(10px) scale(.98); }
+    }
+    .dialog::backdrop {
+      background: rgba(25,33,45,0);
+      transition: background .2s var(--ease-soft), overlay .2s allow-discrete, display .2s allow-discrete;
+    }
+    .dialog[open]::backdrop { background: rgba(25,33,45,.38); }
+    @starting-style {
+      .dialog[open]::backdrop { background: rgba(25,33,45,0); }
+    }
+    body[data-theme="dark"] .dialog[open]::backdrop { background: rgba(0,0,0,.62); }
+    .dialog-inner { padding: 20px; }
+    .dialog-inner p { color: var(--muted); }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    .training-result { margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfe; }
+    .training-result ol { margin: 10px 0; padding-left: 22px; }
+    .training-result li { margin: 7px 0; }
+    .training-answer-sheet { margin-top: 18px; }
+    @media print {
+      body.printing-training .app { width: 100%; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+      body.printing-training .sidebar, body.printing-training .page-head, body.printing-training .toast { display: none !important; }
+      body.printing-training .shell, body.printing-training .main { display: block; width: 100%; padding: 0; }
+      body.printing-training .screen { display: none !important; }
+      body.printing-training #s7 { display: block !important; }
+      body.printing-training #s7 > .section-head button, body.printing-training #s7 > .toolbar { display: none !important; }
+      body.printing-training .training-answer-sheet { break-before: page; page-break-before: always; }
+      body.printing-training .training-answer-sheet summary { display: none; }
+      body.printing-training .training-answer-sheet:not([open]) > ol { display: block !important; }
+    }
+    @media print {
+      /* The paper palette also overrides variables declared directly on a dark
+         body; resetting :root alone would leave those local values in effect. */
+      :root, body, body[data-theme="dark"] {
+        color-scheme: light !important;
+        --bg: #fff !important;
+        --surface: #fff !important;
+        --surface-subtle: #f8f9fb !important;
+        --sidebar: #fff !important;
+        --line: #d8dde5 !important;
+        --line-strong: #b8c1ce !important;
+        --text: #20242b !important;
+        --muted: #526073 !important;
+        --brand: #165dff !important;
+        --brand-soft: #edf3ff !important;
+        --danger: #9c2028 !important;
+        --danger-soft: #fff0f0 !important;
+        --success: #0e6840 !important;
+        --success-soft: #eaf7ef !important;
+        --warning: #795000 !important;
+        --warning-soft: #fff7e5 !important;
+      }
+      html, body, .app, .surface, #mistakePrintArea, .training-result {
+        background: #fff !important;
+        color: var(--text) !important;
+        box-shadow: none !important;
+      }
+      .muted, .tag { color: var(--muted) !important; }
+      .tag { background: #fff !important; border-color: var(--line) !important; }
+      mark.key-point { background: #fff0bb !important; color: #584000 !important; }
+      /* Print only learning content. Keep dialogs open in the interactive UI,
+         but exclude their top-layer content and other transient overlays on paper. */
+      dialog, dialog::backdrop, [popover], .toast, .boot-fatal {
+        display: none !important;
+        visibility: hidden !important;
+      }
+      #mistakePrintArea { color: #20242b; }
+      #mistakePrintArea .print-item { border-color: #e2e5ea; }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .screen > * { opacity: 1 !important; transform: none !important; }
+      /* 批阅报告导出：只保留报告内容，去掉应用外壳 */
+      body.printing-report .sidebar,
+      body.printing-report .page-head { display: none !important; }
+      body.printing-report .app { width: 100%; min-height: 0; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+      body.printing-report .shell { display: block; min-height: 0; }
+      body.printing-report .main { padding: 0; }
+      body.printing-report .screen { display: none !important; }
+      body.printing-report #s4 { display: block !important; }
+      body.printing-report #s4 .section-head .btn { display: none !important; }
+      body.printing-report #s4 > .toolbar,
+      body.printing-report #s4 .pager { display: none !important; }
+      body.printing-report #s4 .surface { border: 0; border-radius: 0; box-shadow: none; }
+      body.printing-report #s4 .inline-notice { border: 1px solid #dbe4f4; }
+      body.printing-report .report-question-row { break-inside: avoid; page-break-inside: avoid; }
+    }
+    /* 系统开启“减少动态效果”时，所有过渡/动画立即完成，保留最终状态 */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+    @media (max-width: 880px) {
+      .app { width: min(100% - 20px, 700px); margin: 10px auto; }
+      .shell { display: block; }
+      .sidebar { width: 100%; padding: 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { display: flex; align-items: baseline; gap: 9px; padding: 0 8px 10px; }
+      .nav-label, .sidebar-foot { display: none; }
+      .nav-list { display: flex; overflow-x: auto; padding-bottom: 2px; }
+      .nav-item { width: auto; flex: 0 0 auto; }
+      .main { padding: 22px 20px 32px; }
+    }
+    @media (max-width: 560px) {
+      .app { width: 100%; min-height: 100vh; margin: 0; overflow: visible; border: 0; border-radius: 0; }
+      .titlebar { height: 32px; }
+      .page-head { margin-bottom: 18px; }
+      .page-head h1 { font-size: 20px; }
+      .page-meta { display: none; }
+      .main { padding: 18px 14px calc(96px + env(safe-area-inset-bottom)); }
+      .sidebar {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 15;
+        display: flex;
+        align-items: stretch;
+        width: 100%;
+        padding: 5px 5px calc(5px + env(safe-area-inset-bottom));
+        border: 0;
+        border-top: 1px solid var(--line);
+        background: #fff;
+        box-shadow: 0 -5px 18px rgba(31,41,55,.08);
+      }
+      .sidebar .brand, .sidebar > .nav-label, .sidebar .sidebar-foot { display: none; }
+      .sidebar > nav.nav-list {
+        display: flex;
+        flex: 1 1 auto;
+        justify-content: space-around;
+        gap: 2px;
+        overflow: visible;
+        padding: 0;
+      }
+      .sidebar .nav-item {
+        display: flex;
+        width: auto;
+        min-width: 0;
+        min-height: 58px;
+        flex: 1 1 0;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 5px 1px;
+        border-radius: 9px;
+        font-size: 10px;
+        line-height: 1.15;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .sidebar .nav-item.active { background: var(--brand-soft); box-shadow: none; }
+      .nav-icon { display: block; font-size: 17px; line-height: 18px; }
+      .nav-caption-desktop { display: none; }
+      .nav-caption-mobile { display: block; }
+      .toast { right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); }
+      .p-top { padding: 0 12px; }
+      .bpage { height: calc(100vh - 228px); min-height: 420px; }
+      .post-head { align-items: flex-start; flex-direction: column; }
+      .post-ops { align-self: flex-end; }
+      .review-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .review-fields .wide { grid-column: span 2; }
+      .learning-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .learning-stat { padding: 12px; }
+      .learning-stat strong { font-size: 21px; }
+      .form-grid { grid-template-columns: 1fr; gap: 7px; }
+      .filter-search, .field.filter-search, .filter-select, .field.filter-select { width: 100%; }
+      .bar-row { grid-template-columns: 110px 1fr 25px; gap: 8px; font-size: 12px; }
+      .mistake-row { grid-template-columns: 1fr; }
+      .report-question-row { grid-template-columns: minmax(0, 1fr); }
+      .report-question-row > .report-question-status {
+        display: inline-flex;
+        width: max-content;
+        height: auto;
+        justify-self: end;
+        align-self: start;
+        border-radius: 999px;
+        padding: 3px 9px;
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="boot-fatal" id="renderFatal" role="alert" hidden>
+    <strong>工作台初始化失败</strong>
+    <p>工作台脚本发生错误。可先重启应用；如果问题持续，请把下面的错误信息提供给开发者。</p>
+    <pre id="renderFatalDetail"></pre>
+  </div>
+  <div class="app">
+    <div class="shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand"><strong>exam2pdf</strong><span>家庭试卷工作台</span></div>
+        <div class="nav-label">学习流程</div>
+        <nav class="nav-list">
+          <button class="nav-item active" type="button" data-screen="s0"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span><span class="nav-caption-desktop">采集浏览</span><span class="nav-caption-mobile">浏览</span></button>
+          <button class="nav-item" type="button" data-screen="s0b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-caption-desktop">帖子池</span><span class="nav-caption-mobile">帖子</span></button>
+          <button class="nav-item" type="button" data-screen="s1" hidden><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span><span class="nav-caption-desktop">整理打印</span><span class="nav-caption-mobile">打印</span></button>
+          <button class="nav-item" type="button" data-screen="s1b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span><span class="nav-caption-desktop">试卷批阅</span><span class="nav-caption-mobile">批阅</span></button>
+          <button class="nav-item" type="button" data-screen="s5"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span><span class="nav-caption-desktop">错题本</span><span class="nav-caption-mobile">错题</span></button>
+          <button class="nav-item" type="button" data-screen="s6"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span><span class="nav-caption-desktop">学习情况</span><span class="nav-caption-mobile">学习</span></button>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="foot-label">本机数据</div>
+          <div class="side-account" id="sideDataOverview" aria-label="本机数据总览">
+            <div class="overview-grid">
+              <span class="overview-cell"><strong id="overviewPosts">0</strong><small>帖子</small></span>
+              <span class="overview-cell"><strong id="overviewAnswers">0</strong><small>作答</small></span>
+              <span class="overview-cell"><strong id="overviewMistakes">0</strong><small>错题</small></span>
+              <span class="overview-cell"><strong id="overviewTrainings">0</strong><small>训练</small></span>
+            </div>
+          </div>
+          <div class="side-utils">
+            <button class="side-util" id="guideButton" type="button" data-action="show-guide">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.2 9a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4"/><line x1="12" y1="17.4" x2="12.01" y2="17.4"/></svg>
+              <span class="side-util-label">使用引导</span>
+            </button>
+            <button class="side-util" id="themeToggle" type="button" aria-label="切换深浅色">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 21a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg>
+              <span class="side-util-label">深色模式</span>
+            </button>
+            <button class="side-util" id="sidebarToggle" type="button" aria-label="折叠侧边栏">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+              <span class="side-util-label">收起</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="page-head">
+          <div><h1 id="pageTitle">采集浏览</h1><p id="pageSubtitle">在小红书网页中登录、浏览并采集试卷。</p></div>
+          <div class="page-meta">家庭试卷工作台</div>
+        </header>
+
+        <section class="screen active" id="s0" aria-label="采集浏览">
+          <div class="collector-wrap">
+            <div class="bpage">
+              <div class="p-top">
+                <span class="brand-dot" aria-hidden="true"></span><span>小红书</span>
+                <span class="embed-state" id="xhsState">正在连接小红书…</span>
+                <span class="spacer"></span>
+                <button class="btn ghost small-btn electron-only" id="xhsBack" type="button" aria-label="返回上一页">返回</button>
+                <button class="btn ghost small-btn electron-only" id="xhsForward" type="button" aria-label="前进">前进</button>
+                <button class="btn ghost small-btn electron-only" id="xhsReload" type="button" aria-label="刷新小红书">刷新</button>
+                <button class="btn ghost small-btn" type="button" data-action="show-info">使用说明</button>
+              </div>
+              <div class="xhs-viewport" id="xhsViewport">
+                <div class="xhs-loading" id="xhsLoading" aria-live="polite">
+                  <strong id="xhsLoadingMessage">正在打开小红书网页…</strong>
+                  <span>加载过程中会保留本机登录状态。</span>
+                  <button class="btn small-btn" id="xhsRetry" type="button" data-action="reload-xhs" hidden>重试加载</button>
+                </div>
+                <div class="xhs-browser-fallback">
+                  <strong>小红书登录需要在 Electron 应用中打开</strong>
+                  <p>这里是普通浏览器预览，所以不会尝试用 iframe 加载登录页。运行 Electron 应用后，小红书会直接显示在这个区域，登录状态会保存在本机。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="s0b" aria-label="帖子池">
+          <div class="toolbar filter-bar" style="margin-bottom:14px">
+            <select id="postSubjectFilter" class="field filter-select" aria-label="按科目筛选"></select>
+            <input class="field filter-search" id="postSearch" type="search" placeholder="搜索试卷或作者" aria-label="搜索帖子池" />
+            <button class="btn" type="button" data-action="pick-post-files">导入图片</button>
+            <button class="btn" type="button" data-action="pick-post-folder">导入文件夹</button>
+            <input class="file-input" id="postFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+            <input class="file-input" id="postFolder" type="file" accept="image/jpeg,image/png,image/webp" webkitdirectory multiple />
+          </div>
+          <div class="dropzone" id="poolDrop">
+            <strong>拖拽 JPG、PNG 或 WebP 图片到这里</strong>
+            <p>每张图片作为一页，导入后可预览、拖动排序并打印或生成 PDF。</p>
+          </div>
+          <div class="post-list" id="postList" style="margin-top:14px"></div>
+          <nav class="pager" id="postPager" aria-label="帖子池分页"></nav>
+          <div class="empty" id="postEmpty" hidden><strong>帖子池还是空的</strong>去采集浏览页采集笔记，或从本地导入试卷。</div>
+        </section>
+
+        <section class="screen" id="s0c" aria-label="帖子详情">
+          <div class="section-head">
+            <button class="btn ghost" type="button" data-screen="s0b">返回帖子池</button>
+            <div class="toolbar">
+              <label class="muted small" for="postSubject">科目</label>
+              <select id="postSubject" class="field filter-select" aria-label="科目"></select>
+              <span class="pill blue" id="postPageCount">8 页</span>
+            </div>
+          </div>
+          <div class="surface panel">
+            <div class="section-head">
+              <div><h2 id="postDetailTitle">试卷详情</h2><p class="muted small" id="postDetailMeta">拖动页面卡片调整打印顺序；也可用前后移按钮微调。</p></div>
+            </div>
+            <div class="page-grid" id="postPages"></div>
+          </div>
+          <div class="toolbar detail-actions">
+            <button class="btn" type="button" id="resetPostOrderBtn" data-action="reset-post-order" hidden>恢复原始页序</button>
+            <button class="btn" type="button" data-action="pick-post-detail-files">补充图片</button>
+            <button class="btn primary" type="button" data-action="post-pdf">生成 PDF</button>
+            <button class="btn" type="button" data-action="print">直接打印</button>
+            <input class="file-input" id="postDetailFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+          </div>
+        </section>
+
+        <section class="screen" id="s1" aria-label="整理打印">
+          <div class="dropzone" data-drop-kind="print">
+            <strong>导入要打印的试卷页面</strong>
+            <p>支持图片、ZIP 和文件夹。页面顺序可调整，也可移除封面或广告页。</p>
+            <div class="toolbar"><button class="btn" type="button" data-action="pick-print">选择图片</button><button class="btn" type="button" data-action="pick-print-folder">选择文件夹</button></div>
+            <input class="file-input" id="printFiles" type="file" accept=".zip,image/*" multiple />
+            <input class="file-input" id="printFolder" type="file" webkitdirectory multiple />
+          </div>
+          <div class="section-head" style="margin-top:22px">
+            <div><h2>页面顺序 <span class="pill blue" id="printPageCount">4 页</span></h2><p class="muted small">按页面编号排序，使用左右按钮微调。</p></div>
+            <button class="btn ghost" type="button" data-action="clear-print">清空</button>
+          </div>
+          <div class="page-grid" id="printPages"></div>
+          <div class="toolbar" style="margin-top:18px">
+            <input class="field" id="printTitle" style="max-width:260px" value="试卷" aria-label="PDF 文件名" />
+            <button class="btn primary" type="button" data-action="make-pdf">生成 PDF（下载）</button>
+            <button class="btn" type="button" data-action="print">直接打印</button>
+          </div>
+        </section>
+
+        <section class="screen" id="s1b" aria-label="试卷批阅">
+          <div class="surface panel">
+            <div class="toolbar" style="margin-bottom:12px">
+              <input class="field" id="gradeTitle" style="max-width:300px" placeholder="试卷名称" aria-label="试卷名称" />
+              <input class="field" id="gradeStudent" style="max-width:220px" placeholder="学生姓名（可选）" aria-label="学生姓名" />
+              <select id="gradeSubject" class="field" style="max-width:130px" aria-label="科目"></select>
+            </div>
+            <div class="dropzone" data-drop-kind="grade">
+              <strong>导入学生作答照片</strong>
+              <p>选择照片、PDF 或使用电脑摄像头拍摄；PDF 需要系统提供 Poppler，页面会在本机转成图片（最多 24 页），先检查顺序再保存。</p>
+              <div class="toolbar"><button class="btn" type="button" data-action="pick-grade">选择照片</button><button class="btn" type="button" data-action="pick-grade-camera">拍摄作答页</button><button class="btn ghost" type="button" data-action="clear-grade">清空待保存图片</button></div>
+              <input class="file-input" id="gradeFiles" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple />
+              <input class="file-input" id="gradeCamera" type="file" accept="image/*" capture="environment" multiple />
+            </div>
+            <div class="section-head" style="margin-top:18px"><h3>待保存页面 <span class="pill blue" id="gradePageCount">0 页</span></h3></div>
+            <div class="page-grid" id="gradePages"></div>
+            <div class="toolbar" style="margin-top:14px"><button class="btn primary" type="button" data-action="save-answer">保存作答记录</button><span class="muted small">图片保存在本机，不会自动发送给 AI。</span></div>
+          </div>
+          <div class="section-head" style="margin-top:24px"><div><h2>本地作答记录</h2><p class="muted small">每份记录可继续批阅或查看已确认报告。</p></div>
+            <select id="answerSubjectFilter" class="field filter-select" aria-label="按科目筛选"></select>
+          </div>
+          <div class="post-list" id="answerList"></div>
+          <nav class="pager" id="answerPager" aria-label="作答记录分页"></nav>
+          <div class="empty" id="answerEmpty" hidden><strong>还没有学生作答记录</strong>导入学生完成后的照片，再开始批阅。</div>
+        </section>
+
+        <section class="screen" id="s3" aria-label="批阅确认">
+          <div class="overview-meta"><span class="pill amber">待确认</span></div>
+          <div class="surface panel">
+            <h2 id="reviewAnswerTitle">作答记录</h2>
+            <p class="muted small" id="reviewAnswerMeta"></p>
+            <button class="btn ghost small-btn" id="resetAnswerOrderBtn" type="button" data-action="reset-answer-order" hidden></button>
+            <div class="answer-fields">
+              <label class="answer-field" for="answerTraining">
+                <span class="muted small">关联的训练（可选）</span>
+                <select id="answerTraining" class="field"><option value="">不关联训练</option></select>
+              </label>
+              <label class="answer-field" for="answerSubject">
+                <span class="muted small">科目</span>
+                <select id="answerSubject" class="field"></select>
+              </label>
+            </div>
+            <div class="page-grid" id="reviewPages"></div>
+          </div>
+          <details class="surface panel" id="externalReviewPanel" style="margin-top:14px">
+            <summary style="cursor:pointer;font-weight:650">方式一 · 外部 AI 网页批阅（免费，无需 API Key）<span class="muted small" style="font-weight:500;margin-left:8px">生成 PDF + 提示词 → 豆包 / 千问 / DeepSeek → 粘贴回填</span></summary>
+            <div style="margin-top:12px">
+              <p class="muted small">① 生成作答 PDF → ② 复制固定提示词，连同 PDF 上传到任一对话 AI → ③ 把 AI 返回的批阅内容粘贴到下面，解析成与「AI 生成批阅草稿」完全相同的逐题草稿，同样需要人工核对确认。</p>
+              <div class="toolbar">
+                <button class="btn" type="button" data-action="export-answer-pdf">① 生成作答 PDF</button>
+                <button class="btn" type="button" data-action="copy-review-prompt">② 复制批阅提示词</button>
+                <a class="btn" href="https://www.doubao.com" target="_blank" rel="noreferrer">豆包</a>
+                <a class="btn" href="https://tongyi.aliyun.com" target="_blank" rel="noreferrer">通义千问</a>
+                <a class="btn" href="https://chat.deepseek.com" target="_blank" rel="noreferrer">DeepSeek</a>
+                <a class="btn" href="https://kimi.moonshot.cn" target="_blank" rel="noreferrer">Kimi</a>
+                <a class="btn" href="https://chatglm.cn" target="_blank" rel="noreferrer">智谱清言</a>
+              </div>
+              <label class="muted small" for="externalReviewText" style="display:block;margin:12px 0 6px">③ 粘贴 AI 返回的批阅内容（JSON 或包含 JSON 的文本均可）</label>
+              <textarea id="externalReviewText" class="field" rows="6" placeholder='粘贴形如 {"questions":[…]} 的批阅内容；AI 若用文字包裹 JSON 也能识别'></textarea>
+              <div class="toolbar" style="margin-top:8px">
+                <button class="btn primary" type="button" data-action="parse-external-review">解析并填入草稿</button>
+                <button class="btn ghost" type="button" data-action="clear-external-review">清空</button>
+              </div>
+            </div>
+          </details>
+          <div class="surface panel" style="margin-top:14px">
+            <div class="section-head"><div><h2>逐题判定</h2><p class="muted small">外部 AI 或 API 的结果都只作为草稿；请逐题核对、修改后再保存或确认。</p></div><div class="toolbar"><button class="btn small-btn" id="reviewPreviewToggle" type="button" data-action="toggle-review-preview">预览公式</button><button class="btn small-btn" type="button" data-action="add-review-question">添加题目</button></div></div>
+            <div class="toolbar" style="margin:10px 0"><button class="btn" id="aiReviewButton" type="button" data-action="ai-review-answer" disabled>AI 生成批阅草稿</button><span class="muted small" id="aiReviewNotice">方式二 · 直接 API 批阅需要先配置 AI 服务和 API Key；没有 Key 可用上方「外部 AI 网页批阅」。</span></div>
+            <div id="reviewQuestionList" class="review-list"></div>
+          </div>
+          <div class="toolbar" style="justify-content:space-between;margin-top:16px">
+            <button class="btn" type="button" data-screen="s1b">返回作答页</button>
+            <div class="toolbar"><button class="btn" type="button" data-action="save-review-draft">保存草稿</button><button class="btn primary" type="button" data-action="archive-review">确认并归档错题</button></div>
+          </div>
+        </section>
+
+        <section class="screen" id="s4" aria-label="批阅报告">
+          <div class="section-head">
+            <div><h2 id="reportTitle">批阅报告</h2><p class="muted small" id="reportMeta"></p></div>
+            <button class="btn" type="button" data-action="export-report">导出 PDF</button>
+          </div>
+          <div class="surface panel">
+            <h3>结果概览</h3>
+            <p id="reportSummary"></p>
+            <div class="inline-notice" id="reportNotice">错题已进入错题本，可继续补充错因与知识点。</div>
+            <h3 style="margin-top:22px">逐题结果</h3>
+            <div id="reportQuestions" class="mistake-list"></div>
+            <nav class="pager" id="reportPager" aria-label="批阅报告分页" hidden></nav>
+          </div>
+          <div class="toolbar" style="margin-top:16px">
+            <button class="btn" type="button" data-screen="s1b">返回批阅历史</button>
+            <button class="btn" type="button" data-action="edit-answer-review">修改批阅</button>
+            <button class="btn primary" type="button" data-screen="s5">查看错题本</button>
+          </div>
+        </section>
+
+        <section class="screen" id="s5" aria-label="错题本">
+          <div class="overview-meta"><span class="pill blue" id="mistakeCount">2 条错题</span></div>
+          <div class="toolbar filter-bar" style="margin-bottom:12px">
+            <input class="field filter-search" id="mistakeSearch" type="search" placeholder="搜索题目或知识点" aria-label="搜索错题" />
+            <select class="filter-select" id="mistakeSubjectFilter" aria-label="按科目筛选"></select>
+            <select class="filter-select" id="mistakeFilter"><option value="all">全部状态</option><option value="active">待复习</option><option value="mastered">已掌握</option></select>
+            <select class="filter-select" id="mistakeDateFilter"><option value="all">全部日期</option><option value="30">近 30 天</option><option value="90">近 90 天</option></select>
+            <select class="filter-select" id="mistakeTopicFilter"><option value="all">全部知识点</option></select>
+            <select class="filter-select" id="mistakeErrorFilter"><option value="all">全部错因</option></select>
+          </div>
+          <div class="toolbar" style="margin-bottom:12px">
+            <span class="pill blue" id="mistakeSelectedCount">已选 0 题</span>
+            <button class="btn small-btn" type="button" data-action="toggle-mistake-select-all">全选当前筛选结果</button>
+            <button class="btn small-btn" type="button" data-action="clear-mistake-selection">清空勾选</button>
+            <span class="spacer" style="flex:1"></span>
+            <button class="btn" type="button" data-action="export-mistake-pdf">生成 PDF</button>
+            <button class="btn" type="button" data-action="print-mistakes">直接打印</button>
+          </div>
+          <div class="surface mistake-list" id="mistakeList"></div>
+          <nav class="pager" id="mistakePager" aria-label="错题本分页"></nav>
+          <div class="empty" id="mistakeEmpty" hidden><strong>还没有符合条件的错题</strong>调整筛选条件，或先完成一次批阅。</div>
+        </section>
+
+        <section class="screen" id="s6" aria-label="个人学习情况">
+          <div class="learning-overview">
+            <div class="overview-meta"><span class="pill">来自本地确认记录</span></div>
+            <div class="learning-stats" aria-label="学习统计">
+              <button class="learning-stat" type="button" data-screen="s1b" aria-label="查看近期批阅记录"><span>近 30 天批阅</span><strong id="statRecent">暂无数据</strong><small>查看批阅记录 →</small></button>
+              <button class="learning-stat" type="button" data-screen="s5" aria-label="查看待复习错题"><span>待复习错题</span><strong id="statMistakes">暂无数据</strong><small>打开错题本 →</small></button>
+              <button class="learning-stat" type="button" data-screen="s4" aria-label="查看最近批阅报告"><span>已批阅题目正确率</span><strong id="statAccuracy">暂无数据</strong><small>查看批阅报告 →</small></button>
+              <button class="learning-stat" type="button" data-screen="s7" aria-label="查看已完成训练"><span>已完成训练</span><strong id="statTraining">0 组</strong><small>查看练习草稿 →</small></button>
+            </div>
+          </div>
+          <div class="section-head"><div><h2>薄弱知识点</h2><p class="muted small">按错题数量汇总，优先复习排名靠前的知识点。</p></div><button class="btn" type="button" data-screen="s5">查看错题本</button></div>
+          <div class="surface panel">
+            <div id="weakTopicList"></div>
+            <p class="muted small" id="errorSummary" style="margin:16px 0 0"></p>
+            <p class="muted small" id="learningEmpty">完成并确认批阅后，这里会显示学习统计。</p>
+          </div>
+          <div class="surface panel" style="margin-top:16px">
+            <div class="section-head"><div><h2>变式训练</h2><p class="muted small">选择薄弱知识点，生成本地题型草稿后由家长检查再使用。</p></div><span class="pill amber">本地模板 · 待审核</span></div>
+            <div class="toolbar training-controls">
+              <label class="training-topic" for="trainingTopic">
+                <span class="muted small">知识点</span>
+                <select id="trainingTopic"><option>一元一次方程</option><option>有理数运算</option><option>几何证明</option></select>
+              </label>
+              <button class="btn primary" type="button" data-action="generate-training">生成 5 道本地练习</button>
+              <button class="btn" id="aiTrainingButton" type="button" data-action="generate-ai-training" disabled>AI 生成练习草稿</button>
+            </div>
+            <p class="training-hint" id="aiTrainingNotice">AI 练习只发送所选知识点，不发送学生作答图片；生成结果需检查题目和答案后才能打印。</p>
+            <div class="training-result" id="trainingResult" hidden>
+              <strong id="trainingTitle">练习草稿</strong>
+              <p class="muted small" id="trainingSource"></p>
+              <ol id="trainingQuestions"></ol>
+              <button class="btn small-btn" type="button" data-screen="s7">查看练习详情</button>
+              <button class="btn" type="button" data-action="print-training" disabled>打印练习</button>
+            </div>
+          </div>
+          <div class="surface panel" style="margin-top:14px">
+            <div class="section-head"><div><h2>训练历史</h2><p class="muted small">本机保存生成的练习和家长审核状态。</p></div></div>
+            <div class="post-list" id="trainingHistory"></div>
+            <nav class="pager" id="trainingPager" aria-label="训练历史分页"></nav>
+            <div class="empty" id="trainingHistoryEmpty"><strong>还没有训练记录</strong>从薄弱知识点生成练习后会保存在这里。</div>
+          </div>
+          <details class="surface embedded-settings">
+            <summary>应用设置 <span class="muted small">AI 服务、手机上传、本地数据</span></summary>
+            <div class="embedded-settings-body">
+              <div class="surface panel">
+                <div class="section-head"><div><h2>AI 批阅接口配置</h2><p class="muted small">选择支持图片输入的模型；AI 只生成草稿，不会自动确认批阅。</p></div><span class="pill amber" id="aiState">未配置</span></div>
+                <div class="form-grid">
+                  <label for="aiProvider">服务商</label><select id="aiProvider"><option value="deepseek">DeepSeek</option><option value="zhipu">智谱 GLM</option><option value="qwen">通义千问</option><option value="kimi">Kimi</option><option value="openai-compatible">OpenAI 兼容接口</option></select>
+                  <label for="aiModel">模型名称</label><input class="field" id="aiModel" value="deepseek-chat" />
+                  <label for="aiBaseUrl">接口地址</label><input class="field" id="aiBaseUrl" value="https://api.deepseek.com/v1" />
+                  <label for="aiApiKey">API Key</label><input class="field" id="aiApiKey" type="password" placeholder="输入后加密保存在本机；留空保留已有密钥" autocomplete="new-password" />
+                  <span></span><span class="muted small" id="aiKeyStatus">尚未保存密钥</span>
+                  <span></span><div class="toolbar"><button class="btn primary" type="button" data-action="save-ai-settings">保存配置</button><button class="btn" id="testAiButton" type="button" data-action="test-ai-connection" disabled>测试连接</button><button class="btn danger" type="button" data-action="clear-ai-key">移除密钥</button></div>
+                </div>
+                <div class="settings-note">
+                  <p>API Key 通过 Electron 系统安全存储加密。“测试连接”只发送一条测试文本，不上传作答图片，也不验证模型是否支持图片。</p>
+                  <p>点击“AI 生成批阅草稿”并确认后，本记录的作答图片会通过 HTTPS 发送到此处配置的 AI 服务；请先确认服务商和模型适合处理这些图片。未经确认不会发送，AI 结果仍需家长核对。</p>
+                </div>
+              </div>
+              <div class="surface panel" style="margin-top:12px">
+                <div class="section-head"><div><h2>手机上传</h2><p class="muted small">手机与电脑连接同一 Wi-Fi 后，可直接上传作答照片；仅在可信网络内短时开启。</p></div><span class="pill" id="lanStateLabel">已关闭</span></div>
+                <div class="toolbar"><button class="switch" id="lanSwitch" type="button" role="switch" aria-checked="false" aria-label="开启局域网手机上传"></button><span id="lanText">局域网访问已关闭</span><button class="btn small-btn" type="button" data-action="show-upload-link">查看手机上传地址</button><button class="btn small-btn" type="button" data-action="copy-upload-link">复制手机地址</button></div>
+                <p class="muted small" id="uploadUrl" style="overflow-wrap:anywhere;white-space:pre-line">关闭状态</p>
+              </div>
+              <div class="surface panel" style="margin-top:12px">
+                <div class="section-head"><div><h2>本地数据</h2><p class="muted small">备份帖子、作答记录、训练历史和图片；新备份还会保存 AI 服务配置，但不包含 API Key。</p></div></div>
+                <div class="toolbar"><button class="btn" type="button" data-action="backup">导出本地备份</button><button class="btn" type="button" data-action="restore-backup">恢复备份</button></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="screen" id="s7" aria-label="训练详情">
+          <div class="overview-meta"><span class="pill amber" id="trainingStatusBadge">待家长审核</span></div>
+          <div class="surface panel">
+            <h3 id="trainingDetailTitle">题目</h3>
+            <ol id="trainingDetailQuestions"></ol>
+            <details id="trainingAnswerDetails" class="training-answer-sheet" style="margin-top:18px"><summary>展开参考答案</summary><ol id="trainingAnswers"></ol></details>
+          </div>
+          <div class="toolbar" style="margin-top:16px"><button class="btn" type="button" data-screen="s6">返回学习情况</button><button class="btn" id="approveTrainingButton" type="button" data-action="approve-training" disabled>确认已检查题目和答案</button><button class="btn primary" type="button" data-action="print-training" disabled>打印练习</button></div>
+        </section>
+
+
+      </main>
+    </div>
+  </div>
+  <div id="mistakePrintArea"></div>
+  <dialog class="dialog" id="infoDialog">
+    <div class="dialog-inner">
+      <h2>采集浏览说明</h2>
+      <p>Electron 应用会在独立网页视图中加载小红书，避免跨站 iframe 导致二维码空白。首次扫码登录后，登录状态会保存在应用的本机持久会话中。</p>
+      <p>小红书页面会注入项目现有的采集脚本，在右下角提供采集按钮；普通浏览器预览不包含 Electron 网页视图。</p>
+      <div class="dialog-actions"><button class="btn primary" type="button" data-action="close-dialog">知道了</button></div>
+    </div>
+  </dialog>
+  <dialog class="dialog" id="guideDialog" style="width:min(540px, calc(100% - 32px))">
+    <div class="dialog-inner">
+      <h2>exam2pdf 使用引导</h2>
+      <ol class="guide-steps">
+        <li><strong>采集浏览</strong>：登录小红书后打开试卷笔记详情页，点右下角「采集到 exam2pdf」，试卷自动进入帖子池。</li>
+        <li><strong>帖子池</strong>：预览、拖动排序、补充本地图片，生成 A4 PDF 或直接打印给学生。</li>
+        <li><strong>试卷批阅</strong>：学生写完后导入作答照片或 PDF，逐题批阅；确认后自动归档错题。</li>
+        <li><strong>错题本 · 学习情况</strong>：查看错因与薄弱知识点，生成本地或 AI 练习，家长确认后打印。</li>
+      </ol>
+      <p class="muted small">帖子、作答与训练数据全部保存在本机；AI 批阅需要你逐次确认后才会发送作答图片。</p>
+      <div class="dialog-actions">
+        <button class="btn ghost" type="button" data-action="close-guide">下次再提示</button>
+        <button class="btn primary" type="button" data-action="dismiss-guide">知道了，不再显示</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog class="dialog" id="genericDialog">
+    <div class="dialog-inner"><h2 id="dialogTitle">提示</h2><p id="dialogBody"></p><div class="dialog-actions"><button class="btn" type="button" data-action="close-dialog">关闭</button></div></div>
+  </dialog>
+  <dialog class="dialog" id="confirmDialog">
+    <div class="dialog-inner">
+      <h2 id="confirmTitle">确认操作</h2>
+      <p id="confirmBody"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="confirmCancel">取消</button>
+        <button class="btn danger" type="button" id="confirmOk">确认</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog class="dialog" id="renameDialog" style="width:min(440px, calc(100% - 32px))">
+    <div class="dialog-inner">
+      <h2 id="renameTitle">重命名</h2>
+      <input class="field" id="renameInput" type="text" autocomplete="off" />
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="renameCancel">取消</button>
+        <button class="btn primary" type="button" id="renameOk">保存</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog class="dialog" id="repairDialog" style="width:min(660px, calc(100% - 32px))">
+    <div class="dialog-inner">
+      <h2>解析失败 · 找 AI 复验格式</h2>
+      <p class="muted small" id="repairError"></p>
+      <p class="muted small">复制下面的复验提示词，发回给刚才生成批阅内容的那个 AI（豆包 / 千问 / DeepSeek），让它只修复格式、不改结论；收到新内容后重新粘贴解析。</p>
+      <textarea id="repairPromptText" class="field" rows="10" readonly></textarea>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-action="close-dialog">关闭</button>
+        <button class="btn primary" type="button" id="repairCopyBtn">复制复验提示词</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog class="dialog image-dialog" id="imageDialog">
+    <div class="dialog-inner">
+      <div class="section-head"><h2 id="imagePreviewTitle">页面预览</h2><button class="btn ghost small-btn" type="button" data-action="close-dialog" aria-label="关闭预览">关闭</button></div>
+      <div class="image-wrap">
+        <div class="image-stage" id="imageStage">
+          <img id="imagePreview" alt="试卷页面预览" draggable="false" />
+        </div>
+        <button class="stage-nav stage-nav-prev" type="button" data-action="preview-prev" aria-label="上一页">←</button>
+        <button class="stage-nav stage-nav-next" type="button" data-action="preview-next" aria-label="下一页">→</button>
+      </div>
+      <div class="image-toolbar">
+        <span class="pill" id="imagePreviewIndex">1 / 1</span>
+        <span class="spacer"></span>
+        <button class="btn ghost small-btn" type="button" data-action="zoom-out" aria-label="缩小">−</button>
+        <span class="pill" id="imageZoomLevel">100%</span>
+        <button class="btn ghost small-btn" type="button" data-action="zoom-in" aria-label="放大">＋</button>
+        <button class="btn ghost small-btn" type="button" data-action="zoom-reset">适应窗口</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog class="dialog" id="mistakeDialog" style="width:min(760px, calc(100% - 32px))">
+    <div class="dialog-inner">
+      <div class="section-head"><h2 id="mistakeDetailTitle">错题详情</h2><button class="btn ghost small-btn" type="button" data-action="close-dialog" aria-label="关闭">关闭</button></div>
+      <div id="mistakeDetailBody"></div>
+      <div class="dialog-actions" style="justify-content:space-between">
+        <button class="btn" type="button" id="mistakeReportBtn">查看批阅报告</button>
+        <button class="btn" type="button" id="mistakeMasteryBtn">标记已掌握</button>
+      </div>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="context-menu" id="tileContextMenu" role="menu" hidden>
+    <button type="button" role="menuitem" data-menu-action="preview">预览</button>
+    <button type="button" role="menuitem" data-menu-action="move-up">前移</button>
+    <button type="button" role="menuitem" data-menu-action="move-down">后移</button>
+    <div class="context-sep" role="separator"></div>
+    <button type="button" role="menuitem" class="danger" data-menu-action="remove">移除</button>
+  </div>
+
+  <script src="../frontend/page-reorder.js"></script>
+  <script>
+    window.__exam2pdfBootComplete = false;
+    function reportBootError(reason) {
+      if (window.__exam2pdfBootComplete) return;
+      const detail = document.getElementById("renderFatalDetail");
+      const panel = document.getElementById("renderFatal");
+      if (!detail || !panel) return;
+      detail.textContent = String(reason || "未知脚本错误").slice(0, 2400);
+      panel.hidden = false;
+    }
+    window.addEventListener("error", (event) => {
+      if (event.target === window) reportBootError(event.error?.stack || event.message);
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      const reason = event.reason;
+      reportBootError(reason?.stack || reason?.message || reason);
+    });
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+    const screenInfo = {
+      s0: ["采集浏览", "在小红书网页中登录、浏览并采集试卷。"],
+      s0b: ["帖子池", "管理采集和导入的试卷。"],
+      s0c: ["帖子详情", "预览页面、拖动排序并打印试卷。"],
+      s1: ["整理打印", "整理试卷页面并生成 PDF。"],
+      s1b: ["学生作答", "上传学生写完的作答照片；空白试卷仍在帖子池打印。"],
+      s3: ["人工批阅", "核对作答图片、逐题标记并确认；确认后才会进入错题本与学情统计。"],
+      s4: ["批阅报告", "查看确认后的逐题结果。"],
+      s5: ["错题本", "按知识点复习，跟踪掌握情况。"],
+      s6: ["个人学习情况", "查看学习进度、薄弱知识点和针对性训练。"],
+      s7: ["变式练习", "检查题目和答案，确认后即可打印。"]
+    };
+    const navForScreen = { s0c: "s0b", s3: "s1b", s4: "s1b", s7: "s6" };
+    const SUBJECTS = ["数学", "语文", "英语", "物理", "化学", "生物", "历史", "地理", "政治", "科学"];
+    const PAGE_SIZE = 10;
+    function paginate(items, page) {
+      const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+      const safePage = Math.min(Math.max(1, page), pageCount);
+      return { slice: items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE), page: safePage, pageCount };
+    }
+    function paginationHtml(target, page, pageCount) {
+      if (pageCount <= 1) return "";
+      const go = (label, targetPage, disabled) => '<button class="btn small-btn" type="button" data-page-go="' + target + '" data-page="' + targetPage + '"' + (disabled ? " disabled" : "") + ">" + label + "</button>";
+      const windowStart = Math.max(1, Math.min(page - 3, pageCount - 6));
+      const windowEnd = Math.min(pageCount, windowStart + 6);
+      const numbered = [];
+      for (let p = windowStart; p <= windowEnd; p++) {
+        numbered.push('<button class="btn small-btn' + (p === page ? " primary" : "") + '" type="button" data-page-go="' + target + '" data-page="' + p + '">' + p + "</button>");
+      }
+      return '<nav class="pager" aria-label="分页">' + go("«", 1, page === 1) + go("‹", page - 1, page === 1) + numbered.join("") + go("›", page + 1, page === pageCount) + go("»", pageCount, page === pageCount) + '<span class="muted small pager-info">第 ' + page + " / " + pageCount + ' 页</span></nav>';
+    }
+    function subjectOptions(selected) {
+      const values = [...SUBJECTS];
+      if (selected && !values.includes(selected)) values.unshift(selected);
+      return '<option value="">未分类</option>' + values.map((s) => '<option' + (s === selected ? " selected" : "") + ">" + escapeHtml(s) + "</option>").join("");
+    }
+    const desktop = window.exam2pdfDesktop;
+    const state = {
+      posts: desktop ? [] : [
+        { id: "p1", title: "2026-2027 八年级上册数学沪科版第一次月考试卷", pages: 8, date: "2026-10-18", source: "小红书采集" },
+        { id: "p2", title: "上宝中学八上九月月考数学带答案", pages: 10, date: "2026-10-17", source: "小红书采集" }
+      ],
+      printPages: [],
+      gradePages: [],
+      answers: [],
+      learningStats: null,
+      trainingHistory: [],
+      trainingAnswersViewed: false,
+      currentAnswerId: null,
+      currentAnswer: null,
+      reviewDraft: [],
+      reviewPreviewMode: false,
+      mistakeSelection: new Set(),
+      visibleMistakeIds: [],
+      postPage: 1,
+      answerPage: 1,
+      mistakePage: 1,
+      reportPage: 1,
+      trainingPage: 1,
+      training: null,
+      mistakes: [],
+      mobileUpload: { enabled: false, urls: [] },
+      aiSettings: null,
+      currentPostId: null,
+      nextId: 3,
+      reviewSaved: false,
+      toastTimer: null
+    };
+    const toastEl = $("#toast");
+    function toast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add("show");
+      clearTimeout(state.toastTimer);
+      state.toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2400);
+    }
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[char]);
+    }
+    const screenOrder = ["s0", "s0b", "s0c", "s1", "s1b", "s3", "s4", "s5", "s6", "s7"];
+    function switchScreen(id) {
+      if (!screenInfo[id]) return;
+      const previous = document.querySelector(".screen.active");
+      const previousIndex = previous ? screenOrder.indexOf(previous.id) : -1;
+      const nextIndex = screenOrder.indexOf(id);
+      const direction = previousIndex >= 0 && nextIndex >= 0 && nextIndex !== previousIndex
+        ? (nextIndex > previousIndex ? "forward" : "back")
+        : "";
+      $$(".screen").forEach((screen) => {
+        const active = screen.id === id;
+        screen.classList.toggle("active", active);
+        screen.classList.toggle("enter-forward", active && direction === "forward");
+        screen.classList.toggle("enter-back", active && direction === "back");
+      });
+      document.body.classList.toggle("screen-s0", id === "s0");
+      const navId = navForScreen[id] || id;
+      $$(".nav-item").forEach((item) => {
+        const active = item.dataset.screen === navId;
+        item.classList.toggle("active", active);
+        if (active) item.setAttribute("aria-current", "page"); else item.removeAttribute("aria-current");
+      });
+      $("#pageTitle").textContent = screenInfo[id][0];
+      $("#pageSubtitle").textContent = screenInfo[id][1];
+      const head = document.querySelector(".page-head");
+      if (head) {
+        head.classList.remove("head-switch");
+        void head.offsetWidth;
+        head.classList.add("head-switch");
+      }
+      const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    }
+    function showDialog(title, body) {
+      $("#dialogTitle").textContent = title;
+      $("#dialogBody").textContent = body;
+      $("#genericDialog").showModal();
+    }
+    // 应用内确认对话框：替代 window.confirm 的系统弹窗
+    function confirmAction(title, body, okText = "确认") {
+      return new Promise((resolve) => {
+        const dialog = $("#confirmDialog");
+        $("#confirmTitle").textContent = title;
+        $("#confirmBody").textContent = body;
+        const ok = $("#confirmOk");
+        ok.textContent = okText;
+        ok.onclick = () => dialog.close("ok");
+        $("#confirmCancel").onclick = () => dialog.close("cancel");
+        dialog.onclose = () => resolve(dialog.returnValue === "ok");
+        dialog.showModal();
+      });
+    }
+    // 文本输入对话框：Electron 不支持 window.prompt，重命名统一走应用内弹窗
+    function promptText(title, value, placeholder = "") {
+      return new Promise((resolve) => {
+        const dialog = $("#renameDialog");
+        const input = $("#renameInput");
+        $("#renameTitle").textContent = title;
+        input.value = value || "";
+        input.placeholder = placeholder;
+        dialog.returnValue = "";
+        $("#renameOk").onclick = () => dialog.close("ok");
+        $("#renameCancel").onclick = () => dialog.close("cancel");
+        input.onkeydown = (event) => {
+          if (event.key === "Enter") { event.preventDefault(); dialog.close("ok"); }
+        };
+        dialog.onclose = () => {
+          input.onkeydown = null;
+          resolve(dialog.returnValue === "ok" ? input.value.trim() : null);
+        };
+        dialog.showModal();
+        requestAnimationFrame(() => { input.focus(); input.select(); });
+      });
+    }
+    // 外部 AI 批阅内容解析失败时，生成"复验提示词"让用户找原 AI 修复格式
+    function buildRepairPrompt(rawText, errorMessage) {
+      return [
+        "你刚才输出的批阅内容无法解析（" + errorMessage + "）。",
+        "请把下面的批阅内容原样修正为合法 JSON 后重新输出，要求：",
+        "1. 只输出一个 JSON 对象，不要任何解释或 Markdown 代码块；",
+        '2. 结构为 {"questions":[{"questionNo":"题号","result":"正确|部分正确|错误|未作答","errorType":"概念|计算|审题|方法|其他","knowledgePoints":["知识点"],"studentAnswer":"…","correctAnswer":"…","solutionSummary":"…"}]}；',
+        "3. knowledgePoints 必须是字符串数组（如 [\"去括号\",\"符号\" ]），不要写成裸字符串或悬空字符串；",
+        "4. 不改变任何批阅结论和文字内容，只修复格式；内容如有截断，请补全收尾引号和括号；",
+        "5. solutionSummary 保留【重点：…】标注和 $...$ 公式写法。",
+        "原始内容如下：",
+        rawText
+      ].join("\n");
+    }
+    function showRepairDialog(rawText, errorMessage) {
+      $("#repairError").textContent = "解析错误：" + errorMessage;
+      $("#repairPromptText").value = buildRepairPrompt(rawText, errorMessage);
+      $("#repairDialog").showModal();
+    }
+    function renderPosts() {
+      const list = $("#postList");
+      const query = $("#postSearch").value.trim().toLowerCase();
+      const subjectValues = [...new Set(state.posts.map((post) => post.subject || "未分类"))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+      updateFilterOptions($("#postSubjectFilter"), "全部科目", subjectValues);
+      const subjectFilter = $("#postSubjectFilter").value;
+      const filteredPosts = state.posts.filter((post) => {
+        const matchesQuery = !query || (post.title + " " + (post.author || "") + " " + post.source).toLowerCase().includes(query);
+        const matchesSubject = subjectFilter === "all" || (post.subject || "未分类") === subjectFilter;
+        return matchesQuery && matchesSubject;
+      });
+      const paged = paginate(filteredPosts, state.postPage);
+      $("#postPager").innerHTML = paginationHtml("post", paged.page, paged.pageCount);
+      list.innerHTML = paged.slice.map((post) => (
+        '<article class="surface post-card" data-post-id="' + escapeHtml(post.id) + '">' +
+          '<div class="post-head">' +
+            '<button class="post-open" type="button" data-action="open-post" data-id="' + escapeHtml(post.id) + '">' +
+              '<strong>' + escapeHtml(post.title) + '</strong>' +
+            '<span class="post-meta"><span class="pill">' + escapeHtml(post.subject || "未分类") + '</span><span>' + Number(post.pages || (post.pageOrder || []).length) + ' 张图</span>' + (post.missingImages ? '<span class="missing-count">原帖图片已采集 ' + Number(post.sourcePageCount == null ? (post.pages || 0) : post.sourcePageCount) + '/' + Number(post.expectedImages || 0) + ' 张，还缺 ' + post.missingImages + ' 张，可重试采集</span>' : '') + (post.supplementalImages ? '<span>另补充 ' + post.supplementalImages + ' 张本地图片</span>' : '') + '<span>' + escapeHtml(post.author || "") + '</span><span>' + escapeHtml(formatPostDate(post)) + '</span><span>来源：' + escapeHtml(post.source) + '</span></span>' +
+            '</button>' +
+            '<div class="post-ops"><button class="btn small-btn" type="button" data-action="rename-post" data-id="' + escapeHtml(post.id) + '">重命名</button><button class="btn danger small-btn" type="button" data-action="delete-post" data-id="' + escapeHtml(post.id) + '">删除</button></div>' +
+          '</div>' +
+        '</article>'
+      )).join("");
+      $("#postEmpty").hidden = filteredPosts.length > 0;
+      if (!filteredPosts.length) {
+        $("#postEmpty").innerHTML = state.posts.length
+          ? "<strong>没有匹配的试卷</strong>换个关键词再试试。"
+          : "<strong>帖子池还是空的</strong>去小红书笔记详情页点击采集，或从本地导入图片。";
+      }
+    }
+    function formatPostDate(post) {
+      const raw = post.collectedAt || post.date;
+      const date = new Date(raw || "");
+      return Number.isNaN(date.getTime()) ? (raw || "") : date.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+    function postImageUrl(post, file) {
+      return "exam2pdf-media://" + encodeURIComponent(post.id) + "/" + encodeURIComponent(file);
+    }
+    function activePost() {
+      return state.posts.find((post) => post.id === state.currentPostId);
+    }
+    function renderPostDetail() {
+      const post = activePost();
+      if (!post) return;
+      if (!post.pageOrder) post.pageOrder = Array.from({ length: post.pages }, (_, index) => index + 1);
+      post.pages = post.pageOrder.length;
+      $("#postDetailTitle").textContent = post.title;
+      $("#postDetailMeta").textContent = [
+        post.author ? "作者：" + post.author : "",
+        post.sourceUrl ? "来源：小红书" : "来源：" + (post.source || "本地导入"),
+        post.missingImages ? "小红书图片已采集 " + Number(post.sourcePageCount == null ? post.pages : post.sourcePageCount) + "/" + post.expectedImages + " 张，还缺 " + post.missingImages + " 张" : "",
+        post.removedImages > 0 ? "已移除 " + post.removedImages + " 页（原文件保留，可恢复）" : "",
+        post.supplementalImages ? "另补充 " + post.supplementalImages + " 张本地图片" : "",
+        formatPostDate(post),
+        post.images ? "拖动页面卡片调整打印顺序" : "示例内容：拖动页面卡片调整顺序"
+      ].filter(Boolean).join(" · ");
+      $("#postPageCount").textContent = post.pages + " 页";
+      const subjectSelect = $("#postSubject");
+      if (subjectSelect) {
+        subjectSelect.innerHTML = subjectOptions(post.subject || "");
+        subjectSelect.value = post.subject || "";
+      }
+      const resetOrderBtn = $("#resetPostOrderBtn");
+      if (resetOrderBtn) {
+        resetOrderBtn.hidden = !(post.images && post.removedImages > 0);
+        resetOrderBtn.textContent = "恢复已移除的 " + post.removedImages + " 页";
+      }
+      $("#postPages").innerHTML = post.pageOrder.length ? post.pageOrder.map((page, index) => (
+        '<div class="page-item">' +
+          '<article class="page-tile" draggable="true" data-index="' + index + '" aria-label="第 ' + (index + 1) + ' 页，拖动调整顺序">' +
+            '<span class="page-drag-hint" data-reorder-handle aria-hidden="true" title="按住并拖动调整顺序">⠿</span>' +
+            '<button class="page-tile-remove" type="button" data-action="delete-post-page" data-index="' + index + '" aria-label="移除第 ' + (index + 1) + ' 页" title="移除本页">✕</button>' +
+            '<button class="page-preview" type="button" data-action="preview-page" data-index="' + index + '">' +
+              (typeof page === "string" && post.images ? '<img src="' + escapeHtml(postImageUrl(post, page)) + '" alt="试卷第 ' + (index + 1) + ' 页" loading="lazy">' : '试卷页面 ' + page) +
+            '</button>' +
+          '</article>' +
+          '<div class="page-caption"><strong>' + (index + 1) + '</strong></div>' +
+        '</div>'
+      )).join("") : '<div class="empty"><strong>这份帖子没有可打印的图片</strong>可重新采集，或移除空记录。</div>';
+    }
+    function renderPageGrid(kind) {
+      const pages = state[kind + "Pages"];
+      const target = $("#" + kind + "Pages");
+      const count = $("#" + kind + "PageCount");
+      if (count) count.textContent = pages.length + " 页";
+      target.innerHTML = pages.map((page, index) => (
+        '<div class="page-item">' +
+          '<article class="page-tile">' +
+            '<span class="page-drag-hint" aria-hidden="true">⠿</span>' +
+            '<button class="page-tile-remove" type="button" data-action="delete-page" data-kind="' + kind + '" data-index="' + index + '" aria-label="移除第 ' + (index + 1) + ' 页" title="移除本页">✕</button>' +
+            '<button class="page-preview" type="button" data-action="preview-page" data-kind="' + kind + '" data-index="' + index + '">' +
+              (kind === "grade" && page && page.base64 ? '<img src="data:' + escapeHtml(page.mime) + ';base64,' + page.base64 + '" alt="学生作答第 ' + (index + 1) + ' 页" loading="lazy">' : '页面 ' + (page && page.name ? escapeHtml(page.name) : page)) +
+            '</button>' +
+          '</article>' +
+          '<div class="page-caption"><strong>' + (index + 1) + '</strong></div>' +
+        '</div>'
+      )).join("");
+    }
+    function moveItem(items, index, direction) {
+      const next = index + direction;
+      if (next < 0 || next >= items.length) return false;
+      [items[index], items[next]] = [items[next], items[index]];
+      return true;
+    }
+    function reorderPostPages(from, to) {
+      const post = activePost();
+      if (!post) return;
+      const order = post.pageOrder || (post.pageOrder = Array.from({ length: post.pages }, (_, i) => i + 1));
+      if (!window.exam2pdfPageReorder.moveArrayItem(order, from, to)) return;
+      renderPostDetail();
+      persistPostOrder(post);
+      toast("页面顺序已调整");
+    }
+    function reorderAnswerPages(from, to) {
+      if (!state.currentAnswer) return;
+      const order = state.currentAnswer.pageOrder.slice();
+      if (!window.exam2pdfPageReorder.moveArrayItem(order, from, to)) return;
+      void persistAnswerOrder(order);
+    }
+    function renderAnswers() {
+      const list = $("#answerList");
+      const subjectValues = [...new Set(state.answers.map((answer) => answer.subject || "未分类"))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+      updateFilterOptions($("#answerSubjectFilter"), "全部科目", subjectValues);
+      const subjectFilter = $("#answerSubjectFilter").value;
+      const filtered = state.answers.filter((answer) => subjectFilter === "all" || (answer.subject || "未分类") === subjectFilter);
+      const paged = paginate(filtered, state.answerPage);
+      $("#answerPager").innerHTML = paginationHtml("answer", paged.page, paged.pageCount);
+      list.innerHTML = paged.slice.map((answer) => {
+        const label = answer.reviewStatus === "confirmed" ? "已确认" : answer.reviewStatus === "draft" ? "草稿" : "待批阅";
+        const action = answer.reviewStatus === "confirmed" ? "open-answer-report" : "open-answer-review";
+        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta"><span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + answer.pages + ' 张作答</span><span>' + escapeHtml(answer.studentName || "未填写学生姓名") + '</span><span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">重命名</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">删除</button></div></div></article>';
+      }).join("");
+      $("#answerEmpty").hidden = filtered.length > 0;
+    }
+    async function loadAnswers() {
+      if (!desktop) { renderAnswers(); return; }
+      try {
+        state.answers = await desktop.listAnswers();
+        state.learningStats = await desktop.getLearningStats();
+        state.mistakes = state.learningStats.mistakes;
+        pruneMistakeSelection();
+        renderAnswers();
+        renderMistakes();
+        renderLearningStats();
+        renderTrainingHistory();
+      } catch (error) {
+        console.error("Unable to load answer records:", error);
+        toast("读取作答记录失败：" + (error.message || "请重试"));
+      } finally {
+        renderSideDataOverview();
+      }
+    }
+    function renderReviewPages(answer) {
+      const resetBtn = $("#resetAnswerOrderBtn");
+      if (resetBtn) {
+        resetBtn.hidden = !(answer.removedImages > 0);
+        resetBtn.textContent = answer.removedImages > 0 ? "恢复已移除的 " + answer.removedImages + " 页" : "";
+      }
+      const pages = $("#reviewPages");
+      pages.innerHTML = answer.pageOrder.map((file, index) => (
+        '<div class="page-item">' +
+          '<article class="page-tile answer-page-tile" draggable="true" data-index="' + index + '">' +
+            '<span class="page-drag-hint" data-reorder-handle aria-hidden="true" title="按住并拖动调整顺序">⠿</span>' +
+            '<button class="page-tile-remove" type="button" data-action="remove-answer-page" data-index="' + index + '" aria-label="移除第 ' + (index + 1) + ' 页" title="移除本页">✕</button>' +
+            '<button class="page-preview" type="button" data-action="preview-answer-page" data-index="' + index + '"><img src="' + escapeHtml(postImageUrl(answer, file)) + '" alt="学生作答第 ' + (index + 1) + ' 页" loading="lazy"></button>' +
+          '</article>' +
+          '<div class="page-caption"><strong>' + (index + 1) + '</strong></div>' +
+        '</div>'
+      )).join("") || '<div class="empty"><strong>作答记录中没有图片</strong>返回作答页重新导入。</div>';
+    }
+    function renderReviewQuestions() {
+      if (state.reviewPreviewMode && state.reviewDraft.length) { renderReviewPreview(); return; }
+      const results = ["正确", "部分正确", "错误", "未作答"];
+      const errors = ["概念", "计算", "审题", "方法", "其他"];
+      $("#reviewQuestionList").innerHTML = state.reviewDraft.map((question, index) => (
+        '<article class="review-question" data-index="' + index + '"><div class="review-question-header"><strong>题目 ' + (index + 1) + '</strong><button class="btn ghost small-btn" type="button" data-action="remove-review-question" data-index="' + index + '">移除题目</button></div><div class="review-fields">' +
+          '<label>题号<input class="field" data-field="questionNo" value="' + escapeHtml(question.questionNo || String(index + 1)) + '"></label>' +
+          '<label>判定结果<select data-field="result">' + results.map((result) => '<option' + (question.result === result ? ' selected' : '') + '>' + result + '</option>').join("") + '</select></label>' +
+          '<label>错因<select data-field="errorType">' + errors.map((error) => '<option' + (question.errorType === error ? ' selected' : '') + '>' + error + '</option>').join("") + '</select></label>' +
+          '<label class="wide">知识点（逗号分隔）<input class="field" data-field="knowledgePoints" value="' + escapeHtml((question.knowledgePoints || []).join("，")) + '"></label>' +
+          '<label class="wide">学生作答摘要<textarea data-field="studentAnswer">' + escapeHtml(question.studentAnswer || "") + '</textarea></label>' +
+          '<label class="wide">正确答案<textarea data-field="correctAnswer">' + escapeHtml(question.correctAnswer || "") + '</textarea></label>' +
+          '<label class="wide">解题说明<textarea data-field="solutionSummary">' + escapeHtml(question.solutionSummary || "") + '</textarea></label>' +
+        '</div></article>'
+      )).join("");
+    }
+    function setReviewPreviewMode(mode) {
+      state.reviewPreviewMode = mode;
+      $("#reviewPreviewToggle").textContent = mode ? "返回编辑" : "预览公式";
+    }
+    // 预览模式：只读渲染所有题目的公式与重点标注（数据来自当前未保存的草稿）
+    function renderReviewPreview() {
+      $("#reviewQuestionList").innerHTML = state.reviewDraft.length ? state.reviewDraft.map((question, index) => (
+        '<article class="review-question"><div class="review-question-header"><strong>题目 ' + (index + 1) + '</strong><span class="pill ' + (question.result === "正确" ? "green" : "amber") + '">' + escapeHtml(question.result) + '</span></div>' +
+          '<div class="review-preview-body">' +
+            '<p><span class="muted small">学生作答：</span>' + (renderHighlight(question.studentAnswer) || '<span class="muted">（空）</span>') + '</p>' +
+            '<p><span class="muted small">正确答案：</span>' + (renderHighlight(question.correctAnswer) || '<span class="muted">（空）</span>') + '</p>' +
+            '<p><span class="muted small solution-caption">解题说明</span>' + (renderSolution(question.solutionSummary) || '<span class="muted">（空）</span>') + '</p>' +
+            ((question.knowledgePoints || []).length ? '<div class="tag-list">' + question.knowledgePoints.map((tag) => '<span class="tag">' + escapeHtml(tag) + '</span>').join("") + '</div>' : '') +
+          '</div></article>'
+      )).join("") : '<div class="empty"><strong>还没有题目</strong>点「返回编辑」添加题目。</div>';
+      renderMathIn($("#reviewQuestionList"));
+    }
+    async function openAnswer(id) {
+      if (!desktop) { toast("请在 Electron 中查看本地作答记录"); return; }
+      try {
+        await loadTrainingHistory();
+        const answer = await desktop.getAnswer(id);
+        state.currentAnswerId = answer.id;
+        state.currentAnswer = answer;
+        state.reviewDraft = answer.review || [];
+        setReviewPreviewMode(state.reviewDraft.length > 0);
+        $("#answerSubject").innerHTML = subjectOptions(answer.subject || "");
+        $("#answerSubject").value = answer.subject || "";
+        $("#reviewAnswerTitle").textContent = answer.title;
+        $("#reviewAnswerMeta").textContent = [answer.studentName ? "学生：" + answer.studentName : "", answer.pages + " 张作答", formatPostDate(answer)].filter(Boolean).join(" · ");
+        const trainingSelect = $("#answerTraining");
+        trainingSelect.innerHTML = '<option value="">不关联训练</option>' + state.trainingHistory.filter((training) => training.status === "approved").map((training) => '<option value="' + escapeHtml(training.id) + '">' + escapeHtml(training.topic) + ' · ' + escapeHtml(formatPostDate({ collectedAt: training.createdAt })) + '</option>').join("");
+        trainingSelect.value = answer.trainingId || "";
+        renderReviewPages(answer);
+        renderReviewQuestions();
+        switchScreen("s3");
+      } catch (error) { toast("打开作答记录失败：" + (error.message || "请重试")); }
+    }
+    async function openAnswerReport(id) {
+      if (!desktop) { toast("请在 Electron 中查看已保存的批阅报告"); return; }
+      try {
+        await loadTrainingHistory();
+        const answer = await desktop.getAnswer(id);
+        if (answer.reviewStatus !== "confirmed") { await openAnswer(id); return; }
+        state.currentAnswerId = answer.id;
+        state.currentAnswer = answer;
+        state.reportPage = 1;
+        renderReport(answer);
+        switchScreen("s4");
+      } catch (error) { toast("读取批阅报告失败：" + (error.message || "请重试")); }
+    }
+    function renderReport(answer, { allQuestions = false } = {}) {
+      state.currentAnswerId = answer.id;
+      state.currentAnswer = answer;
+      const review = Array.isArray(answer.review) ? answer.review : [];
+      const linkedTraining = state.trainingHistory.find((training) => training.id === answer.trainingId);
+      const paged = allQuestions ? { slice: review, page: 1, pageCount: 1 } : paginate(review, state.reportPage);
+      if (!allQuestions) state.reportPage = paged.page;
+      const counts = { "正确": 0, "部分正确": 0, "错误": 0, "未作答": 0 };
+      review.forEach((question) => { if (Object.hasOwn(counts, question.result)) counts[question.result]++; });
+      $("#reportTitle").textContent = answer.title + " · 批阅报告";
+      $("#reportMeta").textContent = [answer.studentName ? "学生：" + answer.studentName : "", "已由家长确认", linkedTraining ? "关联训练：" + linkedTraining.topic : "", formatPostDate(answer)].filter(Boolean).join(" · ");
+      $("#reportSummary").textContent = "正确 " + counts["正确"] + " 题 · 部分正确 " + counts["部分正确"] + " 题 · 错误 " + counts["错误"] + " 题 · 未作答 " + counts["未作答"] + " 题";
+      $("#reportNotice").hidden = !review.some((question) => question.result !== "正确");
+      $("#reportPager").hidden = allQuestions || paged.pageCount <= 1;
+      $("#reportPager").innerHTML = allQuestions ? "" : paginationHtml("report", paged.page, paged.pageCount);
+      $("#reportQuestions").innerHTML = paged.slice.map((question) => (
+        '<article class="mistake-row report-question-row"><div><strong>第 ' + escapeHtml(question.questionNo) + ' 题</strong><p>' + escapeHtml([question.errorType, ...(question.knowledgePoints || [])].filter(Boolean).join(" · ") || "未填写错因或知识点") + '</p>' +
+        (question.solutionSummary ? '<p class="solution-text">' + renderSolution(question.solutionSummary) + '</p>' : '') + '</div><span class="pill report-question-status ' + (question.result === "正确" ? "green" : "amber") + '">' + (question.mastered ? "已掌握" : question.result) + '</span></article>'
+      )).join("") || '<div class="empty"><strong>这份记录还没有题目判定</strong>返回作答记录继续批阅。</div>';
+      renderMathIn($("#reportQuestions"));
+    }
+    // 外部网页 AI 批阅（路径一）的固定提示词：约束输出结构，保证粘贴后可解析、
+    // 与 API 批阅（路径二）汇聚为同一份草稿格式；solutionSummary 要求"解题四步"，
+    // 公式用 LaTeX（$...$），【重点：…】用于报告高亮。
+    const EXTERNAL_REVIEW_PROMPT = [
+      "你是一位经验丰富的阅卷老师。我会提供一份学生作答试卷（图片或 PDF）。请逐题批阅，并严格只输出一个 JSON 对象，不要输出任何解释、开场白或 Markdown 代码块。结构：",
+      '{"questions":[{"questionNo":"题号","result":"正确|部分正确|错误|未作答","errorType":"概念|计算|审题|方法|其他","knowledgePoints":["知识点"],"studentAnswer":"学生作答摘要","correctAnswer":"参考答案","solutionSummary":"按解题四步写全的完整过程"}]}',
+      "要求：",
+      "1. 按试卷顺序列出所有可辨认的题目，无法辨认的题不要编造；",
+      "2. result 只能取：正确、部分正确、错误、未作答；errorType 只能取：概念、计算、审题、方法、其他（判定为正确时可省略）；",
+      "3. knowledgePoints 填 1~3 个具体知识点，便于后续针对性训练；",
+      "4. solutionSummary 必须按解题四步写全，不要一句话带过：①指出依据的条件、公式或定理；②给出关键计算步骤，保留必要算式与中间结果；③说明学生的错误出在哪一步（正确题可省略）；④结尾用【重点：…】点出最核心的易错点或思想方法；",
+      "5. 所有数学公式用 LaTeX 写法：行内公式用 $...$（例如 $y=\\frac{1}{2}x+1$、$x\\geqslant-3$），独立公式用 $$...$$；不要用图片或特殊字符拼凑公式。"
+    ].join("\n");
+    function renderHighlight(text) {
+      // 清理豆包等 AI 混进 $...$ 内部的 \( \) 分隔符（KaTeX 会报错），再转重点高亮；
+      // 配对错位残留的孤零 \( \) 也在显示层兜底还原为普通括号
+      const escaped = escapeHtml(String(text || ""));
+      const cleaned = escaped
+        .replace(/\$([^$]*)\$/g, (match, inner) => "$" + normalizeMathText(inner) + "$")
+        .replace(/\\\(/g, "(").replace(/\\\)/g, ")");
+      return cleaned.replace(/【重点：([^】]*)】/g, '<mark class="key-point">$1</mark>');
+    }
+    // AI 常把运算符和坐标多包一层括号（(=)、(x(=)2)、((x,y))、C((3,2))），显示前统一还原
+    function normalizeMathText(inner) {
+      return inner
+        .replace(/\\\(/g, "(").replace(/\\\)/g, ")")
+        .replace(/\(=\s*\)/g, "=")
+        .replace(/\(\s*\(([^()]*)\)\s*\)/g, "($1)")
+        .replace(/\(([A-Za-z]+\([^()]*\))\)/g, "$1")
+        .replace(/\(([^()]*=[^()]*)\)/g, "$1");
+    }
+    // 解题说明按“①依据 / ②计算 / ③判定 / ④重点”分段时，让 ②③④ 各自另起一行
+    function renderSolution(text) {
+      return renderHighlight(text).replace(/(?=[②-⑳])/g, "<br>");
+    }
+    function renderMathIn(element) {
+      if (typeof window.renderMathInElement !== "function" || !element) return;
+      try {
+        window.renderMathInElement(element, {
+          delimiters: [
+            { left: "$$", right: "$$", display: true },
+            { left: "\\[", right: "\\]", display: true },
+            { left: "\\(", right: "\\)", display: false },
+            { left: "$", right: "$", display: false }
+          ],
+          throwOnError: false
+        });
+      } catch {}
+    }
+    function collectReviewQuestions() {
+      return $$(".review-question", $("#reviewQuestionList")).map((row) => ({
+        questionNo: $(`[data-field="questionNo"]`, row).value.trim(),
+        result: $(`[data-field="result"]`, row).value,
+        errorType: $(`[data-field="errorType"]`, row).value,
+        knowledgePoints: $(`[data-field="knowledgePoints"]`, row).value.split(/[，,]/).map((point) => point.trim()).filter(Boolean),
+        studentAnswer: $(`[data-field="studentAnswer"]`, row).value,
+        correctAnswer: $(`[data-field="correctAnswer"]`, row).value,
+        solutionSummary: $(`[data-field="solutionSummary"]`, row).value,
+        mastered: Boolean(state.currentAnswer?.review?.find((saved) => saved.questionNo === $(`[data-field="questionNo"]`, row).value.trim())?.mastered)
+      }));
+    }
+    async function saveReview(confirmed) {
+      if (!desktop || !state.currentAnswerId) { toast("请先打开一份作答记录"); return; }
+      const questions = state.reviewPreviewMode ? state.reviewDraft : collectReviewQuestions();
+      if (!questions.length) { toast("请先添加至少一道题目"); return; }
+      if (questions.some((question) => !question.questionNo)) { toast("请填写每道题的题号"); return; }
+      if (new Set(questions.map((question) => question.questionNo)).size !== questions.length) { toast("题号不能重复"); return; }
+      try {
+      const saved = await desktop.saveAnswerReview(state.currentAnswerId, questions, confirmed, $("#answerTraining").value);
+        state.currentAnswer = saved;
+        state.reviewDraft = saved.review;
+        await loadAnswers();
+        await loadTrainingHistory();
+        if (confirmed) {
+          state.reportPage = 1;
+          renderReport(saved);
+          switchScreen("s4");
+          toast("批阅已确认，错题和学情统计已更新");
+        } else {
+          toast("批阅草稿已保存在本机");
+        }
+      } catch (error) { toast("保存批阅失败：" + (error.message || "请重试")); }
+    }
+    function renderLearningStats() {
+      const stats = state.learningStats;
+      if (!stats) return;
+      $("#statRecent").textContent = stats.confirmedCount ? stats.recentCount + " 份" : "暂无数据";
+      $("#statMistakes").textContent = stats.mistakes.length ? stats.mistakes.filter((item) => item.status !== "mastered").length + " 道" : "0 道";
+      $("#statAccuracy").textContent = stats.accuracy == null ? "暂无数据" : stats.accuracy + "%";
+      $("#statTraining").textContent = completedTrainingCount() + " 组";
+      $("#learningEmpty").hidden = stats.questionCount > 0;
+      $("#learningEmpty").textContent = stats.confirmedCount ? "还没有可统计的题目判定。" : "完成并确认批阅后，这里会显示学习统计。";
+      const max = Math.max(1, ...stats.topics.map((topic) => topic.count));
+      $("#weakTopicList").innerHTML = stats.topics.slice(0, 6).map((topic) => '<div class="bar-row"><span>' + escapeHtml(topic.name) + '</span><div class="bar-track"><i style="width:' + Math.max(5, Math.round(topic.count / max * 100)) + '%"></i></div><strong>' + topic.count + '</strong></div>').join("");
+      $("#errorSummary").textContent = stats.errors.length ? "常见错因：" + stats.errors.map((error) => error.name + " " + error.count + " 题").join(" · ") : "";
+      const trainingSelect = $("#trainingTopic");
+      const previousTopic = trainingSelect.value;
+      const defaults = ["一元一次方程", "有理数运算", "分数加减", "几何与角"];
+      const choices = [...new Set([...stats.topics.map((topic) => topic.name), ...defaults])];
+      trainingSelect.innerHTML = choices.map((topic) => '<option>' + escapeHtml(topic) + '</option>').join("");
+      trainingSelect.value = choices.includes(previousTopic) ? previousTopic : (stats.topics[0]?.name || defaults[0]);
+    }
+    function renderMobileUpload(value) {
+      state.mobileUpload = value && value.enabled ? value : { enabled: false, urls: [] };
+      const enabled = state.mobileUpload.enabled;
+      $("#lanSwitch").setAttribute("aria-checked", String(enabled));
+      $("#lanSwitch").disabled = false;
+      $("#lanStateLabel").textContent = enabled ? "已开启" : "已关闭";
+      $("#lanText").textContent = enabled ? "同一 Wi-Fi 下可上传作答照片" : "局域网访问已关闭";
+      $("#uploadUrl").textContent = enabled
+        ? (state.mobileUpload.urls.length ? state.mobileUpload.urls.join("\n") : "已开启，但没有检测到局域网 IPv4 地址。请检查电脑的 Wi-Fi 连接。")
+        : "关闭状态";
+    }
+    function renderAiSettings(value) {
+      state.aiSettings = value;
+      if (!value) return;
+      $("#aiProvider").value = value.provider || "deepseek";
+      $("#aiModel").value = value.model || "deepseek-chat";
+      $("#aiBaseUrl").value = value.baseUrl || "https://api.deepseek.com/v1";
+      $("#aiApiKey").value = "";
+      $("#aiKeyStatus").textContent = value.hasKey ? "已加密保存密钥" : "尚未保存密钥";
+      $("#aiState").textContent = value.hasKey ? "配置已保存" : "缺少密钥";
+      $("#aiState").className = "pill " + (value.hasKey ? "green" : "amber");
+      $("#aiReviewButton").disabled = !value.hasKey;
+      $("#testAiButton").disabled = !value.hasKey;
+      $("#aiTrainingButton").disabled = !value.hasKey;
+      $("#aiTrainingNotice").textContent = value.hasKey
+        ? "AI 练习只发送所选知识点到“" + value.provider + " / " + value.model + "”，不发送学生作答图片；生成结果需检查题目和答案后才能打印。"
+        : "AI 练习需要先在下方保存 AI 服务配置和 API Key；生成结果只作为草稿，检查答案后才能打印。";
+      $("#aiReviewNotice").textContent = value.hasKey
+        ? "确认后会把本记录的全部作答图片发送到“" + value.provider + " / " + value.model + "”；结果只填入当前页面，不会自动保存或确认。"
+        : "方式二 · 直接 API 批阅需要先配置 AI 服务和 API Key；没有 Key 可用上方「外部 AI 网页批阅」。";
+    }
+    async function saveAiSettings(clearApiKey = false) {
+      if (!desktop || typeof desktop.saveAiSettings !== "function") { toast("AI 接口配置需要在 Electron 应用中保存"); return; }
+      try {
+        const saved = await desktop.saveAiSettings({
+          provider: $("#aiProvider").value,
+          model: $("#aiModel").value,
+          baseUrl: $("#aiBaseUrl").value,
+          apiKey: clearApiKey ? "" : $("#aiApiKey").value,
+          clearApiKey
+        });
+        renderAiSettings(saved);
+        toast(clearApiKey ? "已移除本机保存的 API Key" : saved.hasKey ? "配置已保存，API Key 已加密" : "接口配置已保存；请填写 API Key");
+        return saved;
+      } catch (error) { toast("保存 AI 配置失败：" + (error.message || "请重试")); return null; }
+    }
+    async function testAiConnection() {
+      if (!desktop || typeof desktop.testAiConnection !== "function") { toast("AI 连接测试需要在 Electron 应用中运行"); return; }
+      const saved = await saveAiSettings(false);
+      if (!saved?.hasKey) return;
+      const button = $("#testAiButton");
+      button.disabled = true;
+      button.textContent = "正在测试…";
+      try {
+        const result = await desktop.testAiConnection();
+        toast("AI 接口连接成功（" + result.model + "）；视觉输入能力还需用图片批阅验证");
+      } catch (error) {
+        toast("AI 连接测试失败：" + (error.message || "请检查地址、模型和 API Key"));
+      } finally {
+        button.textContent = "测试连接";
+        button.disabled = !state.aiSettings?.hasKey;
+      }
+    }
+    async function requestAiAnswerReview() {
+      if (!desktop || typeof desktop.requestAiAnswerReview !== "function" || !state.currentAnswerId) { toast("请先在 Electron 中打开一份作答记录"); return; }
+      if (!state.aiSettings?.hasKey) { toast("请先配置 AI 服务和 API Key"); return; }
+      const pageCount = state.currentAnswer?.pageOrder?.length || 0;
+      const destination = state.aiSettings.provider + " / " + state.aiSettings.model;
+      const replaceNotice = state.reviewDraft.length ? "\n当前页面未保存的逐题判定会被新草稿替换。" : "";
+      const confirmed = await confirmAction("发送作答图片给 AI", "将把这份作答记录的 " + pageCount + " 张图片发送到「" + destination + "」生成批阅草稿。AI 结果需要你逐题核对，不会自动确认。" + replaceNotice, "发送");
+      if (!confirmed) return;
+      const button = $("#aiReviewButton");
+      button.disabled = true;
+      button.textContent = "正在生成草稿…";
+      try {
+        const result = await desktop.requestAiAnswerReview(state.currentAnswerId);
+        const previousMastery = new Map((state.reviewDraft || []).map((item) => [item.questionNo, Boolean(item.mastered)]));
+        state.reviewDraft = result.review.map((item) => ({ ...item, mastered: previousMastery.get(item.questionNo) || false }));
+        setReviewPreviewMode(true);
+        renderReviewQuestions();
+        toast("AI 草稿已生成，请逐题核对后再保存或确认");
+      } catch (error) {
+        toast("AI 批阅失败：" + (error.message || "请检查网络、模型和接口配置"));
+      } finally {
+        button.textContent = "AI 生成批阅草稿";
+        button.disabled = !state.aiSettings?.hasKey;
+      }
+    }
+    function trainingProgress(trainingId) {
+      const saved = state.trainingHistory.find((training) => training.id === trainingId);
+      if (saved?.progress) return saved.progress;
+      const linkedAnswers = state.answers.filter((answer) => answer.trainingId === trainingId);
+      const confirmedAnswers = linkedAnswers.filter((answer) => answer.reviewStatus === "confirmed");
+      return { linkedCount: linkedAnswers.length, confirmedCount: confirmedAnswers.length, complete: saved?.status === "approved" && confirmedAnswers.length > 0 };
+    }
+    function completedTrainingCount() {
+      return state.trainingHistory.filter((training) => trainingProgress(training.id).complete).length;
+    }
+    function renderTrainingHistory() {
+      $("#statTraining").textContent = completedTrainingCount() + " 组";
+      const paged = paginate(state.trainingHistory, state.trainingPage);
+      $("#trainingPager").innerHTML = paginationHtml("training", paged.page, paged.pageCount);
+      $("#trainingHistory").innerHTML = paged.slice.map((training) => {
+        const progress = trainingProgress(training.id);
+        const label = progress.complete ? "已完成 · " + progress.confirmedCount + " 份已确认批阅" : progress.linkedCount ? "已有作答 · 待确认批阅" : (training.status === "approved" ? "家长已审核" : "待家长审核");
+        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '"><strong>' + escapeHtml(training.topic) + ' · ' + training.questions.length + ' 道</strong><span class="post-meta"><span>' + escapeHtml(formatPostDate({ collectedAt: training.createdAt })) + '</span><span>' + escapeHtml(label) + '</span></span></button><div class="post-ops"><button class="btn small-btn" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '">打开</button></div></div></article>';
+      }).join("");
+      $("#trainingHistoryEmpty").hidden = state.trainingHistory.length > 0;
+    }
+    async function loadTrainingHistory() {
+      if (!desktop || typeof desktop.listTrainings !== "function") return;
+      try {
+        state.trainingHistory = await desktop.listTrainings();
+        renderTrainingHistory();
+      } catch (error) { toast("读取训练历史失败：" + (error.message || "请重试")); }
+      renderSideDataOverview();
+    }
+    function renderTrainingRecord(training) {
+      state.training = training;
+      state.trainingAnswersViewed = false;
+      const approved = training.status === "approved";
+      const progress = trainingProgress(training.id);
+      $("#trainingTitle").textContent = training.topic + " · " + training.questions.length + " 道练习";
+      $("#trainingSource").textContent = training.source + "；" + (progress.complete ? "练习已完成，已有确认的批阅记录。" : progress.linkedCount ? "已有学生作答，批阅确认后会记为完成。" : approved ? "家长已审核，可以打印。" : "请先检查题目与参考答案。");
+      const fillList = (target, field) => target.replaceChildren(...training.questions.map((question) => {
+        const item = document.createElement("li");
+        item.textContent = question[field];
+        return item;
+      }));
+      fillList($("#trainingQuestions"), "prompt");
+      fillList($("#trainingDetailQuestions"), "prompt");
+      fillList($("#trainingAnswers"), "answer");
+      $("#trainingDetailTitle").textContent = training.topic + " · 题目";
+      $("#trainingAnswerDetails").open = false;
+      $("#trainingStatusBadge").textContent = progress.complete ? "已完成" : approved ? "家长已审核" : "待家长审核";
+      $("#trainingStatusBadge").className = "pill " + (approved ? "green" : "amber");
+      $("#approveTrainingButton").disabled = approved || !state.trainingAnswersViewed;
+      $$('[data-action="print-training"]').forEach((button) => { button.disabled = !approved; });
+      $("#trainingResult").hidden = false;
+    }
+    async function generateTraining() {
+      if (!desktop || typeof desktop.generateTraining !== "function") { toast("请在 Electron 中生成本地练习草稿"); return; }
+      try {
+        const generated = await desktop.generateTraining($("#trainingTopic").value);
+        state.training = await desktop.saveTraining(generated);
+        renderTrainingRecord(state.training);
+        await loadTrainingHistory();
+        toast("已生成 5 道本地练习草稿");
+      } catch (error) { toast("生成练习失败：" + (error.message || "请重试")); }
+    }
+    async function generateAiTraining() {
+      if (!desktop || typeof desktop.generateAiTraining !== "function") { toast("AI 练习生成需要在 Electron 应用中运行"); return; }
+      const button = $("#aiTrainingButton");
+      button.disabled = true;
+      button.textContent = "AI 正在生成…";
+      try {
+        const generated = await desktop.generateAiTraining($("#trainingTopic").value);
+        state.training = await desktop.saveTraining(generated);
+        renderTrainingRecord(state.training);
+        await loadTrainingHistory();
+        toast("AI 已生成练习草稿，请检查每道题和答案");
+      } catch (error) { toast("AI 练习生成失败：" + (error.message || "请重试")); }
+      finally {
+        button.textContent = "AI 生成练习草稿";
+        button.disabled = !state.aiSettings?.hasKey;
+      }
+    }
+    function printTraining() {
+      if (!state.training) { toast("请先生成练习草稿"); return; }
+      if (state.training.status !== "approved") { toast("请先检查题目和答案，再确认练习"); return; }
+      switchScreen("s7");
+      $("#trainingAnswerDetails").open = true;
+      document.body.classList.remove("printing-report", "printing-mistakes");
+      document.body.classList.add("printing-training");
+      window.print();
+    }
+    window.addEventListener("afterprint", () => {
+      document.body.classList.remove("printing-training", "printing-mistakes");
+      $("#trainingAnswerDetails").open = false;
+    });
+    function bufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+      }
+      return btoa(binary);
+    }
+    async function importImage(file) {
+      const bitmap = await createImageBitmap(file);
+      const width = bitmap.width;
+      const height = bitmap.height;
+      const supported = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+      const overLimit = file.size > 16 * 1024 * 1024;
+      if (supported && !overLimit) {
+        const base64 = bufferToBase64(await file.arrayBuffer());
+        if (bitmap.close) bitmap.close();
+        return { mime: file.type, base64, width, height };
+      }
+      const maxSide = 3600;
+      const scale = Math.min(1, maxSide / Math.max(width, height));
+      const outputWidth = Math.max(1, Math.round(width * scale));
+      const outputHeight = Math.max(1, Math.round(height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, outputWidth, outputHeight);
+      context.drawImage(bitmap, 0, 0, outputWidth, outputHeight);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      if (bitmap.close) bitmap.close();
+      canvas.width = 1;
+      canvas.height = 1;
+      if (!blob || blob.size > 16 * 1024 * 1024) throw new Error(file.name + " 转换后仍超过 16 MB");
+      return { mime: "image/jpeg", base64: bufferToBase64(await blob.arrayBuffer()), width: outputWidth, height: outputHeight };
+    }
+    async function addImportedFiles(fileList) {
+      const selected = Array.from(fileList || []);
+      if (!selected.length) return;
+      const files = selected.filter((file) => /^image\//.test(file.type)).sort((a, b) => {
+        const aName = a.webkitRelativePath || a.name;
+        const bName = b.webkitRelativePath || b.name;
+        return aName.localeCompare(bName, "zh-CN", { numeric: true, sensitivity: "base" });
+      });
+      if (!files.length) { toast("请选择 JPG、PNG 或 WebP 图片"); return; }
+      if (files.length > 24) { toast("一次最多导入 24 张图片"); return; }
+      if (!desktop) {
+        const first = files[0];
+        const title = (first.webkitRelativePath || first.name).split("/")[0].replace(/\.[^.]+$/, "");
+        state.posts.unshift({ id: "p" + state.nextId++, title: title || "导入的试卷", pages: files.length, date: "今天", source: "本地导入" });
+        renderPosts();
+        toast("浏览器预览仅演示导入流程，请在 Electron 中使用本地图片库");
+        return;
+      }
+      try {
+        const total = files.reduce((sum, file) => sum + file.size, 0);
+        if (total > 120 * 1024 * 1024) throw new Error("所选原图总大小超过 120 MB，请分批导入");
+        const images = [];
+        let normalizedTotal = 0;
+        for (let index = 0; index < files.length; index++) {
+          toast("正在处理图片 " + (index + 1) + "/" + files.length);
+          const image = await importImage(files[index]);
+          normalizedTotal += Math.ceil(image.base64.length * 3 / 4);
+          if (normalizedTotal > 80 * 1024 * 1024) throw new Error("处理后的图片总大小超过 80 MB，请分批导入");
+          images.push(image);
+        }
+        const first = files[0];
+        const relative = first.webkitRelativePath || first.name;
+        const title = files.some((file) => file.webkitRelativePath)
+          ? relative.split("/")[0]
+          : first.name.replace(/\.[^.]+$/, "");
+        const result = await desktop.createPost({ title: title || "导入的试卷", images });
+        await loadPosts(false);
+        state.currentPostId = result.post.id;
+        renderPostDetail();
+        switchScreen("s0c");
+        toast("已导入 " + result.post.pages + " 张图片，可拖动排序并打印");
+      } catch (error) {
+        toast("导入失败：" + (error && error.message ? error.message : "图片读取出错"));
+      }
+    }
+    async function addImagesToActivePost(fileList) {
+      const post = activePost();
+      const selected = Array.from(fileList || []).filter((file) => /^image\//.test(file.type)).sort((a, b) => {
+        const aName = a.webkitRelativePath || a.name;
+        const bName = b.webkitRelativePath || b.name;
+        return aName.localeCompare(bName, "zh-CN", { numeric: true, sensitivity: "base" });
+      });
+      if (!post || !desktop || !post.images) { toast("请先打开一份本地帖子或已采集试卷"); return; }
+      if (!selected.length) { toast("请选择 JPG、PNG 或 WebP 图片"); return; }
+      if (post.pages + selected.length > 24) { toast("一份试卷最多保存 24 张图片"); return; }
+      if (selected.reduce((sum, file) => sum + file.size, 0) > 120 * 1024 * 1024) { toast("所选原图总大小超过 120 MB，请分批补充"); return; }
+      try {
+        const images = [];
+        let normalizedTotal = 0;
+        for (let index = 0; index < selected.length; index++) {
+          toast("正在处理补充图片 " + (index + 1) + "/" + selected.length);
+          const image = await importImage(selected[index]);
+          normalizedTotal += Math.ceil(image.base64.length * 3 / 4);
+          if (normalizedTotal > 80 * 1024 * 1024) throw new Error("补充图片总大小超过 80 MB，请分批导入");
+          images.push(image);
+        }
+        const saved = await desktop.appendPostImages(post.id, images);
+        Object.assign(post, saved);
+        await loadPosts(false);
+        renderPosts();
+        renderPostDetail();
+        toast("已补充 " + selected.length + " 张图片，可继续排序或打印");
+      } catch (error) { toast("补充图片失败：" + (error.message || "请重试")); }
+    }
+    async function addPages(kind, fileList) {
+      const selected = Array.from(fileList || []);
+      const pages = state[kind + "Pages"];
+      if (kind === "grade") {
+        const supported = selected.filter((file) => /^image\//.test(file.type) || file.type === "application/pdf" || /\.pdf$/i.test(file.name));
+        if (!supported.length) { toast("请选择 JPG、PNG、WebP 图片或 PDF 文件"); return; }
+        if (pages.length + supported.length > 24) { toast("一份记录最多保存 24 页"); return; }
+        if (supported.some((file) => file.type === "application/pdf" || /\.pdf$/i.test(file.name)) && !desktop) { toast("PDF 作答导入需要在 Electron 中运行"); return; }
+        try {
+          let total = pages.reduce((sum, page) => sum + Math.ceil(page.base64.length * 3 / 4), 0);
+          const additions = [];
+          for (let index = 0; index < supported.length; index++) {
+            const file = supported[index];
+            if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
+              if (file.size > 50 * 1024 * 1024) throw new Error(file.name + " 超过 50 MB，请先压缩或拆分");
+              toast("正在转换 PDF " + (index + 1) + "/" + supported.length);
+              const converted = await desktop.importAnswerPdf({ base64: bufferToBase64(await file.arrayBuffer()), name: file.name });
+              for (const page of converted.pages) {
+                if (pages.length + additions.length >= 24) throw new Error("一份记录最多保存 24 页，请拆分 PDF 或分批导入");
+                total += Math.ceil(page.base64.length * 3 / 4);
+                if (total > 80 * 1024 * 1024) throw new Error("图片总大小超过 80 MB，请分批导入");
+                additions.push(page);
+              }
+            } else {
+              toast("正在处理作答照片 " + (index + 1) + "/" + supported.length);
+              const page = await importImage(file);
+              total += Math.ceil(page.base64.length * 3 / 4);
+              if (total > 80 * 1024 * 1024) throw new Error("图片总大小超过 80 MB，请分批导入");
+              additions.push({ ...page, name: file.name });
+            }
+          }
+          pages.push(...additions);
+          renderPageGrid(kind);
+          toast("已加入 " + additions.length + " 页作答内容");
+        } catch (error) { toast("读取作答图片失败：" + (error.message || "请重试")); }
+        return;
+      }
+      const files = selected.filter((file) => /^image\//.test(file.type));
+      if (!files.length) { toast("请选择图片文件"); return; }
+      if (pages.length + files.length > 24) { toast("一份记录最多保存 24 张图片"); return; }
+      const start = pages.length;
+      files.forEach((_, index) => pages.push(start + index + 1));
+      renderPageGrid(kind);
+      toast("已加入 " + files.length + " 页（整理打印示例）");
+    }
+    async function saveAnswerRecord() {
+      if (!desktop) { toast("请在 Electron 中保存本地作答记录"); return; }
+      if (!state.gradePages.length) { toast("请先上传学生作答照片"); return; }
+      const title = $("#gradeTitle").value.trim() || "学生作答";
+      const studentName = $("#gradeStudent").value.trim();
+      const subject = $("#gradeSubject").value;
+      try {
+        const result = await desktop.createAnswer({ title, studentName, subject, images: state.gradePages });
+        state.gradePages = [];
+        $("#gradeTitle").value = "";
+        $("#gradeStudent").value = "";
+        renderPageGrid("grade");
+        await loadAnswers();
+        toast("作答记录已保存在本机，可开始人工批阅");
+        await openAnswer(result.post.id);
+      } catch (error) { toast("保存作答记录失败：" + (error.message || "请重试")); }
+    }
+    function updateFilterOptions(select, label, values) {
+      const current = select.value;
+      select.innerHTML = '<option value="all">' + label + '</option>' + values.map((value) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>').join("");
+      if (values.includes(current)) select.value = current;
+    }
+    function renderMistakes() {
+      const query = $("#mistakeSearch").value.trim().toLowerCase();
+      const filter = $("#mistakeFilter").value;
+      const dateFilter = Number($("#mistakeDateFilter").value) || 0;
+      const subjectValues = [...new Set(state.mistakes.map((item) => item.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+      updateFilterOptions($("#mistakeSubjectFilter"), "全部科目", subjectValues);
+      const mistakeSubjectFilter = $("#mistakeSubjectFilter").value;
+      updateFilterOptions($("#mistakeTopicFilter"), "全部知识点", [...new Set(state.mistakes.flatMap((item) => item.knowledgePoints || []))].sort((a, b) => a.localeCompare(b, "zh-CN")));
+      updateFilterOptions($("#mistakeErrorFilter"), "全部错因", [...new Set(state.mistakes.map((item) => item.errorType).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")));
+      const topicFilter = $("#mistakeTopicFilter").value;
+      const errorFilter = $("#mistakeErrorFilter").value;
+      const cutoff = dateFilter ? Date.now() - dateFilter * 24 * 60 * 60 * 1000 : 0;
+      const filtered = state.mistakes.filter((item) => {
+        const matches = (item.title + " " + item.source + " " + item.topic + " " + (item.errorType || "")).toLowerCase().includes(query);
+        const time = new Date(item.collectedAt || "").getTime();
+        const withinDate = !cutoff || (Number.isFinite(time) && time >= cutoff);
+        const matchesTopic = topicFilter === "all" || (item.knowledgePoints || []).includes(topicFilter);
+        const matchesError = errorFilter === "all" || item.errorType === errorFilter;
+        const matchesSubject = mistakeSubjectFilter === "all" || item.subject === mistakeSubjectFilter;
+        return matches && withinDate && matchesTopic && matchesError && matchesSubject && (filter === "all" || item.status === filter);
+      });
+      state.visibleMistakeIds = filtered.map((item) => item.id);
+      updateMistakeSelectionCount();
+      const paged = paginate(filtered, state.mistakePage);
+      $("#mistakePager").innerHTML = paginationHtml("mistake", paged.page, paged.pageCount);
+      $("#mistakeCount").textContent = state.mistakes.length + " 条错题";
+      $("#mistakeList").innerHTML = paged.slice.map((item) => (
+        '<article class="mistake-row' + (state.mistakeSelection.has(item.id) ? " mistake-selected" : "") + '">' +
+          '<input type="checkbox" class="mistake-check" data-mistake-id="' + escapeHtml(item.id) + '" aria-label="勾选第 ' + (filtered.indexOf(item) + 1) + ' 题"' + (state.mistakeSelection.has(item.id) ? " checked" : "") + '>' +
+          '<div class="mistake-open" data-action="open-mistake-detail" data-id="' + escapeHtml(item.id) + '" role="button" tabindex="0"><strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml([item.subject, item.studentName, item.topic, item.errorType, formatPostDate({ collectedAt: item.collectedAt })].filter(Boolean).join(" · ")) + '</p></div>' +
+          '<button class="btn small-btn" type="button" data-action="toggle-mastery" data-id="' + escapeHtml(item.id) + '">' + (item.status === "mastered" ? "重新复习" : "标记已掌握") + '</button></article>'
+      )).join("");
+      $("#mistakeEmpty").hidden = filtered.length > 0;
+      $("#mistakeList").hidden = filtered.length === 0;
+    }
+    function updateMistakeSelectionCount() {
+      $("#mistakeSelectedCount").textContent = "已选 " + state.mistakeSelection.size + " 题";
+    }
+    function mistakeItemsFrom(list) {
+      return list.map((item) => {
+        const answer = state.answers.find((candidate) => candidate.id === item.answerId);
+        const question = answer && Array.isArray(answer.review) ? answer.review[item.questionIndex] : null;
+        return { ...item, studentAnswer: question?.studentAnswer || "", correctAnswer: question?.correctAnswer || "", solutionSummary: question?.solutionSummary || "" };
+      });
+    }
+    function selectedMistakeItems() {
+      return mistakeItemsFrom(state.mistakes.filter((item) => state.mistakeSelection.has(item.id)));
+    }
+    // 导出/打印：勾选了就用勾选项；没勾选则直接作用于当前筛选结果，避免点了“没反应”
+    function mistakeActionItems(label) {
+      const selected = selectedMistakeItems();
+      if (selected.length) return selected;
+      const visible = mistakeItemsFrom(state.mistakes.filter((item) => state.visibleMistakeIds.includes(item.id)));
+      toast(visible.length
+        ? "未勾选，将" + label + "当前筛选的全部 " + visible.length + " 道错题"
+        : "当前筛选没有可" + label + "的错题");
+      return visible;
+    }
+    function buildMistakePrintArea(items) {
+      const subject = items.every((item) => item.subject === items[0].subject) ? (items[0].subject || "全科") : "全科";
+      const title = "错题集 · " + subject + "（" + items.length + " 题）";
+      const area = $("#mistakePrintArea");
+      area.innerHTML = '<h1>' + escapeHtml(title) + '</h1><p class="print-meta">生成于 ' + formatPostDate({ collectedAt: new Date().toISOString() }) + ' · exam2pdf 家庭试卷工作台</p>' + items.map((item) => (
+        '<div class="print-item"><h3>第 ' + escapeHtml(item.questionNo) + ' 题 <span class="print-source">· ' + escapeHtml(item.source) + '</span></h3>' +
+        '<p><span class="muted small">判定：</span>' + escapeHtml(item.result) + '<span class="muted small"> · 错因：</span>' + escapeHtml(item.errorType || "未标记") + '</p>' +
+        '<p><span class="muted small">学生作答：</span>' + (renderHighlight(item.studentAnswer) || '<span class="muted">（空）</span>') + '</p>' +
+        '<p><span class="muted small">正确答案：</span>' + (renderHighlight(item.correctAnswer) || '<span class="muted">（空）</span>') + '</p>' +
+        '<p><span class="muted small solution-caption">解题说明</span>' + (renderSolution(item.solutionSummary) || '<span class="muted">（空）</span>') + '</p>' +
+        ((item.knowledgePoints || []).length ? '<div class="tag-list">' + item.knowledgePoints.map((tag) => '<span class="tag">' + escapeHtml(tag) + '</span>').join("") + '</div>' : '') +
+        '</div>'
+      )).join("");
+      renderMathIn(area);
+      return title;
+    }
+    function pruneMistakeSelection() {
+      state.mistakeSelection = new Set([...state.mistakeSelection].filter((id) => state.mistakes.some((item) => item.id === id)));
+      updateMistakeSelectionCount();
+    }
+    $("#mistakeList").addEventListener("change", (event) => {
+      const box = event.target.closest('input[data-mistake-id]');
+      if (!box) return;
+      if (box.checked) state.mistakeSelection.add(box.dataset.mistakeId);
+      else state.mistakeSelection.delete(box.dataset.mistakeId);
+      box.closest(".mistake-row")?.classList.toggle("mistake-selected", box.checked);
+      updateMistakeSelectionCount();
+    });
+    const previewState = { items: [], index: 0 };
+    const imageZoom = { scale: 1 };
+    function clampScale(value) { return Math.min(8, Math.max(1, value)); }
+    // Windows 查看器 + 滚动条模型：100% = 整页适应窗口；普通滚轮滚动页面，
+    // Ctrl/⌘+滚轮缩放；放大后出现滚动条，也可拖拽平移。
+    function applyImageZoom() {
+      const stage = $("#imageStage");
+      const img = $("#imagePreview");
+      const natW = img.naturalWidth || 0;
+      const natH = img.naturalHeight || 0;
+      let fitW = stage.clientWidth;
+      if (natW && natH) {
+        fitW = Math.min(natW, stage.clientWidth, stage.clientHeight * natW / natH);
+      }
+      img.style.width = Math.max(1, Math.round(fitW * imageZoom.scale)) + "px";
+      $("#imageZoomLevel").textContent = Math.round(imageZoom.scale * 100) + "%";
+    }
+    function resetImageZoom() {
+      imageZoom.scale = 1;
+      applyImageZoom();
+      $("#imageStage").scrollLeft = 0;
+      $("#imageStage").scrollTop = 0;
+    }
+    function zoomImageAt(clientX, clientY, factor) {
+      const stage = $("#imageStage");
+      const img = $("#imagePreview");
+      const imgRect = img.getBoundingClientRect();
+      const fx = imgRect.width ? (clientX - imgRect.left) / imgRect.width : 0.5;
+      const fy = imgRect.height ? (clientY - imgRect.top) / imgRect.height : 0.5;
+      const stageRect = stage.getBoundingClientRect();
+      const anchorX = Math.min(Math.max(clientX, stageRect.left), stageRect.right);
+      const anchorY = Math.min(Math.max(clientY, stageRect.top), stageRect.bottom);
+      imageZoom.scale = clampScale(imageZoom.scale * factor);
+      applyImageZoom();
+      const newRect = img.getBoundingClientRect();
+      stage.scrollLeft += stageRect.left + fx * newRect.width - anchorX;
+      stage.scrollTop += stageRect.top + fy * newRect.height - anchorY;
+      if (imageZoom.scale === 1) { stage.scrollLeft = 0; stage.scrollTop = 0; }
+    }
+    function showPreviewAt(index) {
+      if (!previewState.items.length) return;
+      previewState.index = Math.min(Math.max(index, 0), previewState.items.length - 1);
+      const item = previewState.items[previewState.index];
+      $("#imagePreview").src = item.src;
+      $("#imagePreviewTitle").textContent = item.label;
+      $("#imagePreviewIndex").textContent = (previewState.index + 1) + " / " + previewState.items.length;
+      resetImageZoom();
+    }
+    function openPreview(items, index) {
+      previewState.items = items;
+      $("#imageDialog").showModal();
+      showPreviewAt(index);
+    }
+    (function bindImageStage() {
+      const stage = $("#imageStage");
+      const img = $("#imagePreview");
+      stage.addEventListener("wheel", (event) => {
+        if (!(event.ctrlKey || event.metaKey)) return;
+        event.preventDefault();
+        zoomImageAt(event.clientX, event.clientY, event.deltaY < 0 ? 1.2 : 1 / 1.2);
+      }, { passive: false });
+      let panning = null;
+      stage.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || event.pointerType !== "mouse") return;
+        panning = { id: event.pointerId, x: event.clientX, y: event.clientY, sl: stage.scrollLeft, st: stage.scrollTop };
+        try { stage.setPointerCapture(event.pointerId); } catch {}
+        stage.classList.add("grabbing");
+      });
+      stage.addEventListener("pointermove", (event) => {
+        if (!panning || event.pointerId !== panning.id) return;
+        stage.scrollLeft = panning.sl - (event.clientX - panning.x);
+        stage.scrollTop = panning.st - (event.clientY - panning.y);
+      });
+      const endPan = (event) => {
+        if (!panning || event.pointerId !== panning.id) return;
+        panning = null;
+        stage.classList.remove("grabbing");
+      };
+      stage.addEventListener("pointerup", endPan);
+      stage.addEventListener("pointercancel", endPan);
+      stage.addEventListener("dblclick", (event) => {
+        if (imageZoom.scale > 1) resetImageZoom();
+        else zoomImageAt(event.clientX, event.clientY, 2);
+      });
+      img.addEventListener("load", () => { if ($("#imageDialog").open) applyImageZoom(); });
+      $("#imageDialog").addEventListener("close", () => {
+        previewState.items = [];
+        previewState.index = 0;
+        img.removeAttribute("src");
+        resetImageZoom();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (!$("#imageDialog").open) return;
+        if (event.key === "ArrowLeft") showPreviewAt(previewState.index - 1);
+        if (event.key === "ArrowRight") showPreviewAt(previewState.index + 1);
+      });
+    })();
+    function openPost(id) {
+      const post = state.posts.find((item) => item.id === id);
+      if (!post) return;
+      state.currentPostId = id;
+      renderPostDetail();
+      switchScreen("s0c");
+    }
+    // 错题详情：点击错题行弹出完整题干信息（公式渲染 + 重点标注）
+    let currentMistake = null;
+    function openMistakeDetail(mistakeId) {
+      const item = state.mistakes.find((mistake) => mistake.id === mistakeId);
+      if (!item) return;
+      const answer = state.answers.find((candidate) => candidate.id === item.answerId);
+      const question = answer && Array.isArray(answer.review) ? answer.review[item.questionIndex] : null;
+      currentMistake = item;
+      $("#mistakeDetailTitle").textContent = "第 " + item.questionNo + " 题 · " + (item.source || "作答记录");
+      $("#mistakeDetailBody").innerHTML = [
+        '<p class="muted small">' + escapeHtml([item.subject, item.studentName, item.errorType, formatPostDate({ collectedAt: item.collectedAt })].filter(Boolean).join(" · ")) + '</p>',
+        '<p><span class="muted small">判定结果：</span><span class="pill ' + (item.result === "正确" ? "green" : "amber") + '">' + escapeHtml(item.result) + '</span></p>',
+        question ? '<p><span class="muted small">学生作答：</span>' + (renderHighlight(question.studentAnswer) || '<span class="muted">（空）</span>') + '</p>' : "",
+        question ? '<p><span class="muted small">正确答案：</span>' + (renderHighlight(question.correctAnswer) || '<span class="muted">（空）</span>') + '</p>' : "",
+        question ? '<p><span class="muted small solution-caption">解题说明</span>' + (renderSolution(question.solutionSummary) || '<span class="muted">（空）</span>') + '</p>' : "",
+        (item.knowledgePoints || []).length ? '<div class="tag-list">' + item.knowledgePoints.map((tag) => '<span class="tag">' + escapeHtml(tag) + '</span>').join("") + '</div>' : ""
+      ].join("");
+      renderMathIn($("#mistakeDetailBody"));
+      $("#mistakeMasteryBtn").textContent = item.status === "mastered" ? "重新复习" : "标记已掌握";
+      $("#mistakeMasteryBtn").disabled = !answer || !question;
+      $("#mistakeReportBtn").disabled = !answer;
+      $("#mistakeDialog").showModal();
+    }
+    $("#mistakeMasteryBtn").addEventListener("click", async () => {
+      if (!currentMistake) return;
+      const answer = state.answers.find((candidate) => candidate.id === currentMistake.answerId);
+      if (!answer) return;
+      try {
+        const review = answer.review.map((question, index) => index === currentMistake.questionIndex ? { ...question, mastered: !question.mastered } : question);
+        await desktop.saveAnswerReview(answer.id, review, true);
+        currentMistake = null;
+        $("#mistakeDialog").close();
+        await loadAnswers();
+        toast("掌握状态已更新");
+      } catch (error) { toast("更新掌握状态失败：" + (error.message || "请重试")); }
+    });
+    $("#mistakeReportBtn").addEventListener("click", () => {
+      if (!currentMistake) return;
+      const answerId = currentMistake.answerId;
+      currentMistake = null;
+      $("#mistakeDialog").close();
+      openAnswerReport(answerId);
+    });
+    // 右键图片菜单：预览 / 前移 / 后移 / 移除（帖子、待保存作答、批阅三处通用）
+    const tileMenuState = { kind: null, index: -1 };
+    function closeTileMenu() {
+      $("#tileContextMenu").hidden = true;
+    }
+    async function performTileAction(action) {
+      const { kind, index } = tileMenuState;
+      if (kind === "post") {
+        const post = activePost();
+        if (!post) return;
+        if (action === "preview" && post.images && index >= 0 && index < post.pageOrder.length) {
+          openPreview(post.pageOrder.map((file, pageAt) => ({ src: postImageUrl(post, file), label: post.title + " · 第 " + (pageAt + 1) + " 页" })), index);
+        }
+        if (action === "move-up" || action === "move-down") {
+          reorderPostPages(index, action === "move-up" ? index - 1 : index + 1);
+        }
+        if (action === "remove") {
+          const file = post.pageOrder[index];
+          if (desktop && post.images && typeof file === "string") {
+            try {
+              const saved = await desktop.removePostPage(post.id, file);
+              Object.assign(post, saved);
+              renderPostDetail();
+              renderPosts();
+              toast("已从打印移除第 " + (index + 1) + " 页；可点「恢复已移除的 " + post.removedImages + " 页」还原");
+            } catch (error) { toast("移除图片失败：" + (error.message || "请重试")); }
+          } else {
+            post.pageOrder.splice(index, 1);
+            post.pages = post.pageOrder.length;
+            renderPostDetail();
+          }
+        }
+      } else if (kind === "grade") {
+        if (action === "preview") {
+          const page = state.gradePages[index];
+          if (page) {
+            openPreview(state.gradePages.map((item, pageAt) => ({ src: "data:" + item.mime + ";base64," + item.base64, label: "学生作答 · 第 " + (pageAt + 1) + " 页" })), index);
+          }
+        }
+        if (action === "move-up" || action === "move-down") {
+          const moved = moveItem(state.gradePages, index, action === "move-up" ? -1 : 1);
+          toast(moved ? "页面顺序已调整" : "已经到最前或最后");
+          renderPageGrid("grade");
+        }
+        if (action === "remove") {
+          state.gradePages.splice(index, 1);
+          renderPageGrid("grade");
+        }
+      } else if (kind === "answer") {
+        const answer = state.currentAnswer;
+        if (!answer) return;
+        if (action === "preview" && index >= 0 && index < answer.pageOrder.length) {
+          openPreview(answer.pageOrder.map((file, pageAt) => ({ src: postImageUrl(answer, file), label: answer.title + " · 作答第 " + (pageAt + 1) + " 页" })), index);
+        }
+        if (action === "move-up" || action === "move-down") {
+          reorderAnswerPages(index, action === "move-up" ? index - 1 : index + 1);
+        }
+        if (action === "remove") {
+          if (answer.pageOrder.length <= 1) { toast("至少保留一张作答图片"); return; }
+          try {
+            const saved = await desktop.removeAnswerPage(answer.id, answer.pageOrder[index]);
+            state.currentAnswer = { ...answer, ...saved };
+            renderReviewPages(state.currentAnswer);
+            toast("已移除第 " + (index + 1) + " 张作答图片；可点「恢复已移除的 " + answer.removedImages + " 页」还原");
+          } catch (error) { toast("移除作答图片失败：" + (error.message || "请重试")); }
+        }
+      }
+    }
+    document.addEventListener("contextmenu", (event) => {
+      const tile = event.target.closest(".page-tile");
+      const container = tile && tile.closest("#postPages, #gradePages, #reviewPages");
+      if (!container) { closeTileMenu(); return; }
+      event.preventDefault();
+      tileMenuState.kind = container.id === "postPages" ? "post" : container.id === "gradePages" ? "grade" : "answer";
+      tileMenuState.index = Number(tile.dataset.index);
+      const menu = $("#tileContextMenu");
+      menu.hidden = false;
+      menu.style.left = Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8) + "px";
+      menu.style.top = Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8) + "px";
+    });
+    document.addEventListener("click", (event) => {
+      const item = event.target.closest("[data-menu-action]");
+      if (item) {
+        const action = item.dataset.menuAction;
+        closeTileMenu();
+        performTileAction(action);
+        return;
+      }
+      if (!event.target.closest("#tileContextMenu")) closeTileMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeTileMenu();
+    });
+    window.addEventListener("blur", closeTileMenu);
+    window.addEventListener("resize", closeTileMenu);
+    async function loadPosts(shouldRender = true) {
+      if (!desktop) { if (shouldRender) renderPosts(); renderSideDataOverview(); return; }
+      try {
+        state.posts = await desktop.listPosts();
+        if (shouldRender) renderPosts();
+      } catch (error) {
+        console.error("Unable to load local posts:", error);
+        if (shouldRender) toast("读取本地帖子池失败：" + (error.message || "请重试"));
+      }
+      renderSideDataOverview();
+    }
+    async function persistPostOrder(post) {
+      if (!desktop || !post.images) return;
+      try {
+        const saved = await desktop.reorderPost(post.id, post.pageOrder);
+        Object.assign(post, saved);
+      } catch (error) {
+        await loadPosts(false);
+        renderPostDetail();
+        toast("保存页面顺序失败：" + (error.message || "请重试"));
+      }
+    }
+    async function persistAnswerOrder(order) {
+      if (!desktop || !state.currentAnswerId) return;
+      try {
+        const saved = await desktop.reorderAnswer(state.currentAnswerId, order);
+        state.currentAnswer = { ...state.currentAnswer, ...saved };
+        renderReviewPages(state.currentAnswer);
+      } catch (error) {
+        await openAnswer(state.currentAnswerId);
+        toast("保存作答页顺序失败：" + (error.message || "请重试"));
+      }
+    }
+    function renderSideDataOverview() {
+      $("#overviewPosts").textContent = state.posts.length;
+      $("#overviewAnswers").textContent = state.answers.length;
+      $("#overviewMistakes").textContent = state.mistakes.length;
+      $("#overviewTrainings").textContent = state.trainingHistory.length;
+    }
+    function updateXhsState(value) {
+      const status = value && value.status ? value.status : "loading";
+      const message = value && value.message ? value.message : "正在打开小红书网页…";
+      $("#xhsState").textContent = message;
+      $("#xhsLoadingMessage").textContent = message;
+      $("#xhsLoading").dataset.status = status;
+      $("#xhsLoading").hidden = status === "ready";
+      $("#xhsRetry").hidden = status !== "error";
+    }
+    async function exportActivePost(kind) {
+      const post = activePost();
+      if (!post || !desktop || !post.images) { toast("请先打开已采集或导入的试卷"); return; }
+      try {
+        if (kind === "pdf") {
+          const result = await desktop.generatePostPdf(post.id, post.pageOrder, post.title);
+          toast(result.canceled ? "已取消 PDF 保存" : "PDF 已保存：" + result.filePath);
+        } else {
+          const result = await desktop.printPost(post.id, post.pageOrder, post.title);
+          toast(result.success ? "已提交打印任务" : result.failureReason || "打印未完成");
+        }
+      } catch (error) {
+        toast((kind === "pdf" ? "生成 PDF" : "打印") + "失败：" + (error.message || "请重试"));
+      }
+    }
+    function archiveReview() { void saveReview(true); }
+    function saveReviewDraft() { void saveReview(false); }
+    async function exportReportPdf() {
+      if (!state.currentAnswer) { toast("请先打开一份批阅报告"); return; }
+      const answer = state.currentAnswer;
+      const title = (answer.title || "学生作答") + " · 批阅报告";
+      const restore = () => {
+        document.body.classList.remove("printing-report");
+        renderReport(answer);
+      };
+      // 先切到“打印报告”样式（隐藏侧栏/页面头、展开全部题目），再走主进程 printToPDF
+      renderReport(answer, { allQuestions: true });
+      document.body.classList.remove("printing-mistakes", "printing-training");
+      document.body.classList.add("printing-report");
+      if (!desktop || typeof desktop.exportWorkspacePdf !== "function") {
+        window.addEventListener("afterprint", restore, { once: true });
+        window.print();
+        return;
+      }
+      try {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const result = await desktop.exportWorkspacePdf(title);
+        toast(result.canceled ? "已取消导出" : "批阅报告 PDF 已保存：" + result.filePath);
+      } catch (error) {
+        toast("导出批阅报告失败：" + (error.message || "请重试"));
+      } finally {
+        restore();
+      }
+    }
+    function openGuide() {
+      // 非模态：有引导面板但不阻断其他操作
+      const dialog = $("#guideDialog");
+      if (!dialog.open) dialog.show();
+    }
+
+    $$(".nav-item").forEach((button) => button.addEventListener("click", () => switchScreen(button.dataset.screen)));
+    $$("[data-screen]").filter((button) => !button.classList.contains("nav-item")).forEach((button) => button.addEventListener("click", () => switchScreen(button.dataset.screen)));
+    if (desktop && desktop.isElectron) {
+      document.body.classList.add("electron-shell");
+      $("#xhsBack").addEventListener("click", () => desktop.goBack());
+      $("#xhsForward").addEventListener("click", () => desktop.goForward());
+      $("#xhsReload").addEventListener("click", () => desktop.reload());
+      desktop.onXhsState(updateXhsState);
+      desktop.getXhsState().then(updateXhsState).catch(() => {});
+      desktop.onPostsChanged(async () => {
+        await loadPosts();
+        if ($("#s0c").classList.contains("active")) renderPostDetail();
+      });
+      desktop.onAnswersChanged(() => { void loadAnswers(); void loadTrainingHistory(); });
+
+      const xhsViewport = $("#xhsViewport");
+      let boundsFrame = 0;
+      function updateXhsBounds() {
+        cancelAnimationFrame(boundsFrame);
+        boundsFrame = requestAnimationFrame(() => {
+          const active = $("#s0").classList.contains("active");
+          const rect = xhsViewport.getBoundingClientRect();
+          const left = Math.max(0, rect.left);
+          const top = Math.max(0, rect.top);
+          const right = Math.min(window.innerWidth, rect.right);
+          const bottom = Math.min(window.innerHeight, rect.bottom);
+          desktop.setXhsBounds({
+            visible: active && right > left && bottom > top,
+            x: left,
+            y: top,
+            width: Math.max(0, right - left),
+            height: Math.max(0, bottom - top)
+          });
+        });
+      }
+      window.addEventListener("resize", updateXhsBounds);
+      window.addEventListener("scroll", updateXhsBounds, { passive: true });
+      new ResizeObserver(updateXhsBounds).observe(xhsViewport);
+      document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", updateXhsBounds));
+      window.addEventListener("beforeunload", () => desktop.setXhsBounds({ visible: false }));
+      updateXhsBounds();
+    } else {
+      document.body.classList.add("browser-preview");
+    }
+    $("#postList").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-action]");
+      if (!button) return;
+      const post = state.posts.find((item) => item.id === button.dataset.id);
+      if (!post) return;
+      if (button.dataset.action === "open-post") openPost(post.id);
+      if (button.dataset.action === "rename-post") {
+        const title = await promptText("修改试卷名称", post.title, "例如：八年级数学第一次月考");
+        if (title === null) return;
+        if (!title) { toast("名称不能为空"); return; }
+        if (title !== post.title) {
+          try {
+            if (desktop && post.images) Object.assign(post, await desktop.renamePost(post.id, title));
+            else post.title = title;
+            renderPosts();
+          } catch (error) { toast("重命名失败：" + (error.message || "请重试")); }
+        }
+      }
+      if (button.dataset.action === "delete-post") {
+        const confirmed = await confirmAction("删除试卷记录", "将删除「" + post.title + "」和本地图片文件，删除后无法恢复。", "删除");
+        if (!confirmed) return;
+        try {
+          if (desktop && post.images) await desktop.deletePost(post.id);
+          state.posts = state.posts.filter((item) => item.id !== post.id);
+          if (state.currentPostId === post.id) state.currentPostId = null;
+          renderPosts();
+        } catch (error) { toast("删除失败：" + (error.message || "请重试")); }
+      }
+    });
+    let draggedPostPageIndex = null;
+    window.exam2pdfPageReorder.bindTouchReorder($("#postPages"), reorderPostPages);
+    window.exam2pdfPageReorder.bindTouchReorder($("#reviewPages"), reorderAnswerPages);
+    $("#postPages").addEventListener("dragstart", (event) => {
+      const tile = event.target.closest('.page-tile[draggable="true"]');
+      if (!tile || event.target.closest(".page-tile-remove")) { event.preventDefault(); return; }
+      draggedPostPageIndex = Number(tile.dataset.index);
+      tile.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(draggedPostPageIndex));
+    });
+    $("#postPages").addEventListener("dragover", (event) => {
+      const tile = event.target.closest('.page-tile[draggable="true"]');
+      if (!tile || draggedPostPageIndex === null) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      $$('.page-tile[draggable="true"]', $("#postPages")).forEach((item) => item.classList.toggle("drop-target", item === tile));
+    });
+    $("#postPages").addEventListener("drop", (event) => {
+      const tile = event.target.closest('.page-tile[draggable="true"]');
+      if (!tile || draggedPostPageIndex === null) return;
+      event.preventDefault();
+      const from = draggedPostPageIndex;
+      const to = Number(tile.dataset.index);
+      if (from !== to) reorderPostPages(from, to);
+      draggedPostPageIndex = null;
+    });
+    $("#postPages").addEventListener("dragend", () => {
+      draggedPostPageIndex = null;
+      $$('.page-tile', $("#postPages")).forEach((tile) => tile.classList.remove("dragging", "drop-target"));
+    });
+    $("#postPages").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-action]");
+      const post = activePost();
+      if (!button || !post) return;
+      const index = Number(button.dataset.index);
+      if (button.dataset.action === "move-post-page") {
+        const order = post.pageOrder || (post.pageOrder = Array.from({ length: post.pages }, (_, i) => i + 1));
+        const moved = moveItem(order, index, Number(button.dataset.dir));
+        toast(moved ? "页面顺序已调整" : "已经到最前或最后");
+        renderPostDetail();
+        if (moved) persistPostOrder(post);
+      }
+      if (button.dataset.action === "delete-post-page") {
+        // 视图级移除、可随时恢复：直接执行，不弹确认
+        const order = post.pageOrder || (post.pageOrder = Array.from({ length: post.pages }, (_, i) => i + 1));
+        const file = order[index];
+        if (desktop && post.images && typeof file === "string") {
+          try {
+            const saved = await desktop.removePostPage(post.id, file);
+            Object.assign(post, saved);
+            renderPostDetail();
+            renderPosts();
+            toast("已从打印移除第 " + (index + 1) + " 页；可点「恢复已移除的 " + post.removedImages + " 页」还原");
+          } catch (error) { toast("移除图片失败：" + (error.message || "请重试")); }
+        } else {
+          order.splice(index, 1);
+          post.pages = order.length;
+          renderPostDetail();
+        }
+      }
+    });
+    let draggedAnswerPageIndex = null;
+    $("#reviewPages").addEventListener("dragstart", (event) => {
+      const tile = event.target.closest('.page-tile[draggable="true"]');
+      if (!tile || event.target.closest(".page-tile-remove")) { event.preventDefault(); return; }
+      draggedAnswerPageIndex = Number(tile.dataset.index);
+      tile.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(draggedAnswerPageIndex));
+    });
+    $("#reviewPages").addEventListener("dragover", (event) => {
+      const tile = event.target.closest('.page-tile[draggable="true"]');
+      if (!tile || draggedAnswerPageIndex === null) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      $$('.page-tile[draggable="true"]', $("#reviewPages")).forEach((item) => item.classList.toggle("drop-target", item === tile));
+    });
+    $("#reviewPages").addEventListener("drop", async (event) => {
+      const tile = event.target.closest('.page-tile[draggable="true"]');
+      if (!tile || draggedAnswerPageIndex === null || !state.currentAnswer) return;
+      event.preventDefault();
+      const from = draggedAnswerPageIndex;
+      const to = Number(tile.dataset.index);
+      draggedAnswerPageIndex = null;
+      reorderAnswerPages(from, to);
+    });
+    $("#reviewPages").addEventListener("dragend", () => {
+      draggedAnswerPageIndex = null;
+      $$('.page-tile', $("#reviewPages")).forEach((tile) => tile.classList.remove("dragging", "drop-target"));
+    });
+    $("#poolDrop").addEventListener("dragover", (event) => { event.preventDefault(); $("#poolDrop").classList.add("over"); });
+    $("#poolDrop").addEventListener("dragleave", () => $("#poolDrop").classList.remove("over"));
+    $("#poolDrop").addEventListener("drop", (event) => { event.preventDefault(); $("#poolDrop").classList.remove("over"); addImportedFiles(event.dataTransfer.files); });
+
+    document.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-action]");
+      if (!button) return;
+      const action = button.dataset.action;
+      if (action === "show-info") $("#infoDialog").showModal();
+      if (action === "show-guide") openGuide();
+      if (action === "close-dialog") button.closest("dialog").close();
+      if (action === "close-guide") button.closest("dialog").close();
+      if (action === "dismiss-guide") {
+        try { localStorage.setItem("exam2pdf-guide-done", "1"); } catch {}
+        button.closest("dialog").close();
+      }
+      if (action === "reload-xhs" && desktop) desktop.reload();
+      if (action === "pick-post-files") $("#postFiles").click();
+      if (action === "pick-post-detail-files") $("#postDetailFiles").click();
+      if (action === "pick-post-folder") $("#postFolder").click();
+      if (action === "pick-print") $("#printFiles").click();
+      if (action === "pick-print-folder") $("#printFolder").click();
+      if (action === "pick-grade") $("#gradeFiles").click();
+      if (action === "pick-grade-camera") $("#gradeCamera").click();
+      if (action === "save-answer") await saveAnswerRecord();
+      if (action === "open-answer-review") await openAnswer(button.dataset.id);
+      if (action === "open-mistake-detail") openMistakeDetail(button.dataset.id);
+      if (action === "toggle-mistake-select-all") {
+        const allSelected = state.visibleMistakeIds.length && state.visibleMistakeIds.every((id) => state.mistakeSelection.has(id));
+        if (allSelected) state.visibleMistakeIds.forEach((id) => state.mistakeSelection.delete(id));
+        else state.visibleMistakeIds.forEach((id) => state.mistakeSelection.add(id));
+        updateMistakeSelectionCount();
+        renderMistakes();
+      }
+      if (action === "clear-mistake-selection") {
+        state.mistakeSelection.clear();
+        updateMistakeSelectionCount();
+        renderMistakes();
+      }
+      if (action === "export-mistake-pdf") {
+        const items = mistakeActionItems("导出");
+        if (!items.length) return;
+        const title = buildMistakePrintArea(items);
+        document.body.classList.remove("printing-report", "printing-training");
+        document.body.classList.add("printing-mistakes");
+        try {
+          const result = await desktop.exportMistakePdf(title);
+          toast(result.canceled ? "已取消导出" : "错题集 PDF 已保存：" + result.filePath);
+        } catch (error) { toast("导出错题集失败：" + (error.message || "请重试")); }
+        finally { document.body.classList.remove("printing-mistakes"); }
+      }
+      if (action === "print-mistakes") {
+        const items = mistakeActionItems("打印");
+        if (!items.length) return;
+        buildMistakePrintArea(items);
+        document.body.classList.remove("printing-report", "printing-training");
+        document.body.classList.add("printing-mistakes");
+        window.print();
+      }
+      if (action === "ai-review-answer") await requestAiAnswerReview();
+      if (action === "export-answer-pdf") {
+        if (!desktop || !state.currentAnswerId || !state.currentAnswer) { toast("请先在 Electron 中打开一份作答记录"); return; }
+        try {
+          const result = await desktop.exportAnswerPdf(state.currentAnswer.id, state.currentAnswer.pageOrder, (state.currentAnswer.title || "学生作答") + " · 作答");
+          toast(result.canceled ? "已取消保存" : "作答 PDF 已保存：" + result.filePath);
+        } catch (error) { toast("生成作答 PDF 失败：" + (error.message || "请重试")); }
+      }
+      if (action === "copy-review-prompt") {
+        try {
+          await navigator.clipboard.writeText(EXTERNAL_REVIEW_PROMPT);
+          toast("批阅提示词已复制；连同作答 PDF 一起发给任一对话 AI");
+        } catch { showDialog("批阅提示词（手动全选复制）", EXTERNAL_REVIEW_PROMPT); }
+      }
+      if (action === "parse-external-review") {
+        if (!desktop || !state.currentAnswerId) { toast("请先在 Electron 中打开一份作答记录"); return; }
+        const text = $("#externalReviewText").value;
+        if (!text.trim()) { toast("请先粘贴 AI 返回的批阅内容"); return; }
+        try {
+          const result = await desktop.parseExternalReview(text);
+          const previousMastery = new Map((state.reviewDraft || []).map((item) => [item.questionNo, Boolean(item.mastered)]));
+          state.reviewDraft = result.review.map((item) => ({ ...item, mastered: previousMastery.get(item.questionNo) || false }));
+          setReviewPreviewMode(true);
+          renderReviewQuestions();
+          toast("已解析 " + result.review.length + " 题草稿；请核对后保存或确认");
+        } catch (error) {
+          showRepairDialog(text, error.message || "内容无法识别");
+        }
+      }
+      if (action === "clear-external-review") $("#externalReviewText").value = "";
+      if (action === "open-answer-report") await openAnswerReport(button.dataset.id);
+      if (action === "rename-answer") {
+        const target = state.answers.find((item) => item.id === button.dataset.id);
+        if (!target) return;
+        if (!desktop || typeof desktop.renameAnswer !== "function") { toast("重命名需要在 Electron 应用中操作"); return; }
+        const title = await promptText("修改作答名称", target.title, "例如：八年级数学月考 · 李明");
+        if (title === null) return;
+        if (!title) { toast("名称不能为空"); return; }
+        if (title === target.title) return;
+        try {
+          await desktop.renameAnswer(target.id, title);
+          // 同步到正在查看的报告/批阅页，以及错题来源、导出文件名等引用该记录的位置
+          if (state.currentAnswerId === target.id) {
+            state.currentAnswer = await desktop.getAnswer(target.id);
+            if ($("#s3").classList.contains("active")) $("#reviewAnswerTitle").textContent = state.currentAnswer.title;
+            if ($("#s4").classList.contains("active")) renderReport(state.currentAnswer);
+          }
+          await loadAnswers();
+          toast("已重命名为「" + title + "」");
+        } catch (error) { toast("重命名失败：" + (error.message || "请重试")); }
+      }
+      if (action === "delete-answer") {
+        const target = state.answers.find((item) => item.id === button.dataset.id);
+        const confirmed = await confirmAction("删除作答记录", "将删除「" + (target ? target.title : "该记录") + "」及其批阅数据，作答图片会一并从磁盘删除，无法恢复。", "删除");
+        if (!confirmed) return;
+        try {
+          await desktop.deleteAnswer(button.dataset.id);
+          if (state.currentAnswerId === button.dataset.id) { state.currentAnswerId = null; state.currentAnswer = null; }
+          await loadAnswers();
+          await loadTrainingHistory();
+          toast("作答记录已删除");
+        } catch (error) { toast("删除作答记录失败：" + (error.message || "请重试")); }
+      }
+      if (action === "post-pdf") await exportActivePost("pdf");
+      if (action === "make-pdf") toast("请先从帖子池打开试卷，再生成 PDF");
+      if (action === "print") {
+        if (button.closest("#s0c")) await exportActivePost("print");
+        else toast("请先从帖子池打开试卷，再打印");
+      }
+      if (action === "move-page" || action === "delete-page") {
+        const kind = button.dataset.kind;
+        const pages = state[kind + "Pages"];
+        const index = Number(button.dataset.index);
+        if (action === "move-page") {
+          toast(moveItem(pages, index, Number(button.dataset.dir)) ? "页面顺序已调整" : "已经到最前或最后");
+        } else pages.splice(index, 1);
+        renderPageGrid(kind);
+      }
+      if (action === "move-answer-page" && state.currentAnswer) {
+        const order = state.currentAnswer.pageOrder.slice();
+        if (moveItem(order, Number(button.dataset.index), Number(button.dataset.dir))) await persistAnswerOrder(order);
+        else toast("已经到最前或最后");
+      }
+      if (action === "remove-answer-page" && state.currentAnswer) {
+        if (state.currentAnswer.pageOrder.length <= 1) { toast("至少保留一张作答图片"); return; }
+        const index = Number(button.dataset.index);
+        const file = state.currentAnswer.pageOrder[index];
+        // 视图级移除、可随时恢复：直接执行，不弹确认
+        try {
+          const saved = await desktop.removeAnswerPage(state.currentAnswer.id, file);
+          state.currentAnswer = { ...state.currentAnswer, ...saved };
+          renderReviewPages(state.currentAnswer);
+          toast("已移除第 " + (index + 1) + " 张作答图片；可点「恢复已移除的 " + state.currentAnswer.removedImages + " 页」还原");
+        } catch (error) { toast("移除作答图片失败：" + (error.message || "请重试")); }
+      }
+      if (action === "preview-page") {
+        const index = Number(button.dataset.index);
+        if (button.closest("#s0c") && activePost()?.images) {
+          const post = activePost();
+          if (index >= 0 && index < post.pageOrder.length) {
+            openPreview(post.pageOrder.map((file, pageAt) => ({
+              src: postImageUrl(post, file),
+              label: post.title + " · 第 " + (pageAt + 1) + " 页"
+            })), index);
+          }
+        } else if (button.dataset.kind === "grade") {
+          const page = state.gradePages[index];
+          if (page) {
+            openPreview(state.gradePages.map((item, pageAt) => ({
+              src: "data:" + item.mime + ";base64," + item.base64,
+              label: "学生作答 · 第 " + (pageAt + 1) + " 页"
+            })), index);
+          }
+        } else showDialog("页面预览", "请在 Electron 中保存作答记录后查看图片。");
+      }
+      if (action === "preview-answer-page") {
+        const index = Number(button.dataset.index);
+        const answer = state.currentAnswer;
+        if (answer && index >= 0 && index < answer.pageOrder.length) {
+          openPreview(answer.pageOrder.map((file, pageAt) => ({
+            src: postImageUrl(answer, file),
+            label: answer.title + " · 作答第 " + (pageAt + 1) + " 页"
+          })), index);
+        }
+      }
+      if (action === "reset-post-order") {
+        const post = activePost();
+        if (!post || !desktop) { toast("请在 Electron 中恢复原始页序"); return; }
+        try {
+          const saved = await desktop.resetPostOrder(post.id);
+          Object.assign(post, saved);
+          renderPostDetail();
+          renderPosts();
+          toast("已恢复全部 " + saved.pages + " 页的原始页序");
+        } catch (error) { toast("恢复失败：" + (error.message || "请重试")); }
+      }
+      if (action === "reset-answer-order") {
+        if (!state.currentAnswerId || !desktop) { toast("请在 Electron 中恢复原始页序"); return; }
+        try {
+          const saved = await desktop.resetAnswerOrder(state.currentAnswerId);
+          state.currentAnswer = { ...state.currentAnswer, ...saved };
+          renderReviewPages(state.currentAnswer);
+          toast("已恢复全部 " + saved.pages + " 页的原始页序");
+        } catch (error) { toast("恢复失败：" + (error.message || "请重试")); }
+      }
+      if (action === "preview-prev") showPreviewAt(previewState.index - 1);
+      if (action === "preview-next") showPreviewAt(previewState.index + 1);
+      if (action === "zoom-in" || action === "zoom-out") {
+        const rect = $("#imageStage").getBoundingClientRect();
+        zoomImageAt(rect.left + rect.width / 2, rect.top + rect.height / 2, action === "zoom-in" ? 1.25 : 0.8);
+      }
+      if (action === "zoom-reset") resetImageZoom();
+      if (action === "clear-print" || action === "clear-grade") {
+        const kind = action === "clear-print" ? "print" : "grade";
+        state[kind + "Pages"] = [];
+        renderPageGrid(kind);
+      }
+      if (action === "toggle-review-preview") {
+        if (state.reviewPreviewMode) {
+          setReviewPreviewMode(false);
+        } else {
+          if (!state.reviewDraft.length && !$$(".review-question").length) { toast("请先添加或解析题目"); return; }
+          if ($$(".review-question").length) state.reviewDraft = collectReviewQuestions();
+          setReviewPreviewMode(true);
+        }
+        renderReviewQuestions();
+      }
+      if (action === "add-review-question") {
+        if (!state.currentAnswerId) { toast("请先打开一份作答记录"); return; }
+        setReviewPreviewMode(false);
+        state.reviewDraft = collectReviewQuestions();
+        state.reviewDraft.push({ questionNo: String(state.reviewDraft.length + 1), result: "正确", errorType: "其他", knowledgePoints: [], studentAnswer: "", correctAnswer: "", solutionSummary: "", mastered: false });
+        renderReviewQuestions();
+      }
+      if (action === "remove-review-question") {
+        setReviewPreviewMode(false);
+        state.reviewDraft = collectReviewQuestions();
+        state.reviewDraft.splice(Number(button.dataset.index), 1);
+        renderReviewQuestions();
+      }
+      if (action === "save-review-draft") await saveReview(false);
+      if (action === "archive-review") await saveReview(true);
+      if (action === "edit-answer-review" && state.currentAnswerId) await openAnswer(state.currentAnswerId);
+      if (action === "toggle-mastery") {
+        const item = state.mistakes.find((mistake) => mistake.id === button.dataset.id);
+        if (!item) return;
+        const answer = state.answers.find((candidate) => candidate.id === item.answerId);
+        if (desktop && answer) {
+          try {
+            const review = answer.review.map((question, index) => index === item.questionIndex ? { ...question, mastered: !question.mastered } : question);
+            await desktop.saveAnswerReview(answer.id, review, true);
+            await loadAnswers();
+            if (state.currentAnswerId === answer.id && $("#s4").classList.contains("active")) renderReport(await desktop.getAnswer(answer.id));
+          } catch (error) { toast("更新掌握状态失败：" + (error.message || "请重试")); }
+        } else {
+          item.status = item.status === "mastered" ? "active" : "mastered";
+          renderMistakes();
+        }
+      }
+      if (action === "export-report") await exportReportPdf();
+      if (action === "generate-training") await generateTraining();
+      if (action === "generate-ai-training") await generateAiTraining();
+      if (action === "save-ai-settings") await saveAiSettings(false);
+      if (action === "test-ai-connection") await testAiConnection();
+      if (action === "clear-ai-key") await saveAiSettings(true);
+      if (action === "open-training") {
+        const training = state.trainingHistory.find((item) => item.id === button.dataset.id);
+        if (training) { renderTrainingRecord(training); switchScreen("s7"); }
+      }
+      if (action === "approve-training" && state.training && desktop) {
+        try {
+          state.training = await desktop.setTrainingStatus(state.training.id, "approved");
+          await loadTrainingHistory();
+          renderTrainingRecord(state.training);
+          toast("练习已标记为家长审核通过");
+        } catch (error) { toast("保存审核状态失败：" + (error.message || "请重试")); }
+      }
+      if (action === "print-training") printTraining();
+      if (action === "backup") {
+        if (!desktop) { toast("请在 Electron 中导出包含图片的本地备份"); return; }
+        try {
+          const result = await desktop.createBackup();
+          if (result.canceled) toast("已取消备份");
+          else toast("备份已保存：" + result.filePath + "（" + result.entries + " 个文件/目录）");
+        } catch (error) { toast("导出备份失败：" + (error.message || "请重试")); }
+      }
+      if (action === "restore-backup") {
+        if (!desktop) { toast("请在 Electron 中恢复本地备份"); return; }
+        try {
+          const result = await desktop.restoreBackup();
+          if (result.canceled) toast("已取消恢复");
+          else {
+            state.training = null;
+            state.trainingAnswersViewed = false;
+            $("#trainingResult").hidden = true;
+            await loadTrainingHistory();
+            if (result.settingsRestored && typeof desktop.getAiSettings === "function") renderAiSettings(await desktop.getAiSettings());
+            toast("备份已恢复，共 " + result.restoredRecords + " 条记录" + (result.settingsRestored ? "；AI API Key 未包含在备份中，请重新输入" : ""));
+          }
+        } catch (error) { toast("恢复备份失败：" + (error.message || "请检查备份文件")); }
+      }
+      if (action === "show-upload-link") {
+        const message = state.mobileUpload.enabled
+          ? (state.mobileUpload.urls.length ? state.mobileUpload.urls.join("\n") : "服务已开启，但没有检测到局域网 IPv4 地址。请检查电脑的 Wi-Fi 连接。")
+          : "请先开启“手机上传”，确保手机和电脑连在同一 Wi-Fi，再复制地址到手机浏览器打开。";
+        showDialog("手机上传地址", message);
+      }
+      if (action === "copy-upload-link") {
+        const url = state.mobileUpload.urls[0];
+        if (!url) { toast("请先开启手机上传，并检查电脑已连接 Wi-Fi"); return; }
+        try {
+          await navigator.clipboard.writeText(url);
+          toast("手机上传地址已复制；请在同一 Wi-Fi 下打开");
+        } catch { showDialog("手机上传地址", url); }
+      }
+    });
+    $("#postFiles").addEventListener("change", (event) => { void addImportedFiles(event.target.files); event.target.value = ""; });
+    $("#postDetailFiles").addEventListener("change", (event) => { void addImagesToActivePost(event.target.files); event.target.value = ""; });
+    $("#postFolder").addEventListener("change", (event) => { void addImportedFiles(event.target.files); event.target.value = ""; });
+    $("#printFiles").addEventListener("change", (event) => { addPages("print", event.target.files); event.target.value = ""; });
+    $("#printFolder").addEventListener("change", (event) => { addPages("print", event.target.files); event.target.value = ""; });
+    $("#gradeFiles").addEventListener("change", (event) => { addPages("grade", event.target.files); event.target.value = ""; });
+    $("#gradeCamera").addEventListener("change", (event) => { addPages("grade", event.target.files); event.target.value = ""; });
+    $$("[data-drop-kind]").forEach((zone) => {
+      zone.addEventListener("dragover", (event) => { event.preventDefault(); zone.classList.add("over"); });
+      zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+      zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        zone.classList.remove("over");
+        addPages(zone.dataset.dropKind, event.dataTransfer.files);
+      });
+    });
+    $("#mistakeSearch").addEventListener("input", () => { state.mistakePage = 1; renderMistakes(); });
+    $("#mistakeFilter").addEventListener("change", () => { state.mistakePage = 1; renderMistakes(); });
+    $("#mistakeDateFilter").addEventListener("change", () => { state.mistakePage = 1; renderMistakes(); });
+    $("#mistakeTopicFilter").addEventListener("change", () => { state.mistakePage = 1; renderMistakes(); });
+    $("#mistakeErrorFilter").addEventListener("change", () => { state.mistakePage = 1; renderMistakes(); });
+    $("#trainingAnswerDetails").addEventListener("toggle", () => {
+      if (state.training && state.training.status !== "approved" && $("#trainingAnswerDetails").open) state.trainingAnswersViewed = true;
+      $("#approveTrainingButton").disabled = !state.trainingAnswersViewed || state.training?.status === "approved";
+    });
+    $("#postSearch").addEventListener("input", () => { state.postPage = 1; renderPosts(); });
+    $("#postSubjectFilter").addEventListener("change", () => { state.postPage = 1; renderPosts(); });
+    $("#answerSubjectFilter").addEventListener("change", () => { state.answerPage = 1; renderAnswers(); });
+    $("#mistakeSubjectFilter").addEventListener("change", () => { state.mistakePage = 1; renderMistakes(); });
+    document.addEventListener("click", (event) => {
+      const go = event.target.closest("[data-page-go]");
+      if (!go || go.disabled) return;
+      const page = Number(go.dataset.page);
+      if (!Number.isInteger(page)) return;
+      if (go.dataset.pageGo === "post") { state.postPage = page; renderPosts(); }
+      else if (go.dataset.pageGo === "answer") { state.answerPage = page; renderAnswers(); }
+      else if (go.dataset.pageGo === "mistake") { state.mistakePage = page; renderMistakes(); }
+      else if (go.dataset.pageGo === "report" && state.currentAnswer) { state.reportPage = page; renderReport(state.currentAnswer); }
+      else if (go.dataset.pageGo === "training") { state.trainingPage = page; renderTrainingHistory(); }
+    });
+    $("#postSubject").addEventListener("change", async () => {
+      const post = activePost();
+      if (!post || !desktop) { toast("请在 Electron 中设置科目"); renderPostDetail(); return; }
+      try {
+        const saved = await desktop.setPostSubject(post.id, $("#postSubject").value);
+        Object.assign(post, saved);
+        renderPosts();
+        toast("科目已设为「" + (saved.subject || "未分类") + "」");
+      } catch (error) { toast("科目设置失败：" + (error.message || "请重试")); renderPostDetail(); }
+    });
+    $("#answerSubject").addEventListener("change", async () => {
+      if (!state.currentAnswerId || !desktop) { toast("请在 Electron 中设置科目"); return; }
+      try {
+        const saved = await desktop.setAnswerSubject(state.currentAnswerId, $("#answerSubject").value);
+        state.currentAnswer = { ...state.currentAnswer, ...saved };
+        await loadAnswers();
+        toast("科目已设为「" + (saved.subject || "未分类") + "」");
+      } catch (error) { toast("科目设置失败：" + (error.message || "请重试")); }
+    });
+    $("#repairCopyBtn").addEventListener("click", async () => {
+      const text = $("#repairPromptText").value;
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("复验提示词已复制；发回给原 AI 后把新内容重新粘贴解析");
+      } catch {
+        $("#repairPromptText").focus();
+        $("#repairPromptText").select();
+      }
+    });
+    function applyTheme(theme) {
+      document.body.setAttribute("data-theme", theme);
+      $("#themeToggle .side-util-label").textContent = theme === "dark" ? "浅色模式" : "深色模式";
+    }
+    let storedTheme = null;
+    try { storedTheme = localStorage.getItem("exam2pdf-theme"); } catch {}
+    applyTheme(storedTheme === "dark" || storedTheme === "light" ? storedTheme : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+    $("#themeToggle").addEventListener("click", () => {
+      const next = document.body.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      try { localStorage.setItem("exam2pdf-theme", next); } catch {}
+      applyTheme(next);
+    });
+    $("#sidebarToggle").addEventListener("click", () => {
+      const collapsed = !document.body.classList.contains("sidebar-collapsed");
+      document.body.classList.toggle("sidebar-collapsed", collapsed);
+      $("#sidebarToggle").setAttribute("aria-label", collapsed ? "展开侧边栏" : "折叠侧边栏");
+      try { localStorage.setItem("exam2pdf-sidebar", collapsed ? "collapsed" : "expanded"); } catch {}
+    });
+    try { document.body.classList.toggle("sidebar-collapsed", localStorage.getItem("exam2pdf-sidebar") === "collapsed"); } catch {}
+    $("#lanSwitch").addEventListener("click", async () => {
+      if (!desktop || typeof desktop.startMobileUpload !== "function") { toast("手机上传需要在 Electron 应用中开启"); return; }
+      const shouldEnable = $("#lanSwitch").getAttribute("aria-checked") !== "true";
+      $("#lanSwitch").disabled = true;
+      try {
+        const result = shouldEnable ? await desktop.startMobileUpload() : await desktop.stopMobileUpload();
+        renderMobileUpload(result);
+        if (shouldEnable) {
+          toast(result.urls.length ? "手机上传已开启；地址已显示在本页" : "手机上传已开启，但未检测到局域网地址");
+        } else toast("手机上传已关闭，原地址随即失效");
+      } catch (error) {
+        $("#lanSwitch").disabled = false;
+        if (typeof desktop.getMobileUploadState === "function") desktop.getMobileUploadState().then(renderMobileUpload).catch(() => {});
+        toast((shouldEnable ? "开启" : "关闭") + "手机上传失败：" + (error.message || "请重试"));
+      }
+    });
+
+    renderPosts();
+    document.body.classList.add("screen-s0");
+    $("#gradeSubject").innerHTML = subjectOptions("数学");
+    if (desktop) {
+      void loadPosts();
+      void loadAnswers();
+      void loadTrainingHistory();
+      if (typeof desktop.getMobileUploadState === "function") desktop.getMobileUploadState().then(renderMobileUpload).catch(() => {});
+      if (typeof desktop.getAiSettings === "function") desktop.getAiSettings().then(renderAiSettings).catch((error) => toast("读取 AI 配置失败：" + (error.message || "请重试")));
+    }
+    renderPageGrid("print");
+    renderPageGrid("grade");
+    renderMistakes();
+    renderSideDataOverview();
+    try { if (!localStorage.getItem("exam2pdf-guide-done")) openGuide(); } catch {}
+    window.__exam2pdfBootComplete = true;
+  </script>
+</body>
+</html>

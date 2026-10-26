@@ -1,0 +1,35 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.browser-profile/
+data/
+release/
+node_modules/
+
+# Local configuration, credentials and signing material
+.env
+.env.*
+!.env.example
+!.env.template
+*.key
+*.pem
+*.p12
+*.pfx
+*.mobileprovision
+
+# Application data and local exports
+userData/
+user-data/
+library/
+backups/
+cookies.json
+storage-state.json
+
+# Build and verification output
+dist/
+coverage/
+test-results/
+playwright-report/
+.cache/
+*.log

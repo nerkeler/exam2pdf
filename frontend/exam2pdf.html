@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>exam2pdf · 试题采集与批阅</title>
+  <style>
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --line: #e4e7ec;
+  --text: #1f2329;
+  --muted: #86909c;
+  --accent: #165dff;
+  --accent-dark: #0e42d2;
+  --danger: #f53f3f;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+header h1 { margin: 0 0 6px; font-size: 28px; }
+.sub { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+
+.drop {
+  background: var(--card);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 40px 20px;
+  text-align: center;
+  transition: border-color .15s, background .15s;
+}
+.drop.over { border-color: var(--accent); background: #f0f5ff; }
+.drop-main { margin: 0 0 6px; font-size: 16px; }
+.drop-hint { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+
+.btns { display: flex; gap: 10px; justify-content: center; }
+
+button {
+  font-size: 14px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: all .15s;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  padding: 10px 28px;
+  font-size: 15px;
+}
+button.primary:hover { background: var(--accent-dark); }
+button.primary:disabled { opacity: .5; cursor: not-allowed; }
+button.ghost { border: none; background: none; color: var(--muted); }
+button.ghost:hover { color: var(--danger); }
+
+section { margin-top: 28px; }
+h2 { font-size: 17px; margin: 0; }
+.list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.count { color: var(--muted); font-size: 14px; font-weight: normal; }
+.hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+
+.list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+.item {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px;
+  position: relative;
+  cursor: grab;
+}
+.item.dragging { opacity: .4; }
+.item.over { border-color: var(--accent); }
+.item img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #f0f1f3;
+  display: block;
+}
+.item.zip-thumb {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  background: #f0f1f3;
+  border-radius: 6px;
+}
+.item .name {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item .order {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  min-width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  border-radius: 10px;
+  padding: 0 5px;
+}
+.item .ops {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.item .ops button {
+  padding: 2px 8px;
+  font-size: 12px;
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+.item .ops button:hover { color: var(--accent); }
+.item .ops .del:hover { color: var(--danger); }
+
+.gen { display: flex; gap: 10px; align-items: center; }
+.gen input {
+  flex: 1;
+  max-width: 260px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.gen input:focus { outline: none; border-color: var(--accent); }
+
+.status { font-size: 13px; min-height: 20px; margin: 10px 0 0; }
+.status.ok { color: #00b42a; }
+.status.err { color: var(--danger); }
+
+.ai-links { display: flex; gap: 14px; margin: 0 0 10px; flex-wrap: wrap; }
+.ai-links a {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 5px 12px;
+  background: #f0f5ff;
+  border-radius: 6px;
+}
+.ai-links a:hover { background: #dbe8ff; }
+
+#promptText {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--card);
+  resize: vertical;
+}
+#promptText:focus { outline: none; border-color: var(--accent); }
+
+.tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); }
+.tab {
+  border: none;
+  background: none;
+  font-size: 15px;
+  padding: 10px 16px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+.guide {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.guide h2 { margin-bottom: 12px; }
+.guide pre {
+  background: #f0f1f3;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+.steps { margin: 0 0 14px; padding-left: 20px; color: var(--text); font-size: 14px; line-height: 2; }
+.steps b { color: var(--accent); }
+.warn {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  background: #fff7e8;
+  border-radius: 8px;
+  color: #b26b00;
+  font-size: 13px;
+}
+
+.bk-row { display: flex; align-items: center; gap: 14px; }
+.bk-btn {
+  display: inline-block;
+  background: #ff2442;
+  color: #fff;
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: 24px;
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 4px 14px rgba(255, 36, 66, .3);
+}
+
+.pool-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.note-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+.note-card img {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #f0f1f3;
+}
+.note-card .info { flex: 1; min-width: 0; }
+.note-card .t {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note-card .c { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.note-card .goto { cursor: pointer; }
+.note-card .goto:hover .t { color: var(--accent); }
+.note-card .ops { display: flex; gap: 12px; align-items: center; }
+.note-card .ops a, .note-card .ops button {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  background: #f0f5ff;
+  border-radius: 6px;
+  padding: 5px 12px;
+  border: none;
+  cursor: pointer;
+}
+.note-card .ops .del { background: #ffece8; color: var(--danger); }
+.pool-actions { display: flex; gap: 10px; }
+.auto-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.auto-add input { accent-color: var(--accent); }
+
+#linkInput, #cookieInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  background: var(--card);
+  color: var(--text);
+  resize: vertical;
+  margin-bottom: 10px;
+}
+#linkInput:focus, #cookieInput:focus { outline: none; border-color: var(--accent); }
+.cookie-box { margin-top: 12px; }
+.cookie-box summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.cookie-box summary:hover { color: var(--accent); }
+
+.more-modes { margin-bottom: 16px; }
+.more-modes > summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+  padding: 10px 0;
+}
+.more-modes > summary:hover { color: var(--accent); }
+.more-modes .guide { margin-top: 12px; }
+
+.item img { cursor: zoom-in; }
+
+#lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .88);
+  z-index: 99998;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+#lightbox[hidden] { display: none; }
+#lightboxImg {
+  max-width: 92vw;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+.lb-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #fff;
+  font-size: 14px;
+}
+.lb-bar #lightboxTitle {
+  max-width: 40vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-bar button {
+  background: rgba(255, 255, 255, .15);
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 6px;
+}
+.lb-bar button:hover { background: rgba(255, 255, 255, .3); }
+.lb-bar button.danger { background: rgba(245, 63, 63, .8); }
+.lb-bar button.danger:hover { background: var(--danger); }
+.lb-bar button:disabled { opacity: .35; cursor: not-allowed; }
+
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>exam2pdf</h1>
+      <p class="sub">试题整理打印 → 拍照批阅，全程在本浏览器内完成，不联网上传</p>
+      <nav class="tabs">
+        <button id="tabInstall" class="tab active" type="button">① 安装采集脚本</button>
+        <button id="tabPrint" class="tab" type="button">② 整理打印</button>
+        <button id="tabGrade" class="tab" type="button">③ 试卷批阅</button>
+      </nav>
+    </header>
+
+    <section id="secInstall">
+      <div class="guide">
+        <h2>安装「小红书采集」油猴脚本（只需一次）</h2>
+        <p class="hint">
+          <b>Safari（Mac 默认浏览器）</b>用 App Store 的
+          <a href="https://apps.apple.com/app/userscripts/id1463298887" target="_blank" rel="noreferrer">Userscripts</a> 扩展；
+          <b>Chrome / Edge</b> 用
+          <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noreferrer">Tampermonkey</a>（需在 chrome://extensions 开启「开发者模式」）
+        </p>
+        <ol class="steps">
+          <li>
+            <b>Safari：</b>App Store 装 Userscripts → Safari「设置 → 扩展」启用并允许所有网站 → 点工具栏 Userscripts 图标 → 点「+」新建脚本 → 模板<b>全删</b> → 点下方「复制脚本代码」粘贴 → <b>Cmd+S</b> 保存
+          </li>
+          <li>
+            <b>Chrome / Edge：</b>Tampermonkey 图标 → 「添加新脚本」→ 模板全删 → 粘贴脚本代码 → Ctrl+S 保存
+          </li>
+          <li>打开小红书任意<b>笔记页</b>，右下角出现红色「采集到 exam2pdf」按钮</li>
+          <li>点按钮 → 按钮上显示采集进度 → <b>PDF 自动下载</b>，切到「② 整理打印」直接打印</li>
+        </ol>
+        <p class="warn">风控提示：低频使用（一天几个帖子），全程手动浏览。图片链接会过期，采集前请刷新笔记页。</p>
+        <p class="warn">
+          ⚠️ 仅供个人学习与研究：采集内容版权归原作者所有，请勿分发或商用；请遵守平台条款，控制采集频率，自行承担使用风险。
+        </p>
+        <div class="bk-row">
+          <button id="copyCode" type="button" class="primary">复制脚本代码</button>
+          <span id="copyMsg" class="status"></span>
+        </div>
+      </div>
+
+      <div class="guide">
+        <h2>流程总览</h2>
+        <ol class="steps">
+          <li><b>① 安装脚本</b>（本页，只需一次）</li>
+          <li><b>小红书找题</b>：笔记页点采集按钮 → PDF 直接下载</li>
+          <li><b>② 整理打印</b>：把 PDF 打印给学生（也可上传本地图片重新整理合成）</li>
+          <li><b>③ 试卷批阅</b>：学生写完后拍照 → 合成 PDF → 按提示词发给 AI 批阅</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="secPrint" hidden>
+      <div class="drop" data-drop>
+        <p class="drop-main">拖拽 图片 / zip 到这里（学生要做的空白试卷）</p>
+        <p class="drop-hint">zip 会自动解压成单页；去掉封面/广告页，按顺序排列</p>
+        <div class="btns">
+          <button class="pickImages" type="button">选择图片</button>
+          <button class="pickFolder" type="button">选择文件夹</button>
+          <button class="pickZip" type="button">选择 zip</button>
+        </div>
+        <input class="inpImages" type="file" multiple accept="image/*" hidden />
+        <input class="inpFolder" type="file" webkitdirectory multiple hidden />
+        <input class="inpZip" type="file" accept=".zip" multiple hidden />
+      </div>
+
+      <div class="listwrap" hidden>
+        <div class="list-head">
+          <h2>试卷页面顺序 <span class="count"></span></h2>
+          <div>
+            <button class="addMore ghost" type="button">添加图片</button>
+            <button class="clearAll ghost" type="button">清空</button>
+          </div>
+        </div>
+        <p class="hint">拖动缩略图调整顺序，或使用 ↑ ↓ 按钮；<b>点击缩略图放大预览，预览里可直接删除本页、调整前后位置</b></p>
+        <ul class="list"></ul>
+        <div class="gen">
+          <input class="title" type="text" value="试卷" maxlength="50" />
+          <button class="primary generate" type="button">生成 PDF（下载）</button>
+          <button class="printPreview" type="button">直接打印</button>
+        </div>
+        <p class="status"></p>
+      </div>
+    </section>
+
+    <section id="secGrade" hidden>
+      <div class="drop" data-drop>
+        <p class="drop-main">学生写完的试卷<b>拍照 / 扫描件</b>拖到这里</p>
+        <p class="drop-hint">按页码顺序拍摄，光线充足、页面完整，识别效果最好</p>
+        <div class="btns">
+          <button class="pickImages" type="button">选择照片</button>
+          <button class="pickFolder" type="button">选择文件夹</button>
+          <button class="pickZip" type="button">选择 zip</button>
+        </div>
+        <input class="inpImages" type="file" multiple accept="image/*" hidden />
+        <input class="inpFolder" type="file" webkitdirectory multiple hidden />
+        <input class="inpZip" type="file" accept=".zip" multiple hidden />
+      </div>
+
+      <div class="listwrap" hidden>
+        <div class="list-head">
+          <h2>作答试卷页码顺序 <span class="count"></span></h2>
+          <div>
+            <button class="addMore ghost" type="button">添加图片</button>
+            <button class="clearAll ghost" type="button">清空</button>
+          </div>
+        </div>
+        <p class="hint">拖动缩略图调整顺序，或使用 ↑ ↓ 按钮；<b>点击缩略图放大预览，预览里可直接删除本页、调整前后位置</b></p>
+        <ul class="list"></ul>
+        <div class="gen">
+          <input class="title" type="text" value="作答试卷" maxlength="50" />
+          <button class="primary generate" type="button">生成 PDF（下载）</button>
+          <button class="printPreview" type="button">直接打印</button>
+        </div>
+        <p class="status"></p>
+      </div>
+
+      <section class="prompt">
+        <div class="list-head">
+          <h2>AI 批阅提示词</h2>
+          <button id="copyPrompt" type="button" class="ghost">复制</button>
+        </div>
+        <p class="hint">
+          生成 PDF 后：① 复制以下提示词 → ② 把 PDF 发给任一 AI → ③ 粘贴提示词发送，即可按固定格式批阅
+        </p>
+        <div class="ai-links">
+          <a href="https://chat.deepseek.com" target="_blank" rel="noreferrer">DeepSeek</a>
+          <a href="https://chatglm.cn" target="_blank" rel="noreferrer">智谱清言</a>
+          <a href="https://tongyi.aliyun.com" target="_blank" rel="noreferrer">通义千问</a>
+          <a href="https://kimi.moonshot.cn" target="_blank" rel="noreferrer">Kimi</a>
+          <a href="https://www.doubao.com" target="_blank" rel="noreferrer">豆包</a>
+        </div>
+        <textarea id="promptText" rows="12" spellcheck="false"></textarea>
+      </section>
+    </section>
+  </main>
+
+  <div id="lightbox" hidden>
+    <div class="lb-bar">
+      <span id="lightboxTitle"></span>
+      <span id="lightboxPos" class="count"></span>
+      <button id="lbPrev" type="button">← 上一张</button>
+      <button id="lbNext" type="button">下一张 →</button>
+      <button id="lbLeft" type="button">⇤ 前移一位</button>
+      <button id="lbRight" type="button">后移一位 ⇥</button>
+      <button id="lbDel" type="button" class="danger">删除本页</button>
+      <button id="lbClose" type="button">关闭 (Esc)</button>
+    </div>
+    <img id="lightboxImg" alt="" />
+  </div>
+
+  <script type="text/plain" id="userscriptSource">
+// ==UserScript==
+// @name         exam2pdf 采集助手（小红书 → 帖子池）
+// @namespace    exam2pdf
+// @version      3.1.0
+// @description  在小红书笔记详情页采集图片并写入 exam2pdf 本地帖子池。
+// @match        https://www.xiaohongshu.com/*
+// @match        https://xiaohongshu.com/*
+// @grant        GM_xmlhttpRequest
+// @grant        GM.xmlHttpRequest
+// @run-at       document-idle
+// ==/UserScript==
+
+(function () {
+  if (window.top !== window.self) return;
+
+  function toast(msg, ok) {
+    var old = document.getElementById("e2p-toast");
+    if (old) old.remove();
+    var t = document.createElement("div");
+    t.id = "e2p-toast";
+    t.textContent = msg;
+    t.style.cssText =
+      "position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:2147483647;" +
+      "background:" + (ok ? "#00b42a" : "#f53f3f") + ";color:#fff;font-size:14px;" +
+      "padding:10px 20px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);" +
+      "font-family:system-ui,sans-serif;max-width:80vw;white-space:pre-line";
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 3500);
+  }
+
+  function extract() {
+    var route = location.pathname.match(/^\/(?:explore|discovery\/item|search_result|search-result)\/([a-zA-Z0-9_-]{1,128})(?:\/|$)/);
+    if (!route) return null;
+    var noteId = route[1];
+    try {
+      var s = window.__INITIAL_STATE__;
+      var m = s && s.note && s.note.noteDetailMap;
+      var entry = m && m[noteId];
+      var n = entry && (entry.note || entry);
+      if (n && n.imageList && n.imageList.length) {
+        var urls = n.imageList
+          .map(function (img) {
+            var u = img.urlDefault || "";
+            if (img.infoList && img.infoList.length) {
+              var best = img.infoList.reduce(function (a, b) {
+                return (b.width || 0) > (a.width || 0) ? b : a;
+              }, {});
+              if (best && best.url) u = best.url;
+            }
+            return u;
+          })
+          .slice(0, 24);
+        if (urls.length) {
+          var user = n.user || n.userInfo || {};
+          var title = String(n.title || n.desc || noteId).trim().slice(0, 100) || noteId;
+          var author = String(user.nickname || user.nickName || user.name || "").trim().slice(0, 80);
+          if (!author) {
+            var authorEl = document.querySelector(".author-wrapper .username, .author-info .username, .note-header .username, a[href^='/user/profile']");
+            author = authorEl ? authorEl.textContent.trim().slice(0, 80) : "";
+          }
+          return { title: title, author: author, urls: urls, noteId: noteId, sourceUrl: location.href };
+        }
+      }
+    } catch (e) {}
+    var seen = {}, urls = [];
+    var container = document.querySelector(".media-container")
+      || document.querySelector(".swiper-wrapper")
+      || document.querySelector("#noteContainer")
+      || document.querySelector(".note-detail")
+      || document;
+    var imgs = container.querySelectorAll('img[src*="sns-webpic"], img[data-src*="sns-webpic"]');
+    for (var j = 0; j < imgs.length && urls.length < 24; j++) {
+      var im = imgs[j];
+      if (im.closest && im.closest(".swiper-slide-duplicate")) continue;
+      if (im.naturalWidth && im.naturalWidth < 300) continue;
+      var u = im.getAttribute("src") || im.getAttribute("data-src") || "";
+      u = u.replace("!nd_prv", "!nd_dft");
+      var base = u.split("?")[0];
+      if (u && !seen[base]) {
+        seen[base] = 1;
+        urls.push(u);
+      }
+    }
+    if (urls.length) {
+      var tEl = document.querySelector("#detail-title");
+      var title = ((tEl && tEl.textContent) || document.title.replace(/ - 小红书$/, "") || "小红书笔记").trim().slice(0, 100);
+      var authorEl = document.querySelector(".author-wrapper .username, .author-info .username, .note-header .username, a[href^='/user/profile']");
+      return { title: title, author: authorEl ? authorEl.textContent.trim().slice(0, 80) : "", urls: urls.slice(0, 24), noteId: noteId, sourceUrl: location.href };
+    }
+    return null;
+  }
+
+  function gmBlob(url) {
+    return new Promise(function (resolve, reject) {
+      // 候选顺序：无压缩参数的原始图（画质最好）→ 高清默认变体 → 原样兜底；
+      // 小红书数据源常给协议相对（//host/…）或 http 链接，统一规范化为 https
+      function normalize(u) {
+        if (!u) return "";
+        if (u.indexOf("//") === 0) return "https:" + u;
+        if (u.indexOf("http://") === 0) return "https://" + u.slice(7);
+        return u;
+      }
+      var base = normalize(String(url).split("!")[0]);
+      var candidates = [base, normalize(url.replace("!nd_prv", "!nd_dft")), normalize(url)]
+        .filter(function (item, index, all) { return item && all.indexOf(item) === index; });
+      var lastError = "下载失败";
+      function pageFetch(candidate) {
+        if (typeof fetch !== "function") return Promise.resolve(null);
+        // 与页面里 <img> 相同的网络通道，CDN 允许跨域时最快命中
+        return fetch(candidate, { referrer: location.href, credentials: "omit" }).then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.blob();
+        }).catch(function (error) {
+          if (error && /^HTTP /.test(error.message || "")) lastError = error.message;
+          return null;
+        });
+      }
+      function bridgeFetch(candidate) {
+        var bridge = window.exam2pdfCollector;
+        if (!bridge || typeof bridge.fetchImage !== "function") return Promise.resolve(null);
+        return bridge.fetchImage(candidate).then(function (result) {
+          if (!result || !result.base64) return null;
+          var binary = atob(result.base64);
+          var bytes = new Uint8Array(binary.length);
+          for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return new Blob([bytes], { type: result.mime || "image/jpeg" });
+        }).catch(function (error) {
+          if (error && error.message) lastError = error.message;
+          return null;
+        });
+      }
+      function gmRequest(candidate) {
+        var gm = typeof GM_xmlhttpRequest !== "undefined"
+          ? GM_xmlhttpRequest
+          : (typeof GM !== "undefined" && GM.xmlHttpRequest) ? GM.xmlHttpRequest : null;
+        if (!gm) return Promise.resolve(null);
+        return new Promise(function (done) {
+          gm({
+            method: "GET",
+            url: candidate,
+            responseType: "blob",
+            timeout: 20000,
+            onload: function (r) { done(r.response && r.response.size ? r.response : null); },
+            onerror: function () { done(null); },
+            ontimeout: function () { done(null); }
+          });
+        });
+      }
+      var attempt = function (idx) {
+        if (idx >= candidates.length) { reject(new Error(lastError)); return; }
+        var candidate = candidates[idx];
+        pageFetch(candidate)
+          .then(function (blob) { return blob || bridgeFetch(candidate); })
+          .then(function (blob) { return blob || gmRequest(candidate); })
+          .then(function (blob) {
+            if (blob && blob.size) { resolve(blob); return; }
+            attempt(idx + 1);
+          })
+          .catch(function (error) {
+            if (error && error.message) lastError = error.message;
+            attempt(idx + 1);
+          });
+      };
+      attempt(0);
+    });
+  }
+
+  function jpegSize(u8) {
+    if (!u8 || u8[0] !== 0xff || u8[1] !== 0xd8) return null;
+    let i = 2;
+    while (i + 9 < u8.length) {
+      if (u8[i] !== 0xff) { i++; continue; }
+      const marker = u8[i + 1];
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { h: (u8[i + 5] << 8) | u8[i + 6], w: (u8[i + 7] << 8) | u8[i + 8] };
+      }
+      if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd9)) { i += 2; continue; }
+      i += 2 + ((u8[i + 2] << 8) | u8[i + 3]);
+    }
+    return null;
+  }
+
+  async function ensureJpeg(bytes, mime) {
+    const originalSize = jpegSize(bytes);
+    let bmp;
+    try {
+      const blob = new Blob([bytes], { type: mime || "image/png" });
+      bmp = await createImageBitmap(blob);
+      const maxSide = 3600;
+      const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+      const width = Math.max(1, Math.round(bmp.width * scale));
+      const height = Math.max(1, Math.round(bmp.height * scale));
+      if (originalSize && scale === 1 && bytes.length <= 5 * 1024 * 1024) {
+        const w = bmp.width;
+        const h = bmp.height;
+        if (bmp.close) bmp.close();
+        return { bytes: bytes, w: w, h: h };
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d", { alpha: false }).drawImage(bmp, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.93);
+      const binary = atob(dataUrl.split(",")[1]);
+      const output = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) output[i] = binary.charCodeAt(i);
+      if (bmp.close) bmp.close();
+      canvas.width = 1;
+      canvas.height = 1;
+      return { bytes: output, w: width, h: height };
+    } catch (error) {
+      if (bmp && bmp.close) bmp.close();
+      if (originalSize) return { bytes: bytes, w: originalSize.w, h: originalSize.h };
+      throw error;
+    }
+  }
+
+  function bytesToBase64(bytes) {
+    var binary = "";
+    for (var offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+    }
+    return btoa(binary);
+  }
+
+  async function buildPdf(pages) {
+    const enc = new TextEncoder();
+    const parts = [];
+    let offset = 0;
+    const offs = {};
+    const push = function (x) {
+      const u = typeof x === "string" ? enc.encode(x) : x;
+      parts.push(u);
+      offset += u.length;
+    };
+    const n = pages.length;
+    push("%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n");
+    offs[1] = offset;
+    push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+    offs[2] = offset;
+    const kids = pages.map(function (_, i) { return (3 + i * 3) + " 0 R"; }).join(" ");
+    push("2 0 obj\n<< /Type /Pages /Kids [" + kids + "] /Count " + n + " >>\nendobj\n");
+    pages.forEach(function (p, i) {
+      const pageNo = 3 + i * 3, contentNo = pageNo + 1, imgNo = pageNo + 2;
+      const content = "q\n" + p.w + " 0 0 " + p.h + " 0 0 cm\n/Im0 Do\nQ";
+      const contentU8 = enc.encode(content);
+      offs[pageNo] = offset;
+      push(pageNo + " 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + p.w + " " + p.h + "] /Resources << /XObject << /Im0 " + imgNo + " 0 R >> /ProcSet [/PDF /ImageC] >> /Contents " + contentNo + " 0 R >>\nendobj\n");
+      offs[contentNo] = offset;
+      push(contentNo + " 0 obj\n<< /Length " + contentU8.length + " >>\nstream\n");
+      push(contentU8);
+      push("\nendstream\nendobj\n");
+      offs[imgNo] = offset;
+      push(imgNo + " 0 obj\n<< /Type /XObject /Subtype /Image /Width " + p.w + " /Height " + p.h + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + p.bytes.length + " >>\nstream\n");
+      push(p.bytes);
+      push("\nendstream\nendobj\n");
+    });
+    const xrefStart = offset;
+    let xref = "xref\n0 " + (3 + n * 3) + "\n0000000000 65535 f \n";
+    for (let o = 1; o < 3 + n * 3; o++) xref += String(offs[o]).padStart(10, "0") + " 00000 n \n";
+    push(xref);
+    push("trailer\n<< /Size " + (3 + n * 3) + " /Root 1 0 R >>\nstartxref\n" + xrefStart + "\n%%EOF\n");
+    return new Blob(parts, { type: "application/pdf" });
+  }
+
+  function download(blob, name) {
+    var objUrl = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = objUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(objUrl); }, 10000);
+  }
+
+  var busy = false;
+
+  function failureSummary(reasons) {
+    return Object.keys(reasons).map(function (key) { return key + "×" + reasons[key]; }).join("、");
+  }
+
+  async function collect(btn) {
+    if (busy) return;
+    var d = extract();
+    if (!d) {
+      toast("未找到帖子图片：请打开笔记详情页（能左右滑动看图）后重试", false);
+      return;
+    }
+    busy = true;
+    btn.disabled = true;
+    btn.style.opacity = "0.6";
+    var orig = btn.textContent;
+    var setBtn = function (t) { btn.textContent = t; };
+
+    try {
+      var pages = [], failed = 0, failReasons = {};
+      var N = d.urls.length;
+      for (var i = 0; i < N; i++) {
+        setBtn("开始采集 " + (i + 1) + "/" + N + " 张");
+        var blob = null;
+        if (d.urls[i]) {
+          try {
+            blob = await gmBlob(d.urls[i]);
+          } catch (downloadError) {
+            var reason = (downloadError && downloadError.message) || "下载失败";
+            failReasons[reason] = (failReasons[reason] || 0) + 1;
+          }
+        }
+        if (blob) {
+          try {
+            var bytes = new Uint8Array(await blob.arrayBuffer());
+            var page = await ensureJpeg(bytes, blob.type);
+            page.sourceIndex = i;
+            pages.push(page);
+          } catch (e) {
+            failed++;
+            failReasons["图片转码失败"] = (failReasons["图片转码失败"] || 0) + 1;
+          }
+        } else failed++;
+      }
+      if (!pages.length) {
+        var summary = failureSummary(failReasons);
+        toast("采集失败：" + failed + " 张全部下载失败" + (summary ? "（" + summary + "）" : "") + "。图片链接会过期，请刷新笔记页后重新点击", false);
+      } else {
+        var bridge = window.exam2pdfCollector;
+        if (bridge && typeof bridge.collectPost === "function") {
+          var totalBytes = pages.reduce(function (sum, page) { return sum + page.bytes.length; }, 0);
+          if (totalBytes > 80 * 1024 * 1024) throw new Error("图片总大小超过 80 MB，请减少图片后重试");
+          setBtn("保存到帖子池…");
+          var result = await bridge.collectPost({
+            title: d.title,
+            author: d.author,
+            noteId: d.noteId,
+            sourceUrl: d.sourceUrl,
+            expectedImages: N,
+            images: pages.map(function (page) {
+              return { sourceIndex: page.sourceIndex, mime: "image/jpeg", base64: bytesToBase64(page.bytes), width: page.w, height: page.h };
+            })
+          });
+          if (result && result.duplicate) {
+            if (result.added > 0) toast("已补采 " + result.added + " 张，这篇笔记共 " + result.post.pages + "/" + result.post.expectedImages + " 张" + (result.post.missingImages ? "，还缺 " + result.post.missingImages + " 张，可重试" : "，已完整"), !result.post.missingImages);
+            else if (result.updated > 0) toast("已更新 " + result.updated + " 张图片的清晰度", true);
+            else toast("这篇笔记已在帖子池中，共 " + result.post.pages + " 张", true);
+          } else {
+            var partialSummary = failureSummary(failReasons);
+            toast("✓ 已采集「" + d.title + "」" + pages.length + "/" + N + " 张，已保存到帖子池" + (failed ? "\n另有 " + failed + " 张未能下载" + (partialSummary ? "（" + partialSummary + "）" : "") : ""), failed === 0);
+          }
+        } else {
+          setBtn("生成 PDF…");
+          var pdf = await buildPdf(pages);
+          download(pdf, d.title + ".pdf");
+          toast("✓ 已采集「" + d.title + "」" + pages.length + "/" + N + " 张\nPDF 已开始下载", failed === 0);
+        }
+      }
+    } catch (e) {
+      toast("采集失败：" + (e && e.message ? e.message : "未知错误"), false);
+    }
+    busy = false;
+    btn.disabled = false;
+    btn.style.opacity = "";
+    btn.textContent = orig;
+  }
+
+  function createCollectButton() {
+    var b = document.createElement("button");
+    b.id = "e2p-btn";
+    b.textContent = "采集到 exam2pdf";
+    b.style.cssText =
+      "position:fixed;right:24px;bottom:24px;z-index:2147483647;background:#ff2442;color:#fff;" +
+      "border:none;border-radius:24px;padding:11px 20px;font-size:14px;cursor:pointer;" +
+      "box-shadow:0 4px 14px rgba(0,0,0,.25);font-family:system-ui,sans-serif";
+    b.onclick = function () { return collect(b); };
+    document.body.appendChild(b);
+  }
+
+  // 永久看门狗：SPA 跳转或页面重渲染移除注入 UI 后自动补回
+  setInterval(function () {
+    if (!document.body) return;
+    if (!document.getElementById("e2p-btn")) createCollectButton();
+  }, 800);
+})();
+
+  </script>
+
+  <script>
+(function (global) {
+  "use strict";
+
+  function jpegSize(u8) {
+    if (!u8 || u8[0] !== 0xff || u8[1] !== 0xd8) return null;
+    let i = 2;
+    while (i + 9 < u8.length) {
+      if (u8[i] !== 0xff) { i++; continue; }
+      const marker = u8[i + 1];
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { h: (u8[i + 5] << 8) | u8[i + 6], w: (u8[i + 7] << 8) | u8[i + 8] };
+      }
+      if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd9)) { i += 2; continue; }
+      i += 2 + ((u8[i + 2] << 8) | u8[i + 3]);
+    }
+    return null;
+  }
+
+  async function ensureJpeg(bytes, mime) {
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+      const size = jpegSize(bytes);
+      if (size) return { bytes, w: size.w, h: size.h };
+    }
+    const blob = new Blob([bytes], { type: mime || "image/png" });
+    const bmp = await createImageBitmap(blob);
+    const cv = document.createElement("canvas");
+    cv.width = bmp.width;
+    cv.height = bmp.height;
+    cv.getContext("2d").drawImage(bmp, 0, 0);
+    const dataUrl = cv.toDataURL("image/jpeg", 0.95);
+    const bin = atob(dataUrl.split(",")[1]);
+    const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const w = bmp.width, h = bmp.height;
+    if (bmp.close) bmp.close();
+    return { bytes: u8, w, h };
+  }
+
+  async function build(pages) {
+    const enc = new TextEncoder();
+    const parts = [];
+    let offset = 0;
+    const offs = {};
+    const push = function (x) {
+      const u = typeof x === "string" ? enc.encode(x) : x;
+      parts.push(u);
+      offset += u.length;
+    };
+    const n = pages.length;
+    push("%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n");
+    offs[1] = offset;
+    push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+    offs[2] = offset;
+    const kids = pages.map(function (_, i) { return (3 + i * 3) + " 0 R"; }).join(" ");
+    push("2 0 obj\n<< /Type /Pages /Kids [" + kids + "] /Count " + n + " >>\nendobj\n");
+    pages.forEach(function (p, i) {
+      const pageNo = 3 + i * 3, contentNo = pageNo + 1, imgNo = pageNo + 2;
+      const content = "q\n" + p.w + " 0 0 " + p.h + " 0 0 cm\n/Im0 Do\nQ";
+      const contentU8 = enc.encode(content);
+      offs[pageNo] = offset;
+      push(pageNo + " 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + p.w + " " + p.h + "] /Resources << /XObject << /Im0 " + imgNo + " 0 R >> /ProcSet [/PDF /ImageC] >> /Contents " + contentNo + " 0 R >>\nendobj\n");
+      offs[contentNo] = offset;
+      push(contentNo + " 0 obj\n<< /Length " + contentU8.length + " >>\nstream\n");
+      push(contentU8);
+      push("\nendstream\nendobj\n");
+      offs[imgNo] = offset;
+      push(imgNo + " 0 obj\n<< /Type /XObject /Subtype /Image /Width " + p.w + " /Height " + p.h + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + p.bytes.length + " >>\nstream\n");
+      push(p.bytes);
+      push("\nendstream\nendobj\n");
+    });
+    const xrefStart = offset;
+    let xref = "xref\n0 " + (3 + n * 3) + "\n0000000000 65535 f \n";
+    for (let o = 1; o < 3 + n * 3; o++) xref += String(offs[o]).padStart(10, "0") + " 00000 n \n";
+    push(xref);
+    push("trailer\n<< /Size " + (3 + n * 3) + " /Root 1 0 R >>\nstartxref\n" + xrefStart + "\n%%EOF\n");
+    return new Blob(parts, { type: "application/pdf" });
+  }
+
+  global.MiniPDF = { build, ensureJpeg, jpegSize };
+})(typeof window !== "undefined" ? window : this);
+
+</script>
+  <script>
+const IMAGE_RE = /\.(jpe?g|png|webp|bmp|gif|tiff?|heic|heif)$/i;
+const ZIP_RE = /\.zip$/i;
+
+const $ = (id) => document.getElementById(id);
+
+const DEFAULT_PROMPT = `你是一位经验丰富的老师。我会发给你一份学生作答后的试卷（PDF 或图片），请逐题批阅，全部使用中文，并严格按以下固定格式输出：
+
+## 第 N 题
+- 学生作答：（转写学生的答案或解题过程；空白未答写"未作答"）
+- 批阅结果：正确 / 部分正确 / 错误 / 未作答
+- 错因分析：（错在哪一步、属于什么类型的错误：概念不清 / 计算失误 / 审题偏差 / 方法不会等）
+- 正确解法：（分步骤写清完整过程，不要跳步）
+- 知识点：（本题考查的知识点）
+
+要求：
+1. 按试卷顺序逐题输出，不要遗漏任何一题。
+2. 图片不清晰或无法识别的题，写"第 N 题：无法识别"，不要编造。
+3. 全部题目结束后，输出：
+
+## 总结
+- 得分情况概述（正确 X 题、部分正确 Y 题、错误 Z 题、未作答 W 题）
+- 主要失分原因归类
+- 薄弱知识点清单
+- 针对性学习建议（3 条以内）`;
+
+$("promptText").value = DEFAULT_PROMPT;
+
+$("copyPrompt").addEventListener("click", async () => {
+  await copyText($("promptText").value);
+  const btn = $("copyPrompt");
+  btn.textContent = "已复制";
+  setTimeout(() => (btn.textContent = "复制"), 1200);
+});
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext !== false) {
+    try { await navigator.clipboard.writeText(text); return; } catch (e) {}
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.cssText = "position:fixed;opacity:0";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  ta.remove();
+}
+
+const tabs = { install: $("tabInstall"), print: $("tabPrint"), grade: $("tabGrade") };
+const secs = { install: $("secInstall"), print: $("secPrint"), grade: $("secGrade") };
+
+function switchTab(name) {
+  for (const k of Object.keys(tabs)) {
+    tabs[k].classList.toggle("active", k === name);
+    secs[k].hidden = k !== name;
+  }
+}
+tabs.install.addEventListener("click", () => switchTab("install"));
+tabs.print.addEventListener("click", () => switchTab("print"));
+tabs.grade.addEventListener("click", () => switchTab("grade"));
+
+function pageToast(msg, ok = true) {
+  const t = document.createElement("div");
+  t.textContent = msg;
+  t.style.cssText =
+    "position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:99999;" +
+    "background:" + (ok ? "#00b42a" : "#f53f3f") + ";color:#fff;font-size:14px;" +
+    "padding:10px 20px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:pre-line";
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+let uid = 0;
+
+const lightbox = $("lightbox");
+const lbImg = $("lightboxImg");
+let lbCtx = null;
+let lbIndex = 0;
+
+function lbShow() {
+  const item = lbCtx.items[lbIndex];
+  lbImg.src = item.url;
+  $("lightboxTitle").textContent = item.file.name;
+  $("lightboxPos").textContent = `${lbIndex + 1} / ${lbCtx.items.length}`;
+  $("lbLeft").disabled = lbIndex === 0;
+  $("lbRight").disabled = lbIndex === lbCtx.items.length - 1;
+}
+function openLb(ctx, i) {
+  lbCtx = ctx;
+  lbIndex = i;
+  lbShow();
+  lightbox.hidden = false;
+}
+function lbMove(d) {
+  if (!lbCtx || !lbCtx.items.length) return;
+  lbIndex = (lbIndex + d + lbCtx.items.length) % lbCtx.items.length;
+  lbShow();
+}
+$("lbPrev").addEventListener("click", () => lbMove(-1));
+$("lbNext").addEventListener("click", () => lbMove(1));
+$("lbLeft").addEventListener("click", () => {
+  if (lbIndex === 0) return;
+  const items = lbCtx.items;
+  [items[lbIndex - 1], items[lbIndex]] = [items[lbIndex], items[lbIndex - 1]];
+  lbIndex -= 1;
+  renderList(lbCtx);
+  lbShow();
+});
+$("lbRight").addEventListener("click", () => {
+  const items = lbCtx.items;
+  if (lbIndex >= items.length - 1) return;
+  [items[lbIndex + 1], items[lbIndex]] = [items[lbIndex], items[lbIndex + 1]];
+  lbIndex += 1;
+  renderList(lbCtx);
+  lbShow();
+});
+$("lbDel").addEventListener("click", () => {
+  const items = lbCtx.items;
+  URL.revokeObjectURL(items[lbIndex].url);
+  items.splice(lbIndex, 1);
+  if (!items.length) {
+    lightbox.hidden = true;
+    renderList(lbCtx);
+    return;
+  }
+  if (lbIndex >= items.length) lbIndex = items.length - 1;
+  renderList(lbCtx);
+  lbShow();
+});
+$("lbClose").addEventListener("click", () => (lightbox.hidden = true));
+lightbox.addEventListener("click", (e) => {
+  if (e.target === lightbox) lightbox.hidden = true;
+});
+document.addEventListener("keydown", (e) => {
+  if (lightbox.hidden) return;
+  if (e.key === "Escape") lightbox.hidden = true;
+  if (e.key === "ArrowLeft") lbMove(-1);
+  if (e.key === "ArrowRight") lbMove(1);
+  if (e.key === "Backspace" || e.key === "Delete") $("lbDel").click();
+});
+
+function naturalCompare(a, b) {
+  const ra = String(a).split(/(\d+)/);
+  const rb = String(b).split(/(\d+)/);
+  for (let i = 0; i < Math.max(ra.length, rb.length); i++) {
+    const x = ra[i], y = rb[i];
+    if (x === undefined) return -1;
+    if (y === undefined) return 1;
+    const nx = Number(x), ny = Number(y);
+    if (!isNaN(nx) && !isNaN(ny) && x !== "" && y !== "") {
+      if (nx !== ny) return nx - ny;
+    } else if (x !== y) {
+      return x < y ? -1 : 1;
+    }
+  }
+  return 0;
+}
+
+async function unzipBytes(u8) {
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= 0; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("不是有效的 zip 文件");
+  const count = dv.getUint16(eocd + 10, true);
+  let ptr = dv.getUint32(eocd + 16, true);
+  const out = [];
+  for (let k = 0; k < count; k++) {
+    if (ptr + 46 > u8.length || dv.getUint32(ptr, true) !== 0x02014b50) break;
+    const method = dv.getUint16(ptr + 10, true);
+    const compSize = dv.getUint32(ptr + 20, true);
+    const nameLen = dv.getUint16(ptr + 28, true);
+    const extraLen = dv.getUint16(ptr + 30, true);
+    const commentLen = dv.getUint16(ptr + 32, true);
+    const localOff = dv.getUint32(ptr + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(ptr + 46, ptr + 46 + nameLen));
+    ptr += 46 + nameLen + extraLen + commentLen;
+    const parts = name.split("/");
+    if (parts.some((p) => p.startsWith(".")) || name.includes("__MACOSX")) continue;
+    if (!IMAGE_RE.test(name)) continue;
+    if (localOff + 30 > u8.length || dv.getUint32(localOff, true) !== 0x04034b50) continue;
+    const lNameLen = dv.getUint16(localOff + 26, true);
+    const lExtraLen = dv.getUint16(localOff + 28, true);
+    const dataStart = localOff + 30 + lNameLen + lExtraLen;
+    const comp = u8.subarray(dataStart, dataStart + compSize);
+    let data;
+    if (method === 0) {
+      data = comp;
+    } else if (method === 8) {
+      data = new Uint8Array(
+        await new Response(new Blob([comp]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer()
+      );
+    } else {
+      continue;
+    }
+    out.push([name, data]);
+  }
+  out.sort((a, b) => naturalCompare(a[0], b[0]));
+  return out;
+}
+
+function renderList(ctx) {
+  const { items, ul, countEl, listwrap, zone } = ctx;
+  zone.hidden = items.length > 0;
+  listwrap.hidden = items.length === 0;
+  countEl.textContent = items.length ? `（${items.length} 页）` : "";
+  ul.innerHTML = "";
+  items.forEach((item, i) => {
+    const li = document.createElement("li");
+    li.className = "item";
+    li.draggable = true;
+    li.dataset.id = item.id;
+
+    const media = document.createElement("img");
+    media.src = item.url;
+    media.title = "点击放大预览";
+    media.addEventListener("click", () => openLb(ctx, i));
+    li.appendChild(media);
+
+    const order = document.createElement("span");
+    order.className = "order";
+    order.textContent = i + 1;
+    li.appendChild(order);
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = item.file.name;
+    name.title = item.file.name;
+    li.appendChild(name);
+
+    const ops = document.createElement("div");
+    ops.className = "ops";
+    ops.innerHTML = `<button data-act="up">↑</button><button data-act="down">↓</button><button data-act="del" class="del">删</button>`;
+    li.appendChild(ops);
+
+    li.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", item.id);
+      li.classList.add("dragging");
+    });
+    li.addEventListener("dragend", () => li.classList.remove("dragging"));
+    li.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      li.classList.add("over");
+    });
+    li.addEventListener("dragleave", () => li.classList.remove("over"));
+    li.addEventListener("drop", (e) => {
+      e.preventDefault();
+      li.classList.remove("over");
+      const dragId = Number(e.dataTransfer.getData("text/plain"));
+      const from = items.findIndex((x) => x.id === dragId);
+      const to = items.findIndex((x) => x.id === item.id);
+      if (from < 0 || from === to) return;
+      const [moved] = items.splice(from, 1);
+      items.splice(to, 0, moved);
+      renderList(ctx);
+    });
+
+    ops.addEventListener("click", (e) => {
+      const act = e.target.dataset.act;
+      if (!act) return;
+      if (act === "up" && i > 0) items.splice(i - 1, 0, items.splice(i, 1)[0]);
+      if (act === "down" && i < items.length - 1) items.splice(i + 1, 0, items.splice(i, 1)[0]);
+      if (act === "del") {
+        URL.revokeObjectURL(item.url);
+        items.splice(i, 1);
+      }
+      renderList(ctx);
+    });
+
+    ul.appendChild(li);
+  });
+}
+
+function extFromType(t) {
+  return { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif" }[t] || ".jpg";
+}
+
+async function addZipFile(ctx, f) {
+  setStatus(ctx, `正在解压 ${f.name}…`);
+  try {
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const entries = await unzipBytes(bytes);
+    if (!entries.length) {
+      setStatus(ctx, `${f.name} 里没有图片`, "err");
+      return 0;
+    }
+    let added = 0;
+    const base = f.name.replace(/\.zip$/i, "");
+    for (const [name, data] of entries) {
+      const blob = new Blob([data], { type: "image/*" });
+      const item = { id: uid++, file: new File([blob], name, { type: blob.type }), isZip: false, url: URL.createObjectURL(blob) };
+      const r = await MiniPDF.ensureJpeg(new Uint8Array(await blob.arrayBuffer()), blob.type);
+      item.w = r.w; item.h = r.h;
+      if (ctx.names.has(item.file.name)) continue;
+      ctx.names.add(item.file.name);
+      ctx.items.push(item);
+      added++;
+    }
+    setStatus(ctx, `已从 ${f.name} 解压 ${added} 页`);
+    setTimeout(() => setStatus(ctx, "", ""), 1500);
+    return added;
+  } catch (e) {
+    setStatus(ctx, `zip 解析失败：${e.message}`, "err");
+    return 0;
+  }
+}
+
+async function addFiles(ctx, fileList) {
+  let added = 0;
+  for (const f of fileList) {
+    if (ZIP_RE.test(f.name)) {
+      added += await addZipFile(ctx, f);
+    } else if (IMAGE_RE.test(f.name)) {
+      if (ctx.names.has(f.name)) continue;
+      ctx.names.add(f.name);
+      ctx.items.push({ id: uid++, file: f, isZip: false, url: URL.createObjectURL(f) });
+      added++;
+    }
+  }
+  if (added) renderList(ctx);
+  return added;
+}
+
+function setStatus(ctx, msg, cls) {
+  ctx.statusEl.textContent = msg;
+  ctx.statusEl.className = "status" + (cls ? " " + cls : "");
+}
+
+async function generatePDF(ctx, preview) {
+  if (!ctx.items.length) return;
+  const btn = preview ? ctx.printBtn : ctx.genBtn;
+  btn.disabled = true;
+  setStatus(ctx, preview ? "正在生成打印预览…" : "正在合成 PDF…");
+  let win = null;
+  if (preview) win = window.open("", "_blank");
+  try {
+    const pages = [];
+    for (const it of ctx.items) {
+      const bytes = new Uint8Array(await it.file.arrayBuffer());
+      pages.push(await MiniPDF.ensureJpeg(bytes, it.file.type || ""));
+    }
+    const blob = await MiniPDF.build(pages);
+    const url = URL.createObjectURL(blob);
+    if (preview) {
+      if (win) {
+        win.location.href = url;
+        setStatus(ctx, "预览已在新标签页打开，按 Cmd+P 即可打印", "ok");
+      } else {
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.click();
+        setStatus(ctx, "弹窗被拦截，已改为下载，请允许弹窗后重试", "err");
+      }
+    } else {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = (ctx.titleEl.value || "试卷") + ".pdf";
+      a.click();
+      setStatus(ctx, `完成，共 ${blob.size} 字节，已开始下载`, "ok");
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+    if (win) win.close();
+    setStatus(ctx, `失败：${e.message}`, "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function createList(key) {
+  const section = secs[key];
+  const zone = section.querySelector(".drop");
+  const listwrap = section.querySelector(".listwrap");
+  const ul = section.querySelector(".list");
+  const countEl = section.querySelector(".count");
+  const statusEl = section.querySelector(".status");
+  const titleEl = section.querySelector(".title");
+  const ctx = {
+    key,
+    items: [],
+    names: new Set(),
+    ul,
+    countEl,
+    statusEl,
+    titleEl,
+    listwrap,
+    zone,
+    genBtn: section.querySelector(".generate"),
+    printBtn: section.querySelector(".printPreview"),
+  };
+
+  ["dragenter", "dragover"].forEach((ev) =>
+    zone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      zone.classList.add("over");
+    })
+  );
+  ["dragleave", "drop"].forEach((ev) =>
+    zone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      zone.classList.remove("over");
+    })
+  );
+  zone.addEventListener("drop", (e) => addFiles(ctx, e.dataTransfer.files));
+
+  zone.querySelector(".pickImages").addEventListener("click", () => zone.querySelector(".inpImages").click());
+  zone.querySelector(".pickFolder").addEventListener("click", () => zone.querySelector(".inpFolder").click());
+  zone.querySelector(".pickZip").addEventListener("click", () => zone.querySelector(".inpZip").click());
+  zone.querySelector(".inpImages").addEventListener("change", (e) => addFiles(ctx, e.target.files));
+  zone.querySelector(".inpFolder").addEventListener("change", (e) => addFiles(ctx, e.target.files));
+  zone.querySelector(".inpZip").addEventListener("change", (e) => addFiles(ctx, e.target.files));
+
+  section.querySelector(".clearAll").addEventListener("click", () => {
+    ctx.items.forEach((it) => URL.revokeObjectURL(it.url));
+    ctx.items.length = 0;
+    ctx.names.clear();
+    renderList(ctx);
+  });
+  section.querySelector(".addMore").addEventListener("click", () => zone.querySelector(".inpImages").click());
+
+  ctx.genBtn.addEventListener("click", () => generatePDF(ctx, false));
+  ctx.printBtn.addEventListener("click", () => generatePDF(ctx, true));
+
+  return ctx;
+}
+
+const printList = createList("print");
+const gradeList = createList("grade");
+
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => e.preventDefault());
+
+$("copyCode").addEventListener("click", async () => {
+  await copyText($("userscriptSource").textContent.trim() + "\n");
+  $("copyMsg").textContent = "已复制，去油猴扩展里新建脚本粘贴保存即可";
+  setTimeout(() => ($("copyMsg").textContent = ""), 2500);
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+{
+  "name": "exam2pdf",
+  "version": "0.1.0",
+  "private": true,
+  "description": "家庭试卷工作台 Electron 原型",
+  "main": "electron/main.cjs",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "postinstall": "npm run electron:install",
+    "electron:install": "node node_modules/electron/install.js",
+    "start": "node scripts/start-electron.cjs",
+    "test": "node --test electron/*.test.cjs frontend/*.test.cjs scripts/*.test.cjs",
+    "test:desktop": "node scripts/check-desktop.cjs",
+    "smoke:startup": "node scripts/start-electron.cjs --startup-smoke",
+    "test:store": "node --test electron/post-store.test.cjs",
+    "dist:mac": "node scripts/package-app.cjs mac",
+    "dist:win": "node scripts/package-app.cjs win",
+    "dist:linux": "node scripts/package-app.cjs linux",
+    "test:pdf": "node scripts/check-pdf-import.cjs"
+  },
+  "build": {
+    "appId": "com.exam2pdf.desktop",
+    "productName": "exam2pdf",
+    "asar": true,
+    "files": [
+      "electron/**/*",
+      "docs/原型图.html",
+      "frontend/page-reorder.js",
+      "frontend/exam2pdf.user.js",
+      "scripts/start-electron.cjs",
+      "package.json",
+      "README.md",
+      "LICENSE",
+      "node_modules/katex/dist/katex.min.css",
+      "node_modules/katex/dist/katex.min.js",
+      "node_modules/katex/dist/contrib/auto-render.min.js",
+      "node_modules/katex/dist/fonts/*",
+      "!electron/**/*.test.cjs",
+      "node_modules/pdfjs-dist/build/*.mjs",
+      "node_modules/pdfjs-dist/cmaps/**/*",
+      "node_modules/pdfjs-dist/standard_fonts/**/*",
+      "node_modules/pdfjs-dist/wasm/**/*",
+      "node_modules/pdfjs-dist/iccs/**/*",
+      "node_modules/pdfjs-dist/LICENSE",
+      "!node_modules/@napi-rs/**/*",
+      "THIRD_PARTY_NOTICES.md",
+      "node_modules/katex/LICENSE"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.education"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "exam2pdf"
+    },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Education"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.9.3",
+    "electron-builder": "26.17.0"
+  },
+  "dependencies": {
+    "katex": "^0.19.1",
+    "pdfjs-dist": "6.4.299"
+  },
+  "author": "exam2pdf contributors"
+}

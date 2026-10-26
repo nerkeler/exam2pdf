@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>exam2pdf 搜试卷</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+    body { color: #283142; }
+    #app { position: relative; width: 100%; height: 100%; }
+    #toggle {
+      position: absolute; top: 0; right: 0; width: 100%; height: 100%;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 0 10px; border: 1px solid rgba(255, 36, 66, .22); border-radius: 999px;
+      background: rgba(255, 255, 255, .97); color: #ff2442;
+      box-shadow: 0 2px 6px rgba(28, 34, 45, .1);
+      font: 600 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      letter-spacing: .2px; white-space: nowrap; cursor: pointer;
+      transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    #toggle svg { width: 13px; height: 13px; flex: 0 0 auto; }
+    #toggle:hover { background: #fff6f7; border-color: rgba(255, 36, 66, .4); box-shadow: 0 3px 10px rgba(255, 36, 66, .16); }
+    #toggle:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid #ff2442; outline-offset: 2px; }
+    #app.open #toggle { width: var(--button-width); height: var(--button-height); }
+    #panel {
+      position: absolute; top: calc(var(--button-height) + 8px); right: 0;
+      width: 100%; max-height: calc(100% - var(--button-height) - 8px); overflow: auto;
+      padding: 14px; border: 1px solid #e7eaf0; border-radius: 14px;
+      background: #fff; box-shadow: 0 10px 36px rgba(20, 29, 45, .2);
+    }
+    #panel[hidden] { display: none; }
+    #panel:not([hidden]) { animation: panel-in .2s cubic-bezier(.22, 1, .36, 1) backwards; }
+    @keyframes panel-in {
+      from { opacity: 0; transform: translateY(-6px) scale(.99); }
+      to { opacity: 1; transform: none; }
+    }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .panel-head strong { font-size: 14px; }
+    .quiet { padding: 2px 0; border: 0; background: transparent; color: #738096; font-size: 12px; cursor: pointer; }
+    .group { margin: 0 0 10px; }
+    .group-label, .field-label { display: block; margin: 0 0 6px; color: #738096; font-size: 12px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { padding: 5px 10px; border: 1px solid #e5e8ef; border-radius: 15px; background: #fff; color: #374151; font-size: 12px; cursor: pointer; transition: border-color .15s, background-color .15s, color .15s, transform .12s; }
+    .chip:hover { border-color: #f4b9c2; }
+    .chip:active { transform: scale(.96); }
+    .chip.active { border-color: #ff2442; background: #ff2442; color: #fff; }
+    .field { width: 100%; margin-bottom: 10px; padding: 8px 10px; border: 1px solid #dfe3eb; border-radius: 8px; color: #283142; font: inherit; font-size: 13px; line-height: 1.4; }
+    .field.query { border-color: #ffd3d9; font-weight: 600; }
+    .actions { display: flex; gap: 8px; }
+    .action { min-height: 36px; padding: 8px 12px; border: 1px solid #e3e6ed; border-radius: 9px; background: #fff; color: #354052; font-size: 13px; cursor: pointer; transition: border-color .15s, background-color .15s, transform .12s; }
+    .action:hover { border-color: #cfd6e2; background: #fafbfc; }
+    .action:active { transform: scale(.98); }
+    .action.primary { flex: 1; border-color: #ff2442; background: #ff2442; color: #fff; font-weight: 700; }
+    .hint { margin: 9px 0 0; color: #98a1af; font-size: 11px; line-height: 1.5; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <button id="toggle" type="button" aria-expanded="false">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="7" cy="7" r="4.6"></circle>
+        <path d="M10.6 10.6 14 14"></path>
+      </svg>
+      <span>搜试卷</span>
+    </button>
+    <section id="panel" aria-label="搜试卷 · 站内搜索" hidden>
+      <div class="panel-head"><strong>搜试卷 · 站内搜索</strong><button class="quiet" id="close" type="button">收起 ▴</button></div>
+      <div id="groups"></div>
+      <label class="field-label" for="unit">单元（可选）</label>
+      <input class="field" id="unit" placeholder="如：第11章 平面直角坐标系">
+      <label class="field-label" for="query">搜索词（可微调）</label>
+      <input class="field query" id="query" autocomplete="off">
+      <div class="actions"><button class="action primary" id="search" type="button">🔍 去搜索</button><button class="action" id="copy" type="button">复制</button></div>
+      <p class="hint">搜索后打开笔记详情页，再点右下角采集按钮入库。</p>
+    </section>
+  </div>
+  <script>
+    (() => {
+      const options = [
+        ["年级", ["一年级", "二年级", "三年级", "四年级", "五年级", "六年级", "七年级", "八年级", "九年级", "高一", "高二", "高三"], "grade"],
+        ["学科", ["语文", "数学", "英语", "物理", "化学", "生物", "历史", "地理", "政治", "科学"], "subject"],
+        ["版本", ["人教版", "部编版", "北师大版", "沪科版", "苏教版", "浙教版", "冀教版", "外研版", "译林版", "粤教版"], "version"],
+        ["类型", ["期中", "期末", "月考", "单元测试", "开学考", "专题"], "paperType"]
+      ];
+      const defaults = { grade: "", subject: "", version: "", paperType: "", unit: "" };
+      const root = document.getElementById("app");
+      const toggle = document.getElementById("toggle");
+      const panel = document.getElementById("panel");
+      const query = document.getElementById("query");
+      const unit = document.getElementById("unit");
+      let layout = { open: false, buttonHeight: 32, buttonWidth: 80, panelWidth: 350, panelHeight: 420 };
+      let searchQueryLocked = false;
+      let selected = Object.assign({}, defaults);
+      try { selected = Object.assign(selected, JSON.parse(localStorage.getItem("e2p-search-sel") || "{}")); } catch {}
+
+      function buildQuery() {
+        return [selected.grade, selected.subject, selected.version, selected.paperType, selected.unit]
+          .map((value) => String(value || "").trim()).filter(Boolean).join(" ");
+      }
+      function save() {
+        try { localStorage.setItem("e2p-search-sel", JSON.stringify(selected)); } catch {}
+      }
+      function refresh() {
+        root.querySelectorAll("[data-key]").forEach((button) => {
+          const active = selected[button.dataset.key] === button.dataset.value;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+        unit.value = selected.unit || "";
+        if (!searchQueryLocked) query.value = buildQuery();
+      }
+      function updateLayout(next) {
+        layout = Object.assign(layout, next || {});
+        root.classList.toggle("open", Boolean(layout.open));
+        toggle.setAttribute("aria-expanded", String(Boolean(layout.open)));
+        panel.hidden = !layout.open;
+        document.documentElement.style.setProperty("--button-height", Math.max(1, Number(layout.buttonHeight) || 32) + "px");
+        document.documentElement.style.setProperty("--button-width", Math.max(1, Number(layout.buttonWidth) || 80) + "px");
+        panel.style.height = Math.max(120, Number(layout.panelHeight) || 420) + "px";
+      }
+      function togglePanel() { window.exam2pdfXhsOverlay.togglePanel(); }
+
+      for (const [labelText, values, key] of options) {
+        const group = document.createElement("div");
+        group.className = "group";
+        const label = document.createElement("span");
+        label.className = "group-label";
+        label.textContent = labelText;
+        const chips = document.createElement("div");
+        chips.className = "chips";
+        for (const value of values) {
+          const chip = document.createElement("button");
+          chip.className = "chip";
+          chip.type = "button";
+          chip.dataset.key = key;
+          chip.dataset.value = value;
+          chip.textContent = value;
+          chip.addEventListener("click", () => {
+            selected[key] = selected[key] === value ? "" : value;
+            searchQueryLocked = false;
+            save();
+            refresh();
+          });
+          chips.appendChild(chip);
+        }
+        group.append(label, chips);
+        document.getElementById("groups").appendChild(group);
+      }
+      toggle.addEventListener("click", togglePanel);
+      document.getElementById("close").addEventListener("click", togglePanel);
+      document.getElementById("search").addEventListener("click", () => {
+        const value = query.value.trim();
+        if (!value) { query.focus(); return; }
+        selected.unit = unit.value.trim();
+        save();
+        window.exam2pdfXhsOverlay.search(value);
+      });
+      unit.addEventListener("input", () => {
+        selected.unit = unit.value.trim();
+        save();
+        if (!searchQueryLocked) query.value = buildQuery();
+      });
+      query.addEventListener("input", () => {
+        searchQueryLocked = query.value.trim() !== buildQuery();
+        selected.unit = unit.value.trim();
+        save();
+      });
+      query.addEventListener("keydown", (event) => { if (event.key === "Enter") document.getElementById("search").click(); });
+      document.getElementById("copy").addEventListener("click", async () => {
+        const value = query.value.trim();
+        if (!value) { query.focus(); return; }
+        try { await navigator.clipboard.writeText(value); }
+        catch { query.focus(); query.select(); document.execCommand("copy"); }
+      });
+      root.addEventListener("click", (event) => {
+        if (layout.open && event.target === root) togglePanel();
+      });
+      window.exam2pdfXhsOverlay.onLayout(updateLayout);
+      refresh();
+    })();
+  </script>
+</body>
+</html>
