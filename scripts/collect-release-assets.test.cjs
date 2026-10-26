@@ -41,3 +41,13 @@ test('release collector rejects missing platforms and tampered updater checksums
   fs.appendFileSync(path.join(two.source, 'win', 'exam2pdf-0.1.1-preview.1-win-x64.exe'), 'tampered');
   assert.throws(() => collect(two.source, two.target, 'v0.1.1-preview.1'), /checksum mismatch/);
 });
+
+test('release collector accepts GitHub builder latest manifests for prerelease app versions', t => {
+  const { source, target } = fixture(t);
+  for (const dir of fs.readdirSync(source)) {
+    const full = path.join(source, dir);
+    for (const name of fs.readdirSync(full)) if (name.startsWith('preview')) fs.renameSync(path.join(full, name), path.join(full, name.replace('preview', 'latest')));
+  }
+  collect(source, target, 'v0.1.1-preview.1');
+  assert.equal(yaml.load(fs.readFileSync(path.join(target, 'latest-mac.yml'), 'utf8')).files.length, 4);
+});

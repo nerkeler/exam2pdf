@@ -34,7 +34,8 @@ function collect(source, target, tag) {
   const required = ['-mac-arm64.dmg', '-mac-arm64.zip', '-mac-x64.dmg', '-mac-x64.zip', '-win-x64.exe', '-linux-x86_64.AppImage', '-linux-amd64.deb'].map(s => base + s);
   for (const file of required) if (!fs.existsSync(path.join(target, file))) throw new Error('Missing installer: ' + file);
   if ([...names].filter(n => !n.endsWith('.blockmap')).length !== required.length) throw new Error('Unexpected installer set');
-  const channel = version.includes('-') ? version.split('-')[1].split('.')[0] : 'latest';
+  // GitHub builds use latest metadata even for prereleases; preserve the builder's channel.
+  const channel = metadata.has('latest.yml') ? 'latest' : (version.includes('-') ? version.split('-')[1].split('.')[0] : 'latest');
   for (const name of [channel + '.yml', channel + '-mac.yml', channel + '-linux.yml']) if (!metadata.has(name)) throw new Error('Missing update metadata: ' + name);
   for (const [name, info] of metadata) {
     const urls = new Set();
