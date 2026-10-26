@@ -1,6 +1,6 @@
 # GitHub 公开仓库与提交检查
 
-更新日期：2026-10-26。已创建公开仓库 [nerkeler/exam2pdf](https://github.com/nerkeler/exam2pdf)，首次提交 `c49d46d` 已推送到 `main`。多平台构建工作流已手动触发，具体结果见[打包说明](打包说明.md)。源码公开与安装包构建、签名、目标平台安装验收是独立事项。
+更新日期：2026-10-26。已创建公开仓库 [nerkeler/exam2pdf](https://github.com/nerkeler/exam2pdf)，首次提交 `c49d46d` 已推送到 `main`。四平台 CI、原生构建和随包 PDF 验证均已通过，[测试预览版 v0.1.0-preview.1](https://github.com/nerkeler/exam2pdf/releases/tag/v0.1.0-preview.1) 已公开发布（非草稿），具体产物与验收范围见[打包说明](打包说明.md)。源码公开与安装包构建、签名、目标平台安装验收是独立事项。
 
 ## 提交内容
 
