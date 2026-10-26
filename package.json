@@ -1,6 +1,6 @@
 {
   "name": "exam2pdf",
-  "version": "0.1.0",
+  "version": "0.1.1-preview.1",
   "private": true,
   "description": "家庭试卷工作台 Electron 原型",
   "main": "electron/main.cjs",
@@ -37,6 +37,7 @@
       "node_modules/katex/dist/katex.min.js",
       "node_modules/katex/dist/contrib/auto-render.min.js",
       "node_modules/katex/dist/fonts/*",
+      "build/icon.png",
       "!electron/**/*.test.cjs",
       "node_modules/pdfjs-dist/build/*.mjs",
       "node_modules/pdfjs-dist/cmaps/**/*",
@@ -79,13 +80,20 @@
       ],
       "category": "Education",
       "maintainer": "exam2pdf contributors <nerkeler@users.noreply.github.com>"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "nerkeler",
+      "repo": "exam2pdf"
     }
   },
   "devDependencies": {
     "electron": "^44.9.3",
-    "electron-builder": "26.17.0"
+    "electron-builder": "26.17.0",
+    "js-yaml": "4.3.2"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "katex": "^0.19.1",
     "pdfjs-dist": "6.4.299"
   },

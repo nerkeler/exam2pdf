@@ -1,4 +1,4 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, session, shell, protocol, dialog, safeStorage } = require("electron");
+const { app, BrowserWindow, WebContentsView, ipcMain, session, shell, protocol, dialog, safeStorage, Menu } = require("electron");
 const fsSync = require("node:fs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -32,6 +32,18 @@ const {
 } = require("./xhs-search.cjs");
 
 const startupSmoke = process.env.EXAM2PDF_STARTUP_SMOKE === "1";
+// 诊断错误日志：内存环形 + 落盘（userData/logs/error.log），供"导出诊断信息"使用
+const errorLogLines = [];
+function pushErrorLog(line) {
+  const stamped = new Date().toISOString() + " " + String(line).slice(0, 500);
+  errorLogLines.push(stamped);
+  if (errorLogLines.length > 200) errorLogLines.shift();
+  try {
+    const logDir = path.join(app.getPath("userData"), "logs");
+    fsSync.mkdirSync(logDir, { recursive: true });
+    fsSync.appendFileSync(path.join(logDir, "error.log"), stamped + "\n");
+  } catch (e) {}
+}
 if (startupSmoke) {
   const smokeDataPath = process.env.EXAM2PDF_STARTUP_SMOKE_DATA;
   if (!smokeDataPath || !path.isAbsolute(smokeDataPath)) throw new Error("A temporary absolute user-data path is required for startup smoke mode");
@@ -165,11 +177,13 @@ function applyXhsSearchOverlayBounds() {
   let panelHeight = Math.max(1, Math.min(500, base.height - position.top - buttonHeight - 24));
 
   if (xhsSearchPanelOpen) {
+    // 面板在按钮下方展开；视图右缘对齐按钮右缘、面板向左延伸——按钮贴近视口右缘时面板仍完整在屏内
+    const downwardRoom = Math.max(160, Math.round(base.height - position.top - 16));
+    panelHeight = Math.min(panelHeight, downwardRoom - buttonHeight - 8);
     const left = Math.max(8, Math.min(position.left + buttonWidth - panelWidth, base.width - panelWidth - 8));
-    const top = Math.max(8, Math.min(position.top, base.height - buttonHeight - panelHeight - 16));
     overlayBounds = {
       x: Math.round(base.x + left),
-      y: Math.round(base.y + top),
+      y: Math.round(base.y + position.top),
       width: Math.round(panelWidth),
       height: Math.round(buttonHeight + 8 + panelHeight)
     };
@@ -252,8 +266,21 @@ async function measureXhsSearchPosition(options = {}) {
         if (!/search|input-box|textarea-container|wrapper/i.test(String(ancestor.className || ""))) continue;
         row = rect;
       }
+      // 搜索放大镜按钮：输入框右侧最近的可见按钮（小红书把搜索图标放在输入框右端）
+      let iconEl = null;
+      let iconRect = null;
+      let iconScanRoot = input.parentElement;
+      for (let depth = 0; iconScanRoot && depth < 4 && !iconEl; depth++, iconScanRoot = iconScanRoot.parentElement) {
+        for (const cand of iconScanRoot.querySelectorAll("button, [role='button'], [class*='button']")) {
+          const rect = visibleRect(cand);
+          if (!rect || rect.left <= inputBounds.right) continue;
+          iconEl = cand;
+          iconRect = rect;
+          break;
+        }
+      }
       const box = (rect) => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom });
-      return { input: box(inputBounds), row: box(row), viewport: { width: window.innerWidth, height: window.innerHeight } };
+      return { input: box(inputBounds), row: box(row), icon: iconRect ? box(iconRect) : null, viewport: { width: window.innerWidth, height: window.innerHeight } };
     })()`, true);
   } catch (error) {
     if (!quiet) console.warn("Unable to measure the Xiaohongshu search box:", error.message);
@@ -273,7 +300,7 @@ async function measureXhsSearchPosition(options = {}) {
   if (!measured && quiet && xhsSearchPositionReady) return;
 
   const viewport = measured ? measured.viewport : { width: requestedXhsBounds.width, height: requestedXhsBounds.height };
-  const next = resolveSearchGuidePosition(measured ? measured.input : null, measured ? measured.row : null, viewport, {
+  const next = resolveSearchGuidePosition(measured ? measured.input : null, measured ? measured.row : null, measured ? measured.icon : null, viewport, {
     width: SEARCH_BUTTON_WIDTH,
     height: SEARCH_BUTTON_HEIGHT
   });
@@ -424,6 +451,7 @@ function createXhsView() {
   // 只在主框架跨文档导航开始时进入加载态；子框架瞬时加载和 SPA 同文档路由
   // 也会触发 did-start-loading，但没有对应的 did-finish-load，会把已渲染页面
   // 盖进"正在加载"遮罩里反复闪现。
+  let xhsNavOverlayTimer = null;
   xhsView.webContents.on("did-start-navigation", (_event, url, isInPlace, isMainFrame) => {
     if (!isMainFrame) return;
     xhsPageRevision++;
@@ -433,12 +461,18 @@ function createXhsView() {
     xhsSearchPositionReady = false;
     xhsSearchAppliedWidth = 0;
     xhsSearchMeasureAttempts = 0;
-    hideXhsView();
-    sendXhsState("loading", "小红书页面正在加载…");
+    // 保留已渲染画面（浏览器行为），超过 1.2s 才切换加载遮罩，减少"感觉慢"
+    if (xhsNavOverlayTimer) clearTimeout(xhsNavOverlayTimer);
+    xhsNavOverlayTimer = setTimeout(() => {
+      if (xhsReady) return;
+      hideXhsView();
+      sendXhsState("loading", "小红书页面正在加载…");
+    }, 1200);
   });
 
   xhsView.webContents.on("did-fail-load", (_event, errorCode, errorDescription, _validatedUrl, isMainFrame) => {
     if (!isMainFrame || errorCode === -3) return;
+    if (xhsNavOverlayTimer) { clearTimeout(xhsNavOverlayTimer); xhsNavOverlayTimer = null; }
     xhsReady = false;
     hideXhsView();
     sendXhsState("error", "小红书加载失败：" + String(errorDescription || "网络暂不可用") + "；若持续失败，可切换网络（如手机热点）后点重试");
@@ -446,6 +480,7 @@ function createXhsView() {
 
   xhsView.webContents.on("did-finish-load", () => {
     if (!isXhsUrl(xhsView.webContents.getURL())) return;
+    if (xhsNavOverlayTimer) { clearTimeout(xhsNavOverlayTimer); xhsNavOverlayTimer = null; }
     xhsReady = true;
     applyXhsBounds();
     scheduleXhsSearchPosition();
@@ -470,12 +505,14 @@ function createXhsView() {
 
 function createWindow() {
   startupFailureShown = false;
+  const appIconPath = path.join(__dirname, "..", "build", "icon.png");
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 960,
     minWidth: 980,
     minHeight: 680,
     show: false,
+    icon: appIconPath,
     backgroundColor: "#f6f7f9",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -511,6 +548,7 @@ function createWindow() {
   mainWindow.webContents.on("console-message", (details) => {
     const severity = details && details.level;
     if (severity === "error" || severity === 3) {
+      pushErrorLog("renderer: " + String(details.message || "").slice(0, 300) + " @" + String(details.sourceId || "").split("/").pop() + ":" + details.lineNumber);
       console.error("exam2pdf renderer error:", details.sourceId || "", details.lineNumber || "", details.message || "");
     }
   });
@@ -557,6 +595,9 @@ function createWindow() {
   try { pageLoad = windowBeingStarted.loadFile(appPage); }
   catch (error) { pageLoad = Promise.reject(error); }
   monitorWindowStartup(windowBeingStarted, pageLoad, showWindowLoadFailure, { showWindow: !startupSmoke });
+  if (process.platform === "darwin" && app.dock && fsSync.existsSync(appIconPath)) {
+    try { app.dock.setIcon(appIconPath); } catch (e) {}
+  }
   mainWindow.on("resize", () => {
     applyXhsBounds();
     scheduleXhsSearchPosition();
@@ -595,6 +636,7 @@ function showWindowLoadFailure(error) {
 }
 
 function showInitializationFailure(error) {
+  pushErrorLog("init failure: " + (error && error.message ? error.message : error));
   console.error("Unable to initialize exam2pdf:", error && error.message ? error.message : error);
   if (startupSmoke) {
     app.exit(1);
@@ -854,6 +896,36 @@ appHandle("mistakes:export-pdf", async (title) => {
   await fs.writeFile(target.filePath, pdf);
   return { canceled: false, filePath: target.filePath };
 });
+
+appHandle("diagnostics:export", async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) throw new Error("窗口不可用");
+  let libraryCounts = {};
+  try {
+    const libraryPath = path.join(app.getPath("userData"), "library");
+    for (const category of ["posts", "answers"]) {
+      const dir = path.join(libraryPath, category);
+      libraryCounts[category] = fsSync.existsSync(dir) ? fsSync.readdirSync(dir).filter((e) => fsSync.statSync(path.join(dir, e)).isDirectory()).length : 0;
+    }
+    const historyPath = path.join(libraryPath, "trainings", "history.json");
+    libraryCounts.trainings = fsSync.existsSync(historyPath) ? JSON.parse(fsSync.readFileSync(historyPath, "utf8")).length : 0;
+  } catch (e) { libraryCounts = { error: String(e.message || e) }; }
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    versions: { app: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome, node: process.versions.node },
+    platform: { os: process.platform, release: require("node:os").release(), arch: process.arch },
+    library: libraryCounts,
+    xhsState: currentXhsState,
+    recentErrors: errorLogLines.slice(-100)
+  };
+  const target = await dialog.showSaveDialog(mainWindow, {
+    title: "导出诊断信息",
+    defaultPath: path.join(app.getPath("documents"), "exam2pdf-diagnostics-" + new Date().toISOString().slice(0, 10) + ".json"),
+    filters: [{ name: "诊断信息", extensions: ["json"] }]
+  });
+  if (target.canceled || !target.filePath) return { canceled: true };
+  await fs.writeFile(target.filePath, JSON.stringify(payload, null, 2));
+  return { canceled: false, filePath: target.filePath };
+});
 // 将当前工作台页面按打印样式导出为 PDF（批阅报告等纯 HTML 页面），不弹系统打印面板
 appHandle("workspace:export-pdf", async (title) => {
   if (!mainWindow || mainWindow.isDestroyed()) throw new Error("窗口不可用");
@@ -1110,7 +1182,27 @@ if (!hasSingleInstanceLock) {
         return new Response("Not found", { status: 404, headers: { "Content-Type": "text/plain" } });
       }
     });
+    setupApplicationMenu();
     createWindow();
+    if (app.isPackaged) {
+      try {
+        const { autoUpdater } = require("electron-updater");
+        autoUpdater.autoDownload = true;
+        autoUpdater.on("update-downloaded", () => {
+          if (!mainWindow || mainWindow.isDestroyed()) return;
+          dialog.showMessageBox(mainWindow, {
+            type: "info",
+            title: "exam2pdf 更新",
+            message: "新版本已下载完成",
+            detail: "重启应用即可完成安装。",
+            buttons: ["稍后", "重启安装"],
+            defaultId: 1
+          }).then(({ response }) => { if (response === 1) autoUpdater.quitAndInstall(); });
+        });
+        autoUpdater.on("error", (error) => { try { pushErrorLog("updater: " + String(error.message || error).slice(0, 300)); } catch (e) {} });
+        autoUpdater.checkForUpdates().catch(() => {});
+      } catch (e) { pushErrorLog("updater init: " + e.message); }
+    }
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
@@ -1118,7 +1210,28 @@ if (!hasSingleInstanceLock) {
     showInitializationFailure(error);
   });
 
-  app.on("before-quit", () => {
+  process.on("uncaughtException", (error) => {
+  try { pushErrorLog("uncaughtException: " + String(error && error.stack ? error.stack.split("\n").slice(0, 2).join(" | ") : error)); } catch (e) {}
+});
+process.on("unhandledRejection", (reason) => {
+  try { pushErrorLog("unhandledRejection: " + String(reason && reason.message ? reason.message : reason).slice(0, 300)); } catch (e) {}
+});
+
+// 顶部菜单栏：Windows/Linux 不需要（彻底移除，窗口释放空间）；
+// macOS 系统级菜单栏无法移除，仅保留应用/编辑/窗口必需项（编辑菜单承载 Cmd+C/V 快捷键）
+function setupApplicationMenu() {
+  if (process.platform === "darwin") {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { role: "appMenu" },
+      { role: "editMenu" },
+      { role: "windowMenu" }
+    ]));
+  } else {
+    Menu.setApplicationMenu(null);
+  }
+}
+
+app.on("before-quit", () => {
     if (mobileUploadServer) {
       const server = mobileUploadServer;
       mobileUploadServer = null;

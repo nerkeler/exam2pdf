@@ -111,6 +111,9 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   exportMistakePdf(title) {
     return ipcRenderer.invoke("mistakes:export-pdf", title);
   },
+  exportDiagnostics() {
+    return ipcRenderer.invoke("diagnostics:export");
+  },
   exportWorkspacePdf(title) {
     return ipcRenderer.invoke("workspace:export-pdf", title);
   },

@@ -26,51 +26,45 @@ test("builds a Xiaohongshu search URL and rejects an empty query", () => {
   assert.equal(buildSearchUrl("   "), null);
 });
 
-test("docks the search control right after the search row, centered on the input line", () => {
+test("anchors right of the Xiaohongshu search magnifier, vertically centered on it", () => {
   const position = resolveSearchGuidePosition(
     { left: 286, right: 1099, top: 83, bottom: 124 },
     { left: 265, right: 1119, top: 62, bottom: 178 },
+    { left: 1100, right: 1130, top: 70, bottom: 110 },
     viewport
   );
+  // 放大镜右缘 + 8 超出视口安全边时被右缘钳制（贴边显示）
+  // 按钮顶边与搜索框顶边对齐（row.top = 62）
   assert.deepEqual(position, {
-    left: 1119 + 8,
-    top: Math.round(83 + (124 - 83 - SEARCH_BUTTON_HEIGHT) / 2),
+    left: Math.min(1130 + 8, viewport.width - SEARCH_BUTTON_WIDTH - 12),
+    top: 62,
     width: SEARCH_BUTTON_WIDTH,
     height: SEARCH_BUTTON_HEIGHT
   });
 });
 
-test("falls back above the search row when the right gutter is too narrow", () => {
+test("clamps to the viewport when the magnifier sits at the right edge", () => {
   const position = resolveSearchGuidePosition(
-    { left: 200, right: 900, top: 100, bottom: 140 },
-    { left: 180, right: 1196, top: 60, bottom: 176 },
+    { left: 286, right: 1099, top: 83, bottom: 124 },
+    { left: 265, right: 1119, top: 62, bottom: 178 },
+    { left: 1150, right: 1210, top: 70, bottom: 110 },
     viewport
   );
-  assert.deepEqual(position, {
-    left: 1196 - SEARCH_BUTTON_WIDTH,
-    top: 60 - SEARCH_BUTTON_HEIGHT - 8,
-    width: SEARCH_BUTTON_WIDTH,
-    height: SEARCH_BUTTON_HEIGHT
-  });
+  assert.equal(position.left, viewport.width - SEARCH_BUTTON_WIDTH - 12);
+  assert.ok(position.top >= 12);
 });
 
-test("falls back below the search row when there is no room above it", () => {
-  const position = resolveSearchGuidePosition(
-    { left: 40, right: 1204, top: 16, bottom: 56 },
-    { left: 20, right: 1204, top: 10, bottom: 76 },
+test("falls back to the search row and the corner when no magnifier is found", () => {
+  const rowOnly = resolveSearchGuidePosition(
+    { left: 286, right: 1099, top: 83, bottom: 124 },
+    { left: 265, right: 1119, top: 62, bottom: 178 },
+    null,
     viewport
   );
-  assert.deepEqual(position, {
-    left: Math.min(1204 - SEARCH_BUTTON_WIDTH, 1220 - SEARCH_BUTTON_WIDTH - 12),
-    top: 84,
-    width: SEARCH_BUTTON_WIDTH,
-    height: SEARCH_BUTTON_HEIGHT
-  });
-});
-
-test("keeps the control in the top-right corner when no search row is visible", () => {
-  assert.deepEqual(resolveSearchGuidePosition(null, null, viewport), {
-    left: 1220 - SEARCH_BUTTON_WIDTH - 12,
+  assert.equal(rowOnly.left, 1119 + 8);
+  const corner = resolveSearchGuidePosition(null, null, null, viewport);
+  assert.deepEqual(corner, {
+    left: viewport.width - SEARCH_BUTTON_WIDTH - 12,
     top: 12,
     width: SEARCH_BUTTON_WIDTH,
     height: SEARCH_BUTTON_HEIGHT

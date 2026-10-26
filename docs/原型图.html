@@ -63,7 +63,8 @@
     body[data-theme="dark"] .btn.danger { border-color: #5c2a2a; color: var(--danger); }
     body[data-theme="dark"] .btn.danger:hover { background: var(--danger-soft); }
     body[data-theme="dark"] .btn.ghost:hover { background: #1c232e; color: var(--text); }
-    body[data-theme="dark"] .field, body[data-theme="dark"] select, body[data-theme="dark"] textarea { background: #10151c; border-color: var(--line-strong); color: var(--text); }
+    body[data-theme="dark"] .field, body[data-theme="dark"] textarea { background-color: #10151c; border-color: var(--line-strong); color: var(--text); }
+    body[data-theme="dark"] select { background-color: #10151c; border-color: var(--line-strong); color: var(--text); background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a7b1bf' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
     body[data-theme="dark"] .nav-item { color: #a7b1bf; }
     body[data-theme="dark"] .nav-item:hover { background: rgba(255,255,255,.06); color: var(--text); }
     body[data-theme="dark"] .nav-item.active { background: var(--surface); color: var(--brand); }
@@ -97,6 +98,8 @@
     body[data-theme="dark"] details.history summary:hover { background: #1c232e; }
     body[data-theme="dark"] .form-grid label { color: var(--muted); }
     body[data-theme="dark"] .xhs-loading { background: #10151c; color: var(--muted); }
+    .xhs-loading::before { content: ""; width: 26px; height: 26px; border: 3px solid #d8dce3; border-top-color: #ff2442; border-radius: 50%; animation: e2p-spin .8s linear infinite; }
+    @keyframes e2p-spin { to { transform: rotate(360deg); } }
     body[data-theme="dark"] .xhs-loading strong { color: var(--text); }
     body[data-theme="dark"] .xhs-loading[data-status="error"] { background: #1c1214; color: var(--danger); }
     body[data-theme="dark"] #s0 .p-top { background: rgba(23,29,38,.92); border-color: var(--line); }
@@ -349,9 +352,21 @@
       padding: 9px 11px;
       border: 1px solid var(--line-strong);
       border-radius: 8px;
-      background: #fff;
+      background-color: #fff;
       color: var(--text);
     }
+    /* 自绘下拉箭头：appearance:none 去掉系统箭头（Windows 深色下系统箭头与暗色背景叠出杂乱外观），
+       展开菜单仍由 color-scheme 控制保持原生 */
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235c6675' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 13px;
+      padding-right: 30px;
+    }
+    select::-ms-expand { display: none; }
     .field:focus, select:focus, textarea:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px rgba(22, 93, 255, .1); }
     /* 下拉框统一外观：隐藏系统箭头，改用与界面图标一致的细箭头 */
     select, select.field {
@@ -1398,7 +1413,7 @@
               </div>
               <div class="surface panel" style="margin-top:12px">
                 <div class="section-head"><div><h2>本地数据</h2><p class="muted small">备份帖子、作答记录、训练历史和图片；新备份还会保存 AI 服务配置，但不包含 API Key。</p></div></div>
-                <div class="toolbar"><button class="btn" type="button" data-action="backup">导出本地备份</button><button class="btn" type="button" data-action="restore-backup">恢复备份</button></div>
+                <div class="toolbar"><button class="btn" type="button" data-action="backup">导出本地备份</button><button class="btn" type="button" data-action="restore-backup">恢复备份</button><button class="btn" type="button" data-action="export-diagnostics">导出诊断信息</button></div>
               </div>
             </div>
           </details>
@@ -2257,18 +2272,26 @@
       }
       return btoa(binary);
     }
-    async function importImage(file) {
+    async function importImage(file, options = {}) {
+      const kind = options.kind || "post";
       const bitmap = await createImageBitmap(file);
       const width = bitmap.width;
       const height = bitmap.height;
       const supported = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
       const overLimit = file.size > 16 * 1024 * 1024;
-      if (supported && !overLimit) {
+      // 作答照片入库即压缩：长边 ≤2200px + JPEG 85（约 7MB/页 → 400KB/页），
+      // 批阅清晰度足够且批阅页加载不再走几十 MB 原图；帖子池仍保留原图
+      const answerMode = kind === "answer";
+      const maxSide = answerMode ? 2200 : 3600;
+      const needsWork = answerMode
+        ? (Math.max(width, height) > maxSide || file.size > 1500 * 1024)
+        : (!supported || overLimit || Math.max(width, height) > maxSide);
+      if (supported && !overLimit && !needsWork) {
         const base64 = bufferToBase64(await file.arrayBuffer());
         if (bitmap.close) bitmap.close();
         return { mime: file.type, base64, width, height };
       }
-      const maxSide = 3600;
+      if (width === 0) throw new Error(file.name + " 无法读取图片尺寸");
       const scale = Math.min(1, maxSide / Math.max(width, height));
       const outputWidth = Math.max(1, Math.round(width * scale));
       const outputHeight = Math.max(1, Math.round(height * scale));
@@ -2278,9 +2301,9 @@
       const context = canvas.getContext("2d", { alpha: false });
       context.fillStyle = "#fff";
       context.fillRect(0, 0, outputWidth, outputHeight);
-      context.drawImage(bitmap, 0, 0, outputWidth, outputHeight);
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-      if (bitmap.close) bitmap.close();
+      try { context.drawImage(bitmap, 0, 0, outputWidth, outputHeight); }
+      finally { if (bitmap.close) bitmap.close(); }
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", answerMode ? 0.85 : 0.9));
       canvas.width = 1;
       canvas.height = 1;
       if (!blob || blob.size > 16 * 1024 * 1024) throw new Error(file.name + " 转换后仍超过 16 MB");
@@ -2385,7 +2408,7 @@
               }
             } else {
               toast("正在处理作答照片 " + (index + 1) + "/" + supported.length);
-              const page = await importImage(file);
+              const page = await importImage(file, { kind: "answer" });
               total += Math.ceil(page.base64.length * 3 / 4);
               if (total > 80 * 1024 * 1024) throw new Error("图片总大小超过 80 MB，请分批导入");
               additions.push({ ...page, name: file.name });
@@ -3294,6 +3317,14 @@
         } catch (error) { toast("保存审核状态失败：" + (error.message || "请重试")); }
       }
       if (action === "print-training") printTraining();
+      if (action === "export-diagnostics") {
+        if (!desktop || typeof desktop.exportDiagnostics !== "function") { toast("请在 Electron 中导出诊断信息"); return; }
+        try {
+          const result = await desktop.exportDiagnostics();
+          if (result.canceled) toast("已取消导出");
+          else toast("诊断信息已保存：" + result.filePath);
+        } catch (error) { toast("导出诊断信息失败：" + (error.message || "请重试")); }
+      }
       if (action === "backup") {
         if (!desktop) { toast("请在 Electron 中导出包含图片的本地备份"); return; }
         try {

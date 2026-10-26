@@ -36,7 +36,10 @@ function readBox(rect, fallback) {
   return { left, right, top, bottom };
 }
 
-function resolveSearchGuidePosition(inputRect, rowRect, viewport, options = {}) {
+const SEARCH_COLLECT_ZONE = 64;  // 右下角采集按钮（约46px 高 + 间距）的预留区
+
+function resolveSearchGuidePosition(inputRect, rowRect, iconRect, viewport, options = {}) {
+  // 定位优先级：小红书搜索放大镜图标右侧（跟随图标）→ 搜索行右缘 → 右上角兜底。
   const view = viewport && typeof viewport === "object" ? viewport : {};
   const viewWidth = Math.max(1, Math.round(Number(view.width || viewport) || 1));
   const viewHeight = Math.max(1, Math.round(Number(view.height) || 1));
@@ -51,29 +54,37 @@ function resolveSearchGuidePosition(inputRect, rowRect, viewport, options = {}) 
     height
   };
 
+  // 1) 放大镜图标右侧：按钮顶边与搜索框顶边对齐
+  const icon = readBox(iconRect, null);
+  const rowForAlign = readBox(rowRect, null);
+  if (icon) {
+    const alignTop = rowForAlign ? Math.min(rowForAlign.top, icon.top) : icon.top;
+    const left = Math.round(Math.min(
+      icon.right + SEARCH_BUTTON_GAP,
+      viewWidth - width - SEARCH_BUTTON_EDGE
+    ));
+    const top = Math.round(Math.max(SEARCH_BUTTON_EDGE, alignTop));
+    return { left, top, width, height };
+  }
+
+  // 2) 搜索行右缘（无放大镜时按输入框/容器右缘让位）
   const input = readBox(inputRect, null);
   if (!input) return corner;
-  // 搜索框外面通常还包着一圈可视容器（圆角白底），贴靠时以容器右边缘为准。
   const row = readBox(rowRect, input);
   const rowRight = Math.max(row.right, input.right);
-  const rowBottom = Math.max(row.bottom, input.bottom);
   const rowTop = Math.min(row.top, input.top);
+  const rowBottom = Math.max(row.bottom, input.bottom);
   const top = Math.round(Math.min(
     Math.max(SEARCH_BUTTON_EDGE, input.top + (input.bottom - input.top - height) / 2),
     Math.max(SEARCH_BUTTON_EDGE, viewHeight - height - SEARCH_BUTTON_EDGE)
   ));
-
-  // 1) 搜索行右侧还有余地：贴在搜索框后面，并与输入行垂直居中。
   if (rowRight + SEARCH_BUTTON_GAP + width <= viewWidth - SEARCH_BUTTON_EDGE) {
     return { left: Math.round(rowRight + SEARCH_BUTTON_GAP), top, width, height };
   }
-
   const rightAlignedLeft = Math.round(Math.max(
     SEARCH_BUTTON_EDGE,
     Math.min(rowRight - width, viewWidth - width - SEARCH_BUTTON_EDGE)
   ));
-
-  // 2) 右侧放不下时，退到搜索行上方或下方，右对齐搜索框，避免压住输入框。
   const above = Math.round(rowTop - height - SEARCH_BUTTON_GAP);
   if (above >= SEARCH_BUTTON_EDGE) return { left: rightAlignedLeft, top: above, width, height };
   const below = Math.round(rowBottom + SEARCH_BUTTON_GAP);

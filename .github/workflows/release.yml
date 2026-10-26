@@ -10,7 +10,7 @@ on:
       tag:
         description: New preview version tag (existing tags are rejected)
         required: true
-        default: v0.1.0-preview.1
+        default: v0.1.1-preview.1
         type: string
 
 permissions: {}
@@ -72,45 +72,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import fnmatch, hashlib, shutil
-          from pathlib import Path
-          source = Path('downloaded-artifacts')
-          target = Path('release-assets')
-          target.mkdir()
-          allowed = ('.dmg', '.zip', '.exe', '.AppImage', '.deb', '.blockmap')
-          names = set()
-          files = []
-          for artifact in sorted(source.rglob('*')):
-              if artifact.is_symlink():
-                  raise SystemExit('Refusing symlink in build artifacts: ' + str(artifact))
-              if not artifact.is_file() or not artifact.name.endswith(allowed):
-                  continue
-              key = artifact.name.casefold()
-              if key in names:
-                  raise SystemExit('Duplicate release asset filename: ' + artifact.name)
-              names.add(key)
-              destination = target / artifact.name
-              shutil.copyfile(artifact, destination)
-              files.append(destination)
-          required_installers = (
-              '*-mac-arm64.dmg', '*-mac-arm64.zip',
-              '*-mac-x64.dmg', '*-mac-x64.zip',
-              '*-win-x64.exe', '*-linux-x86_64.AppImage', '*-linux-amd64.deb',
-          )
-          for pattern in required_installers:
-              matches = [artifact for artifact in files if fnmatch.fnmatchcase(artifact.name, pattern)]
-              if len(matches) != 1:
-                  raise SystemExit('Expected exactly one installer matching ' + pattern + ', found ' + str(len(matches)))
-          installers = [artifact for artifact in files if not artifact.name.endswith('.blockmap')]
-          if len(installers) != len(required_installers):
-              raise SystemExit('Unexpected installer set; refusing incomplete or additional platform assets')
-          with (target / 'SHA256SUMS').open('w', encoding='utf-8', newline='\n') as output:
-              for artifact in sorted(files):
-                  with artifact.open('rb') as data:
-                      digest = hashlib.file_digest(data, 'sha256').hexdigest()
-                  output.write(digest + '  ' + artifact.name + '\n')
-          PY
+          node scripts/collect-release-assets.cjs downloaded-artifacts release-assets "$RELEASE_TAG"
       - name: Publish new preview release
         shell: bash
         env:
@@ -122,4 +84,4 @@ jobs:
             --target "$BUILD_SHA" \
             --prerelease \
             --title "exam2pdf $RELEASE_TAG · 测试预览版" \
-            --notes-file docs/发布说明-v0.1.0-preview.1.md
+            --notes-file docs/发布说明-v0.1.1-preview.1.md

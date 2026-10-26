@@ -75,3 +75,5 @@ jobs:
             release/*.blockmap
             release/*.AppImage
             release/*.deb
+            release/latest*.yml
+            release/preview*.yml
