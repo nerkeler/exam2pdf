@@ -63,6 +63,12 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install release validation dependencies without desktop downloads
+        run: npm ci --ignore-scripts --omit=optional
       - name: Download completed build artifacts
         shell: bash
         run: |
