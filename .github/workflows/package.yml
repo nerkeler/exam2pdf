@@ -39,7 +39,7 @@ jobs:
           cache: npm
       - name: Install Linux desktop libraries
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libgbm1
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libgbm1 xvfb
       - run: npm ci
       - run: npm test
       - name: Build unsigned test installers with offline PDF.js
@@ -47,6 +47,21 @@ jobs:
         env:
           BUILD_TARGET: ${{ matrix.target }}
         run: node scripts/package-app.cjs "$BUILD_TARGET"
+      - name: Verify PDF import from the packaged application archive
+        shell: bash
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+          EXAM2PDF_TEST_NO_SANDBOX: '1'
+        run: |
+          case "$BUILD_TARGET" in
+            mac) export EXAM2PDF_TEST_ASAR="$PWD/release/mac-arm64/exam2pdf.app/Contents/Resources/app.asar" ;;
+            win) export EXAM2PDF_TEST_ASAR="$PWD/release/win-unpacked/resources/app.asar" ;;
+            linux) export EXAM2PDF_TEST_ASAR="$PWD/release/linux-unpacked/resources/app.asar" ;;
+          esac
+          if [ "$BUILD_TARGET" = mac ] && [ "$EXAM2PDF_BUILD_ARCH" = x64 ]; then
+            export EXAM2PDF_TEST_ASAR="$PWD/release/mac/exam2pdf.app/Contents/Resources/app.asar"
+          fi
+          if [ "$BUILD_TARGET" = linux ]; then xvfb-run -a npm run test:pdf; else npm run test:pdf; fi
       - name: Upload installers for manual acceptance
         uses: actions/upload-artifact@v4
         with:
