@@ -1,0 +1,125 @@
+name: Publish preview release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful Build test installers run ID from this repository
+        required: true
+        type: string
+      tag:
+        description: New preview version tag (existing tags are rejected)
+        required: true
+        default: v0.1.0-preview.1
+        type: string
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Validate build provenance and new tag
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'Invalid build run ID'; exit 1; }
+          [[ "$RELEASE_TAG" =~ ^v[0-9][A-Za-z0-9._-]*$ ]] || { echo 'Invalid preview tag'; exit 1; }
+          gh api "repos/$GH_REPO/actions/workflows/package.yml" > workflow.json
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID" > run.json
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          workflow = json.loads(Path('workflow.json').read_text())
+          run = json.loads(Path('run.json').read_text())
+          assert run['repository']['full_name'] == os.environ['GH_REPO'], 'Wrong source repository'
+          assert run['workflow_id'] == workflow['id'], 'Source is not package.yml'
+          assert run['name'] == 'Build test installers', 'Unexpected workflow name'
+          assert run['status'] == 'completed' and run['conclusion'] == 'success', 'Build must have completed successfully'
+          sha = run['head_sha']
+          assert re.fullmatch(r'[0-9a-f]{40}', sha), 'Invalid build revision'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('head_sha=' + sha + '\n')
+          PY
+          if gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists; refusing to overwrite it"
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to overwrite it"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download completed build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$BUILD_RUN_ID" --dir downloaded-artifacts
+      - name: Collect installers and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import fnmatch, hashlib, shutil
+          from pathlib import Path
+          source = Path('downloaded-artifacts')
+          target = Path('release-assets')
+          target.mkdir()
+          allowed = ('.dmg', '.zip', '.exe', '.AppImage', '.deb', '.blockmap')
+          names = set()
+          files = []
+          for artifact in sorted(source.rglob('*')):
+              if artifact.is_symlink():
+                  raise SystemExit('Refusing symlink in build artifacts: ' + str(artifact))
+              if not artifact.is_file() or not artifact.name.endswith(allowed):
+                  continue
+              key = artifact.name.casefold()
+              if key in names:
+                  raise SystemExit('Duplicate release asset filename: ' + artifact.name)
+              names.add(key)
+              destination = target / artifact.name
+              shutil.copyfile(artifact, destination)
+              files.append(destination)
+          required_installers = (
+              '*-mac-arm64.dmg', '*-mac-arm64.zip',
+              '*-mac-x64.dmg', '*-mac-x64.zip',
+              '*-win-x64.exe', '*-linux-x86_64.AppImage', '*-linux-amd64.deb',
+          )
+          for pattern in required_installers:
+              matches = [artifact for artifact in files if fnmatch.fnmatchcase(artifact.name, pattern)]
+              if len(matches) != 1:
+                  raise SystemExit('Expected exactly one installer matching ' + pattern + ', found ' + str(len(matches)))
+          installers = [artifact for artifact in files if not artifact.name.endswith('.blockmap')]
+          if len(installers) != len(required_installers):
+              raise SystemExit('Unexpected installer set; refusing incomplete or additional platform assets')
+          with (target / 'SHA256SUMS').open('w', encoding='utf-8', newline='\n') as output:
+              for artifact in sorted(files):
+                  with artifact.open('rb') as data:
+                      digest = hashlib.file_digest(data, 'sha256').hexdigest()
+                  output.write(digest + '  ' + artifact.name + '\n')
+          PY
+      - name: Publish new preview release
+        shell: bash
+        env:
+          BUILD_SHA: ${{ steps.build.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          mapfile -d '' assets < <(find release-assets -maxdepth 1 -type f -print0 | sort -z)
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --target "$BUILD_SHA" \
+            --prerelease \
+            --title "exam2pdf $RELEASE_TAG · 测试预览版" \
+            --notes-file docs/发布说明-v0.1.0-preview.1.md
