@@ -77,7 +77,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Education"
+      "category": "Education",
+      "maintainer": "exam2pdf contributors <nerkeler@users.noreply.github.com>"
     }
   },
   "devDependencies": {
@@ -88,5 +89,13 @@
     "katex": "^0.19.1",
     "pdfjs-dist": "6.4.299"
   },
-  "author": "exam2pdf contributors"
+  "author": "exam2pdf contributors",
+  "homepage": "https://github.com/nerkeler/exam2pdf",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nerkeler/exam2pdf.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nerkeler/exam2pdf/issues"
+  }
 }
