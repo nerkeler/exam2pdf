@@ -90,4 +90,4 @@ jobs:
             --target "$BUILD_SHA" \
             --prerelease \
             --title "exam2pdf $RELEASE_TAG · 测试预览版" \
-            --notes-file docs/发布说明-v0.1.1-preview.1.md
+            --notes-file "docs/发布说明-${RELEASE_TAG}.md"
