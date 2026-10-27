@@ -33,6 +33,24 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   onAnswersChanged(callback) {
     return listen("answers:changed", callback);
   },
+  onStudentsChanged(callback) {
+    return listen("students:changed", callback);
+  },
+  listStudents() {
+    return ipcRenderer.invoke("students:list");
+  },
+  createStudent(name) {
+    return ipcRenderer.invoke("students:create", name);
+  },
+  renameStudent(id, name) {
+    return ipcRenderer.invoke("students:rename", id, name);
+  },
+  removeStudent(id) {
+    return ipcRenderer.invoke("students:remove", id);
+  },
+  setActiveStudent(id) {
+    return ipcRenderer.invoke("students:set-active", id);
+  },
   listPosts() {
     return ipcRenderer.invoke("posts:list");
   },
@@ -62,6 +80,9 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   },
   setPostSubject(id, subject) {
     return ipcRenderer.invoke("posts:set-subject", id, subject);
+  },
+  setPostStudent(id, studentId) {
+    return ipcRenderer.invoke("posts:set-student", id, studentId);
   },
   removePostPage(id, file) {
     return ipcRenderer.invoke("posts:remove-page", id, file);

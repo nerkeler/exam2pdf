@@ -69,6 +69,7 @@ class TrainingStore {
         if (!prompt || !answer) throw new Error("第 " + (index + 1) + " 道练习题内容不完整");
         return { prompt, answer };
       });
+      const studentId = typeof input.studentId === "string" && UUID_PATTERN.test(input.studentId) ? input.studentId : null;
       const record = {
         schemaVersion: 1,
         id: randomUUID(),
@@ -76,6 +77,7 @@ class TrainingStore {
         source: cleanText(input.source, 80, "本地基础题型模板"),
         createdAt: new Date().toISOString(),
         status: "draft",
+        studentId,
         questions
       };
       const records = await this.readAll();

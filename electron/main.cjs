@@ -13,6 +13,7 @@ const { generateAiPractice } = require("./ai-practice-service.cjs");
 const { createBackup, restoreBackup } = require("./backup-service.cjs");
 const { startMobileUploadServer } = require("./mobile-upload-server.cjs");
 const { TrainingStore } = require("./training-store.cjs");
+const { StudentStore } = require("./student-store.cjs");
 const { deriveTrainingProgress } = require("./training-progress.cjs");
 const { AiSettingsStore } = require("./ai-settings-store.cjs");
 const { createAiReview, testAiConnection, parseExternalReview, MAX_INPUT_BYTES: MAX_AI_REVIEW_INPUT_BYTES } = require("./ai-review-service.cjs");
@@ -30,6 +31,10 @@ const {
   SEARCH_BUTTON_WIDTH,
   SEARCH_BUTTON_HEIGHT
 } = require("./xhs-search.cjs");
+
+// 显示名「家卷」；数据目录显式钉在 exam2pdf（改名不迁移，老数据无缝延续）
+app.setName("家卷");
+app.setPath("userData", path.join(app.getPath("appData"), "exam2pdf"));
 
 const startupSmoke = process.env.EXAM2PDF_STARTUP_SMOKE === "1";
 // 诊断错误日志：内存环形 + 落盘（userData/logs/error.log），供"导出诊断信息"使用
@@ -67,6 +72,9 @@ let xhsSearchOverlayView;
 let postStore;
 let answerStore;
 let trainingStore;
+let studentStore;
+// 当前选中的学生：采集/手机上传时自动归属，渲染层切换学生时同步过来
+let activeStudentId = null;
 let aiSettingsStore;
 let mobileUploadServer;
 let xhsSession;
@@ -496,6 +504,12 @@ function createXhsView() {
     });
   });
   xhsView.webContents.on("did-navigate-in-page", () => scheduleXhsSearchPosition());
+  // 顶栏已移除：触摸板双指轻扫补回前进/后退（与浏览器手势一致：右扫=后退，左扫=前进）
+  xhsView.webContents.on("swipe", (_event, direction) => {
+    const history = xhsView.webContents.navigationHistory;
+    if (direction === "right" && history.canGoBack()) history.goBack();
+    if (direction === "left" && history.canGoForward()) history.goForward();
+  });
 
   sendXhsState("loading", "正在打开小红书…");
   xhsView.webContents.loadURL("https://www.xiaohongshu.com/explore").catch((error) => {
@@ -628,10 +642,10 @@ function showWindowLoadFailure(error) {
     app.exit(1);
     return;
   }
-  mainWindow.setTitle("exam2pdf · 启动失败");
+  mainWindow.setTitle("家卷 · 启动失败");
   mainWindow.show();
   mainWindow.webContents.loadURL(createStartupErrorUrl(message)).catch((fallbackError) => {
-    dialog.showErrorBox("exam2pdf 启动失败", message + "\n\n诊断页面加载失败：" + String(fallbackError.message || fallbackError));
+    dialog.showErrorBox("家卷 启动失败", message + "\n\n诊断页面加载失败：" + String(fallbackError.message || fallbackError));
   });
 }
 
@@ -671,7 +685,7 @@ function showInitializationFailure(error) {
     showWindowLoadFailure(error);
   } catch (windowError) {
     dialog.showErrorBox(
-      "exam2pdf 启动失败",
+      "家卷 启动失败",
       String(error && error.message ? error.message : error) + "\n\n无法打开诊断窗口：" + String(windowError.message || windowError)
     );
     app.quit();
@@ -689,6 +703,12 @@ function appHandle(channel, handler) {
 function notifyPostsChanged(id) {
   if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
     mainWindow.webContents.send("posts:changed", { id });
+  }
+}
+
+function notifyStudentsChanged() {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+    mainWindow.webContents.send("students:changed");
   }
 }
 
@@ -832,6 +852,39 @@ ipcMain.on("desktop:xhs-reload", async (event) => {
 });
 
 appHandle("posts:list", () => postStore.listPosts());
+appHandle("posts:set-student", (id, studentId) => {
+  return postStore.setStudent(id, studentId).then((post) => {
+    notifyPostsChanged(id);
+    return post;
+  });
+});
+appHandle("students:list", () => studentStore.list());
+appHandle("students:create", async (name) => {
+  const student = await studentStore.create(name);
+  notifyStudentsChanged();
+  return student;
+});
+appHandle("students:rename", async (id, name) => {
+  const student = await studentStore.rename(id, name);
+  notifyStudentsChanged();
+  return student;
+});
+appHandle("students:remove", async (id) => {
+  const removed = await studentStore.remove(id);
+  if (activeStudentId === id) activeStudentId = null;
+  notifyStudentsChanged();
+  return removed;
+});
+appHandle("students:set-active", async (id) => {
+  if (id === null || id === "") {
+    activeStudentId = null;
+    return { studentId: null };
+  }
+  const roster = await studentStore.list();
+  if (!roster.some((student) => student.id === id)) throw new Error("找不到这个学生");
+  activeStudentId = id;
+  return { studentId: activeStudentId };
+});
 appHandle("posts:get", (id) => postStore.getPost(id));
 appHandle("posts:create", async (payload) => {
   const result = await postStore.createPost({
@@ -931,7 +984,7 @@ appHandle("workspace:export-pdf", async (title) => {
   if (!mainWindow || mainWindow.isDestroyed()) throw new Error("窗口不可用");
   const target = await dialog.showSaveDialog(mainWindow, {
     title: "导出 PDF",
-    defaultPath: path.join(app.getPath("documents"), safePdfFileName(String(title || "exam2pdf"))),
+    defaultPath: path.join(app.getPath("documents"), safePdfFileName(String(title || "家卷错题集"))),
     filters: [{ name: "PDF 文件", extensions: ["pdf"] }]
   });
   if (target.canceled || !target.filePath) return { canceled: true };
@@ -972,6 +1025,7 @@ appHandle("mobile-upload:start", async () => {
   if (mobileUploadServer) return { enabled: true, urls: mobileUploadServer.urls };
   mobileUploadServer = await startMobileUploadServer({
     answerStore,
+    getStudentId: () => activeStudentId,
     onUploaded: (answer) => notifyAnswersChanged(answer.id)
   });
   return { enabled: true, urls: mobileUploadServer.urls };
@@ -1024,6 +1078,7 @@ appHandle("backup:restore", async () => {
     await postStore.initialize();
     await answerStore.initialize();
     await trainingStore.initialize();
+    await studentStore.initialize();
     notifyPostsChanged(null);
     notifyAnswersChanged(null);
     return { canceled: false, restoredRecords: result.restoredRecords, settingsRestored };
@@ -1115,6 +1170,7 @@ ipcMain.handle("xhs:collect-post", async (event, payload) => {
   if (!noteId) throw new Error("请打开小红书笔记详情页后再采集");
   const input = buildXhsCollectionInput(payload, sourceUrl, noteId);
   input.subject = input.subject || inferSubject(input.title);
+  input.studentId = activeStudentId;
   const result = await postStore.createPost(input);  notifyPostsChanged(result.post.id);
   return result;
 });
@@ -1164,10 +1220,12 @@ if (!hasSingleInstanceLock) {
     postStore = new PostStore(path.join(libraryPath, "posts"), { defaultSubject: "数学" });
     answerStore = new PostStore(path.join(libraryPath, "answers"), { defaultSubject: "数学" });
     trainingStore = new TrainingStore(path.join(libraryPath, "trainings"));
+    studentStore = new StudentStore(libraryPath);
     aiSettingsStore = new AiSettingsStore(path.join(app.getPath("userData"), "config", "ai-settings.json"), safeStorage);
     await postStore.initialize();
     await answerStore.initialize();
     await trainingStore.initialize();
+    await studentStore.initialize();
     protocol.handle("exam2pdf-media", async (request) => {
       try {
         const url = new URL(request.url);
@@ -1192,7 +1250,7 @@ if (!hasSingleInstanceLock) {
           if (!mainWindow || mainWindow.isDestroyed()) return;
           dialog.showMessageBox(mainWindow, {
             type: "info",
-            title: "exam2pdf 更新",
+            title: "家卷 更新",
             message: "新版本已下载完成",
             detail: "重启应用即可完成安装。",
             buttons: ["稍后", "重启安装"],

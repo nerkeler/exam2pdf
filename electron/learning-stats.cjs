@@ -14,6 +14,7 @@ function deriveLearningStats(answers, now = new Date()) {
       title: (answer.title || "作答记录") + " · 第 " + (question.questionNo || String(index + 1)) + " 题",
       source: answer.title || "作答记录",
       studentName: answer.studentName || "",
+      studentId: answer.studentId || null,
       topic: (Array.isArray(question.knowledgePoints) ? question.knowledgePoints : []).join(" · ") || "未标记知识点",
       knowledgePoints: Array.isArray(question.knowledgePoints) ? question.knowledgePoints : [],
       errorType: question.errorType || "未标记",

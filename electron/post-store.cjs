@@ -41,6 +41,7 @@ function toSummary(post) {
     reviewStatus: post.reviewStatus || "pending",
     trainingId: post.trainingId || "",
     subject: post.subject || "",
+    studentId: post.studentId || null,
     images: post.images,
     pageOrder: post.pageOrder,
     pages: post.pageOrder.length
@@ -263,6 +264,7 @@ class PostStore {
       expectedImages,
       // 每条记录都必须有科目：显式指定 > 标题推断 > 默认科目
       subject: cleanText(input.subject, 20) || this.defaultSubject,
+      studentId: typeof input.studentId === "string" && UUID_PATTERN.test(input.studentId) ? input.studentId : null,
       images: postImages,
       pendingIndexes: Array.from({ length: expectedImages }, (_, index) => index).filter((index) => !postImages.some((image) => image.sourceIndex === index)),
       pageOrder: postImages.map((image) => image.file),
@@ -408,6 +410,17 @@ class PostStore {
     return this.serialize(async () => {
       const post = await this.readPost(id);
       post.subject = cleanText(subject, 20);
+      post.updatedAt = new Date().toISOString();
+      await this.writePost(post);
+      return toSummary(post);
+    });
+  }
+
+  async setStudent(id, studentId) {
+    return this.serialize(async () => {
+      const post = await this.readPost(id);
+      const valid = typeof studentId === "string" && UUID_PATTERN.test(studentId);
+      post.studentId = valid ? studentId : null;
       post.updatedAt = new Date().toISOString();
       await this.writePost(post);
       return toSummary(post);

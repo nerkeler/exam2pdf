@@ -31,7 +31,7 @@ test("all print modes suppress transient UI overlays through media CSS", () => {
       rule[1].replace(/\/\*[\s\S]*?\*\//g, "").split(",").forEach((selector) => hiddenSelectors.add(selector.trim()));
     }
   }
-  for (const selector of ["dialog", "dialog::backdrop", "[popover]", ".toast", ".boot-fatal"]) {
+  for (const selector of ["dialog", "dialog::backdrop", "[popover]", ".toast", ".boot-fatal", ".theme-menu"]) {
     assert.ok(hiddenSelectors.has(selector), selector + " must be hidden in every print mode without closing its interactive UI state");
   }
   assert.ok(hiddenSelectors.has("body.printing-report #s4 > .toolbar"));
@@ -83,4 +83,17 @@ test("workspace HTML has valid inline JavaScript and unique static IDs", () => {
   assert.match(preload, /appendPostImages\(id, images\)[\s\S]*posts:append-images/);
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.cjs"), "utf8");
   assert.match(main, /appHandle\("posts:append-images"/);
+  // 小红书原生置顶视图会盖住所有 HTML：dialog 与浮动菜单（主题选择）打开期间必须隐藏
+  assert.match(html, /function hasOpenOverlay\(\)/);
+  assert.match(html, /dialog\[open\], \.theme-menu:not\(\[hidden\]\)/);
+  assert.match(html, /visible: active && !hasOpenOverlay\(\) && right > left && bottom > top/);
+  // attributeFilter 必须是数组——写成字符串会抛 TypeError 并炸掉整个 electron-shell 初始化块
+  assert.match(html, /attributeFilter: \["open", "hidden"\]/);
+  // 外观模式三态：跟随系统 / 浅色 / 深色（localStorage 存模式，system 实时跟随系统变化）
+  assert.match(html, /function resolveTheme\(mode\)/);
+  assert.match(html, /data-theme-mode="system"/);
+  assert.match(html, /data-theme-mode="light"/);
+  assert.match(html, /data-theme-mode="dark"/);
+  assert.match(html, /localStorage\.setItem\("exam2pdf-theme", mode\)/);
+  assert.match(html, /onSystemThemeChange/);
 });

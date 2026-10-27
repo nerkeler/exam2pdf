@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f5f6f8" />
-  <title>exam2pdf · 家庭试卷工作台</title>
+  <title>家卷 · 家庭试卷工作台</title>
   <link rel="stylesheet" href="../node_modules/katex/dist/katex.min.css">
   <script defer src="../node_modules/katex/dist/katex.min.js"></script>
   <script defer src="../node_modules/katex/dist/contrib/auto-render.min.js"></script>
@@ -89,6 +89,9 @@
     body[data-theme="dark"] .bar-track { background: #262e3a; }
     body[data-theme="dark"] .account-avatar { background: #262e3a; color: var(--muted); }
     body[data-theme="dark"] .side-account { background: rgba(255,255,255,.04); border-color: var(--line); }
+    body[data-theme="dark"] .overview-student { border-top-color: var(--line); }
+    body[data-theme="dark"] .overview-student .manage-students { background: rgba(255,255,255,.05); border-color: var(--line); }
+    body[data-theme="dark"] .student-row { background: rgba(255,255,255,.04); border-color: var(--line); }
     body[data-theme="dark"] .sidebar-foot { border-top-color: rgba(255,255,255,.08); }
     body[data-theme="dark"] .side-util { color: #a7b1bf; }
     body[data-theme="dark"] .side-util:hover { background: rgba(255,255,255,.06); color: var(--text); }
@@ -98,11 +101,10 @@
     body[data-theme="dark"] details.history summary:hover { background: #1c232e; }
     body[data-theme="dark"] .form-grid label { color: var(--muted); }
     body[data-theme="dark"] .xhs-loading { background: #10151c; color: var(--muted); }
-    .xhs-loading::before { content: ""; width: 26px; height: 26px; border: 3px solid #d8dce3; border-top-color: #ff2442; border-radius: 50%; animation: e2p-spin .8s linear infinite; }
+    .xhs-loading::before { content: ""; width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: #ff2442; border-radius: 50%; animation: e2p-spin .8s linear infinite; }
     @keyframes e2p-spin { to { transform: rotate(360deg); } }
     body[data-theme="dark"] .xhs-loading strong { color: var(--text); }
     body[data-theme="dark"] .xhs-loading[data-status="error"] { background: #1c1214; color: var(--danger); }
-    body[data-theme="dark"] #s0 .p-top { background: rgba(23,29,38,.92); border-color: var(--line); }
     body[data-theme="dark"] .image-stage { background: #0d1015; border-color: var(--line); }
     body[data-theme="dark"] .stage-nav { background: rgba(40,48,60,.92); color: var(--text); border-color: var(--line-strong); }
     body[data-theme="dark"] .context-menu { background: var(--surface); border-color: var(--line-strong); }
@@ -200,6 +202,7 @@
     .foot-label { margin: 0 12px; max-height: 24px; overflow: hidden; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; transition: opacity .16s ease, max-height .26s var(--ease-out); }
     .side-account {
       display: flex;
+      flex-direction: column;
       min-width: 0;
       max-height: 220px;
       overflow: hidden;
@@ -213,6 +216,16 @@
     .overview-cell { display: grid; justify-items: start; gap: 1px; min-width: 0; }
     .overview-cell strong { font-size: 16px; line-height: 1.2; letter-spacing: -.01em; }
     .overview-cell small { color: var(--muted); font-size: 10.5px; }
+    .overview-student { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e8ebf0; transition: opacity .16s ease, max-height .26s var(--ease-out), padding .26s var(--ease-out), border-width .26s var(--ease-out); }
+    .overview-student > small { color: var(--muted); font-size: 10.5px; flex: none; }
+    .overview-student select { min-width: 0; flex: 1; height: 26px; padding: 0 18px 0 8px; font-size: 11.5px; }
+    .overview-student .manage-students { flex: none; width: 26px; height: 26px; padding: 0; justify-content: center; border: 1px solid #dfe3e9; border-radius: 7px; background: rgba(255,255,255,.7); color: var(--muted); }
+    .overview-student .manage-students:hover { color: var(--text); border-color: var(--muted); }
+    .student-roster { display: grid; gap: 6px; margin-top: 12px; }
+    .student-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #e2e6ec; border-radius: 9px; background: rgba(255,255,255,.6); }
+    .student-row strong { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .student-row .pill { flex: none; }
+    .student-empty { margin: 10px 0 0; }
     .side-utils { display: grid; gap: 1px; }
     .side-util {
       display: flex;
@@ -237,8 +250,46 @@
     .side-util:hover { background: rgba(255,255,255,.72); color: var(--text); }
     .side-util:hover svg { transform: translateX(1px); }
     .side-util:active { transform: scale(.985); }
-    .guide-steps { margin: 10px 0; padding-left: 20px; }
-    .guide-steps li { margin: 9px 0; line-height: 1.6; }
+    /* 外观模式（跟随系统/浅色/深色）：按钮按当前模式显示图标，点击弹出三选菜单 */
+    #themeToggle .theme-icon { display: none; }
+    body[data-theme-mode="system"] #themeToggle .theme-icon-system,
+    body[data-theme-mode="light"] #themeToggle .theme-icon-light,
+    body[data-theme-mode="dark"] #themeToggle .theme-icon-dark { display: block; }
+    .theme-menu { position: fixed; z-index: 2100; min-width: 150px; padding: 5px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+    .theme-menu:not([hidden]) { animation: theme-menu-in .16s var(--ease-out); }
+    @keyframes theme-menu-in { from { opacity: 0; transform: translateY(4px) scale(.98); } }
+    @media (prefers-reduced-motion: reduce) { .theme-menu:not([hidden]) { animation: none; } }
+    .theme-menu-item { display: flex; width: 100%; align-items: center; gap: 8px; padding: 7px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; transition: background .14s ease; }
+    .theme-menu-item::before { content: ""; width: 13px; height: 13px; flex: none; border-radius: 50%; border: 1.5px solid var(--line-strong); background: transparent; transition: border-color .14s ease, background .14s ease; }
+    .theme-menu-item[aria-checked="true"] { color: var(--brand); font-weight: 600; }
+    .theme-menu-item[aria-checked="true"]::before { border-color: var(--brand); background: radial-gradient(circle, var(--brand) 0 3.5px, transparent 4px); }
+    .theme-menu-item:hover { background: var(--surface-subtle); }
+    .guide-flow { display: grid; margin-top: 6px; max-height: min(58vh, 520px); overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
+    .guide-step { display: grid; grid-template-columns: 22px 170px 1fr; gap: 12px; align-items: start; padding: 11px 0; border-top: 1px solid var(--line); }
+    .guide-step:first-child { border-top: 0; padding-top: 4px; }
+    .guide-step-no { width: 22px; height: 22px; margin-top: 8px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+    .guide-fig { margin: 0; padding: 7px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-subtle); color: var(--muted); }
+    .guide-svg { display: block; width: 100%; height: auto; }
+    .guide-svg :is(rect, line, path, circle, polyline) { fill: none; stroke: currentColor; stroke-width: 1.2; opacity: .45; }
+    .guide-svg text { fill: currentColor; font-size: 7px; opacity: .95; }
+    .guide-svg .hl { fill: var(--brand-soft); stroke: var(--brand); opacity: 1; }
+    .guide-svg .hl-fill { fill: var(--brand); stroke: none; opacity: 1; }
+    .guide-svg .hl-red { fill: var(--xhs); stroke: none; opacity: 1; }
+    .guide-svg .soft { fill: var(--brand-soft); stroke: none; opacity: 1; }
+    .guide-svg .dashed { stroke-dasharray: 3 2.5; }
+    .guide-svg .tw { fill: #fff; font-size: 6.5px; }
+    .guide-svg .tb { fill: var(--brand); font-weight: 600; }
+    .guide-svg .dot { fill: currentColor; stroke: none; opacity: .8; }
+    .guide-svg .knob { fill: #fff; stroke: none; opacity: 1; }
+    .guide-step-text strong { font-size: 13.5px; }
+    .guide-step-text ul { margin: 5px 0 0; padding-left: 16px; display: grid; gap: 3px; }
+    .guide-step-text li { font-size: 12px; line-height: 1.55; }
+    .guide-step-text li::marker { color: var(--brand); }
+    @media (max-width: 700px) {
+      .guide-step { grid-template-columns: 22px 1fr; }
+      .guide-fig { grid-column: 2; max-width: 260px; }
+      .guide-flow { max-height: 64vh; }
+    }
     #guideDialog { position: fixed !important; top: 90px !important; bottom: auto !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important; margin: 0 !important; }
     @media (min-width: 881px) {
       .sidebar { position: sticky; top: 0; height: 100vh; align-self: flex-start; overflow-y: auto; scrollbar-width: thin; }
@@ -422,17 +473,33 @@
       height: min(78vh, 940px);
       min-height: 560px;
       overflow: hidden;
-      border: 1px solid #d8dce3;
+      border: 1px solid var(--line);
       border-radius: 12px;
-      background: #fff;
+      background: var(--surface);
     }
+    /* 原生小红书视图盖住时看不到这块背景；弹层让位/加载中时作为优雅占位（品牌色柔光 + 水印） */
     .xhs-viewport {
       position: relative;
       flex: 1 1 auto;
       min-height: 0;
       margin: 1px;
       overflow: hidden;
-      background: #fff;
+      background:
+        radial-gradient(90% 70% at 50% 0%, var(--brand-soft) 0%, rgba(22, 93, 255, 0) 60%),
+        var(--bg);
+    }
+    .xhs-viewport::after {
+      content: "家卷";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: clamp(72px, 14vw, 140px);
+      font-weight: 800;
+      letter-spacing: .12em;
+      color: var(--text);
+      opacity: .045;
+      pointer-events: none;
     }
     .xhs-loading {
       position: absolute;
@@ -495,37 +562,8 @@
     body.electron-shell #s0.active { display: flex; flex-direction: column; height: 100vh; }
     body.electron-shell #s0 .collector-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
     body.electron-shell #s0 .bpage { flex: 1 1 auto; height: auto; min-height: 0; border: 0; border-radius: 0; }
-    body.electron-shell #s0 .p-top {
-      position: absolute;
-      top: 12px;
-      left: 14px;
-      right: 14px;
-      z-index: 3;
-      height: 40px;
-      padding: 0 12px;
-      border: 1px solid rgba(15, 23, 42, .08);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, .9);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, .12);
-      opacity: .4;
-      transition: opacity .15s ease;
-    }
-    body.electron-shell #s0 .bpage:hover .p-top { opacity: 1; }
-    .p-top {
-      height: 48px;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: 0 20px;
-      border-bottom: 1px solid #eceef2;
-      background: #fff;
-      font-weight: 650;
-      flex: 0 0 48px;
-    }
-    .p-top .brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--xhs); }
-    .p-top .spacer { flex: 1; }
-    .p-top .embed-state { color: var(--muted); font-size: 12px; font-weight: 500; }
+    /* 内嵌模式下小红书视图完全贴边，消除四周接缝 */
+    body.electron-shell #s0 .xhs-viewport { margin: 0; }
     .xhs-open-card {
       display: grid;
       flex: 1 1 auto;
@@ -964,7 +1002,7 @@
       mark.key-point { background: #fff0bb !important; color: #584000 !important; }
       /* Print only learning content. Keep dialogs open in the interactive UI,
          but exclude their top-layer content and other transient overlays on paper. */
-      dialog, dialog::backdrop, [popover], .toast, .boot-fatal {
+      dialog, dialog::backdrop, [popover], .toast, .boot-fatal, .theme-menu {
         display: none !important;
         visibility: hidden !important;
       }
@@ -1060,7 +1098,6 @@
       .nav-caption-desktop { display: none; }
       .nav-caption-mobile { display: block; }
       .toast { right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); }
-      .p-top { padding: 0 12px; }
       .bpage { height: calc(100vh - 228px); min-height: 420px; }
       .post-head { align-items: flex-start; flex-direction: column; }
       .post-ops { align-self: flex-end; }
@@ -1096,7 +1133,7 @@
   <div class="app">
     <div class="shell">
       <aside class="sidebar" aria-label="主导航">
-        <div class="brand"><strong>exam2pdf</strong><span>家庭试卷工作台</span></div>
+        <div class="brand"><strong>家卷</strong><span>家庭试卷工作台</span></div>
         <div class="nav-label">学习流程</div>
         <nav class="nav-list">
           <button class="nav-item active" type="button" data-screen="s0"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span><span class="nav-caption-desktop">采集浏览</span><span class="nav-caption-mobile">浏览</span></button>
@@ -1115,15 +1152,24 @@
               <span class="overview-cell"><strong id="overviewMistakes">0</strong><small>错题</small></span>
               <span class="overview-cell"><strong id="overviewTrainings">0</strong><small>训练</small></span>
             </div>
+            <div class="overview-student">
+              <small>学生</small>
+              <select id="activeStudentSelect" class="field filter-select" aria-label="当前学生"></select>
+              <button class="manage-students" id="manageStudentsButton" type="button" data-action="manage-students" aria-label="管理学生名册" title="管理学生名册">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </button>
+            </div>
           </div>
           <div class="side-utils">
             <button class="side-util" id="guideButton" type="button" data-action="show-guide">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.2 9a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4"/><line x1="12" y1="17.4" x2="12.01" y2="17.4"/></svg>
               <span class="side-util-label">使用引导</span>
             </button>
-            <button class="side-util" id="themeToggle" type="button" aria-label="切换深浅色">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 21a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg>
-              <span class="side-util-label">深色模式</span>
+            <button class="side-util" id="themeToggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="外观模式：跟随系统">
+              <svg class="theme-icon theme-icon-system" data-mode="system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 21a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg>
+              <svg class="theme-icon theme-icon-light" data-mode="light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="4.3" y1="4.3" x2="6.1" y2="6.1"/><line x1="17.9" y1="17.9" x2="19.7" y2="19.7"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="4.3" y1="19.7" x2="6.1" y2="17.9"/><line x1="17.9" y1="6.1" x2="19.7" y2="4.3"/></svg>
+              <svg class="theme-icon theme-icon-dark" data-mode="dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+              <span class="side-util-label">跟随系统</span>
             </button>
             <button class="side-util" id="sidebarToggle" type="button" aria-label="折叠侧边栏">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
@@ -1142,15 +1188,6 @@
         <section class="screen active" id="s0" aria-label="采集浏览">
           <div class="collector-wrap">
             <div class="bpage">
-              <div class="p-top">
-                <span class="brand-dot" aria-hidden="true"></span><span>小红书</span>
-                <span class="embed-state" id="xhsState">正在连接小红书…</span>
-                <span class="spacer"></span>
-                <button class="btn ghost small-btn electron-only" id="xhsBack" type="button" aria-label="返回上一页">返回</button>
-                <button class="btn ghost small-btn electron-only" id="xhsForward" type="button" aria-label="前进">前进</button>
-                <button class="btn ghost small-btn electron-only" id="xhsReload" type="button" aria-label="刷新小红书">刷新</button>
-                <button class="btn ghost small-btn" type="button" data-action="show-info">使用说明</button>
-              </div>
               <div class="xhs-viewport" id="xhsViewport">
                 <div class="xhs-loading" id="xhsLoading" aria-live="polite">
                   <strong id="xhsLoadingMessage">正在打开小红书网页…</strong>
@@ -1188,6 +1225,8 @@
           <div class="section-head">
             <button class="btn ghost" type="button" data-screen="s0b">返回帖子池</button>
             <div class="toolbar">
+              <label class="muted small" for="postStudent">学生</label>
+              <select id="postStudent" class="field filter-select" aria-label="学生"></select>
               <label class="muted small" for="postSubject">科目</label>
               <select id="postSubject" class="field filter-select" aria-label="科目"></select>
               <span class="pill blue" id="postPageCount">8 页</span>
@@ -1232,6 +1271,7 @@
           <div class="surface panel">
             <div class="toolbar" style="margin-bottom:12px">
               <input class="field" id="gradeTitle" style="max-width:300px" placeholder="试卷名称" aria-label="试卷名称" />
+              <select id="gradeStudentSelect" class="field" style="max-width:160px" aria-label="学生（名册）" hidden></select>
               <input class="field" id="gradeStudent" style="max-width:220px" placeholder="学生姓名（可选）" aria-label="学生姓名" />
               <select id="gradeSubject" class="field" style="max-width:130px" aria-label="科目"></select>
             </div>
@@ -1442,16 +1482,211 @@
       <div class="dialog-actions"><button class="btn primary" type="button" data-action="close-dialog">知道了</button></div>
     </div>
   </dialog>
-  <dialog class="dialog" id="guideDialog" style="width:min(540px, calc(100% - 32px))">
+  <dialog class="dialog" id="guideDialog" style="width:min(760px, calc(100% - 32px))">
     <div class="dialog-inner">
-      <h2>exam2pdf 使用引导</h2>
-      <ol class="guide-steps">
-        <li><strong>采集浏览</strong>：登录小红书后打开试卷笔记详情页，点右下角「采集到 exam2pdf」，试卷自动进入帖子池。</li>
-        <li><strong>帖子池</strong>：预览、拖动排序、补充本地图片，生成 A4 PDF 或直接打印给学生。</li>
-        <li><strong>试卷批阅</strong>：学生写完后导入作答照片或 PDF，逐题批阅；确认后自动归档错题。</li>
-        <li><strong>错题本 · 学习情况</strong>：查看错因与薄弱知识点，生成本地或 AI 练习，家长确认后打印。</li>
-      </ol>
-      <p class="muted small">帖子、作答与训练数据全部保存在本机；AI 批阅需要你逐次确认后才会发送作答图片。</p>
+      <h2>家卷 使用引导</h2>
+      <p class="muted small">六步上手：采集 → 整理打印 → 批阅 → 复习练习 → 多学生 → 手机上传。帖子、作答与训练数据全部保存在本机；AI 批阅需要你逐次确认后才会发送作答图片。</p>
+      <div class="guide-flow">
+        <section class="guide-step">
+          <span class="guide-step-no">1</span>
+          <figure class="guide-fig">
+            <svg class="guide-svg" viewBox="0 0 180 118" aria-hidden="true">
+              <rect x="4" y="4" width="172" height="110" rx="6"/>
+              <line x1="4" y1="18" x2="176" y2="18"/>
+              <circle cx="12" cy="11" r="1.5"/><circle cx="18" cy="11" r="1.5"/><circle cx="24" cy="11" r="1.5"/>
+              <rect x="10" y="24" width="96" height="10" rx="3" class="soft"/>
+              <text x="14" y="31.5">年级 · 科目 · 搜试卷</text>
+              <rect x="10" y="42" width="72" height="40" rx="3"/>
+              <text x="90" y="50">笔记详情页</text>
+              <line x1="90" y1="58" x2="168" y2="58"/>
+              <line x1="90" y1="66" x2="158" y2="66"/>
+              <rect x="10" y="88" width="50" height="14" rx="3" class="hl"/>
+              <text x="35" y="97.5" text-anchor="middle" class="tb">存入帖子池</text>
+              <path d="M62 95 C 84 100, 96 102, 114 102"/>
+              <rect x="116" y="95" width="56" height="14" rx="7" class="hl-red"/>
+              <text x="144" y="104.3" text-anchor="middle" class="tw">采集到家卷</text>
+            </svg>
+          </figure>
+          <div class="guide-step-text">
+            <strong>采集试卷到帖子池</strong>
+            <ul>
+              <li>在「采集浏览」登录小红书，登录状态保存在本机，之后无需重复扫码。</li>
+              <li>打开一份试卷笔记的详情页，点右下角红色「采集到家卷」按钮，整套图片自动存入帖子池。</li>
+              <li>个别图片下载失败时，刷新笔记页再采集一次即可补齐缺页（图片链接会过期）。</li>
+              <li>顶部「搜试卷」面板可按年级 / 科目 / 教材版本 / 试卷类型组合关键词，一键跳到搜索结果。</li>
+            </ul>
+          </div>
+        </section>
+        <section class="guide-step">
+          <span class="guide-step-no">2</span>
+          <figure class="guide-fig">
+            <svg class="guide-svg" viewBox="0 0 180 118" aria-hidden="true">
+              <rect x="4" y="4" width="172" height="110" rx="6"/>
+              <rect x="10" y="12" width="70" height="9" rx="2" class="soft"/>
+              <text x="13" y="19">帖子池 · 试卷详情</text>
+              <rect x="10" y="30" width="28" height="36" rx="3"/>
+              <rect x="44" y="30" width="28" height="36" rx="3" class="hl"/>
+              <circle cx="58" cy="36" r="1.1" class="dot"/><circle cx="58" cy="40" r="1.1" class="dot"/><circle cx="58" cy="44" r="1.1" class="dot"/>
+              <rect x="78" y="30" width="28" height="36" rx="3"/>
+              <rect x="112" y="30" width="28" height="36" rx="3"/>
+              <circle cx="140" cy="30" r="5.5" class="hl-red"/>
+              <text x="140" y="32.6" text-anchor="middle" class="tw">✕</text>
+              <rect x="146" y="30" width="22" height="36" rx="3"/>
+              <text x="10" y="80">拖动调页序 · ✕ 移除可恢复 · 可补充本地图片</text>
+              <rect x="10" y="88" width="52" height="15" rx="7.5" class="hl-fill"/>
+              <text x="36" y="97.8" text-anchor="middle" class="tw">生成 PDF</text>
+              <rect x="70" y="88" width="52" height="15" rx="7.5" class="hl"/>
+              <text x="96" y="97.8" text-anchor="middle" class="tb">直接打印</text>
+              <rect x="130" y="88" width="48" height="15" rx="7.5"/>
+              <text x="154" y="97.8" text-anchor="middle">补充图片</text>
+            </svg>
+          </figure>
+          <div class="guide-step-text">
+            <strong>整理页序，生成 PDF 或打印</strong>
+            <ul>
+              <li>帖子池点开试卷进入详情：拖动页面卡片调整打印顺序。</li>
+              <li>点卡片右上角 ✕ 移除封面或广告页——原文件保留，需要时可一键恢复全部页序。</li>
+              <li>「补充图片」把本地照片并入这份试卷（比如老师另外发的补充页）。</li>
+              <li>顶部可指定归属学生与科目；「生成 PDF」存档，「直接打印」直接出卷。</li>
+            </ul>
+          </div>
+        </section>
+        <section class="guide-step">
+          <span class="guide-step-no">3</span>
+          <figure class="guide-fig">
+            <svg class="guide-svg" viewBox="0 0 180 118" aria-hidden="true">
+              <rect x="4" y="4" width="172" height="110" rx="6"/>
+              <text x="10" y="16">试卷批阅</text>
+              <rect x="10" y="24" width="58" height="44" rx="4" class="dashed"/>
+              <text x="39" y="43" text-anchor="middle">作答照片</text>
+              <text x="39" y="52" text-anchor="middle">PDF ≤ 24 页</text>
+              <path d="M70 46 L84 46"/><path d="M80 42 L84 46 L80 50"/>
+              <rect x="86" y="28" width="30" height="38" rx="3"/>
+              <rect x="91" y="32" width="30" height="38" rx="3"/>
+              <path d="M124 49 L134 49"/><path d="M130 45 L134 49 L130 53"/>
+              <rect x="136" y="22" width="38" height="17" rx="4" class="hl"/>
+              <text x="155" y="28.5" text-anchor="middle" class="tb">外部 AI</text>
+              <text x="155" y="36" text-anchor="middle" class="tb">粘贴回填</text>
+              <rect x="136" y="43" width="38" height="13" rx="4" class="hl"/>
+              <text x="155" y="52" text-anchor="middle" class="tb">API 一键批阅</text>
+              <rect x="136" y="60" width="38" height="12" rx="6" class="hl-fill"/>
+              <text x="155" y="68.3" text-anchor="middle" class="tw">确认归档</text>
+              <text x="10" y="82">也可逐题手工批阅</text>
+              <text x="10" y="104">AI 只出草稿，人工确认后才生效</text>
+            </svg>
+          </figure>
+          <div class="guide-step-text">
+            <strong>上传作答，逐题批阅</strong>
+            <ul>
+              <li>学生写完后在「试卷批阅」导入作答照片或 PDF（最多 24 页），核对页序后保存为本机作答记录。</li>
+              <li>批阅方式一 · 外部 AI 网页批阅（免费）：生成作答 PDF 和固定提示词，发给豆包 / 千问 / DeepSeek 等，把返回内容粘贴回来，自动解析成逐题草稿。</li>
+              <li>批阅方式二 · 直接 API 批阅：在「学习情况 → 应用设置」配好服务商和 Key，确认后整本发送。</li>
+              <li>也可逐题手工批阅。所有结果都需人工核对并确认，确认后才归档错题本与学情统计。</li>
+            </ul>
+          </div>
+        </section>
+        <section class="guide-step">
+          <span class="guide-step-no">4</span>
+          <figure class="guide-fig">
+            <svg class="guide-svg" viewBox="0 0 180 118" aria-hidden="true">
+              <rect x="4" y="4" width="172" height="110" rx="6"/>
+              <text x="10" y="16">错题本 · 学习情况</text>
+              <rect x="10" y="24" width="52" height="24" rx="4"/>
+              <text x="14" y="34">正确率</text>
+              <rect x="14" y="39" width="30" height="4" rx="2" class="soft"/>
+              <rect x="66" y="24" width="52" height="24" rx="4"/>
+              <text x="70" y="34">薄弱知识点</text>
+              <rect x="70" y="39" width="30" height="4" rx="2" class="soft"/>
+              <rect x="122" y="24" width="52" height="24" rx="4"/>
+              <text x="126" y="34">待复习错题</text>
+              <rect x="126" y="39" width="30" height="4" rx="2" class="soft"/>
+              <rect x="10" y="56" width="164" height="12" rx="3"/>
+              <rect x="128" y="58" width="32" height="8" rx="4" class="soft"/>
+              <rect x="10" y="72" width="164" height="12" rx="3"/>
+              <rect x="128" y="74" width="32" height="8" rx="4" class="soft"/>
+              <text x="10" y="103">家长确认后才能打印</text>
+              <rect x="112" y="93" width="62" height="14" rx="7" class="hl-fill"/>
+              <text x="143" y="102.3" text-anchor="middle" class="tw">生成变式练习</text>
+            </svg>
+          </figure>
+          <div class="guide-step-text">
+            <strong>错题复习与变式练习</strong>
+            <ul>
+              <li>「错题本」按知识点、错因、时间筛选，勾选后可导出 / 打印错题集 PDF，也能标记已掌握。</li>
+              <li>「学习情况」汇总正确率与薄弱知识点，据此生成变式练习：本地模板免费，AI 生成更贴合错题。</li>
+              <li>AI 练习只是草稿：家长检查每道题和答案、确认后才会解锁打印。</li>
+            </ul>
+          </div>
+        </section>
+        <section class="guide-step">
+          <span class="guide-step-no">5</span>
+          <figure class="guide-fig">
+            <svg class="guide-svg" viewBox="0 0 180 118" aria-hidden="true">
+              <rect x="6" y="10" width="62" height="98" rx="6"/>
+              <text x="12" y="22">本机数据</text>
+              <rect x="12" y="28" width="20" height="16" rx="2"/>
+              <rect x="36" y="28" width="20" height="16" rx="2"/>
+              <rect x="12" y="48" width="20" height="16" rx="2"/>
+              <rect x="36" y="48" width="20" height="16" rx="2"/>
+              <line x1="12" y1="72" x2="62" y2="72"/>
+              <text x="12" y="83">学生</text>
+              <rect x="28" y="74" width="24" height="12" rx="3" class="hl"/>
+              <circle cx="61" cy="80" r="5" class="hl"/>
+              <circle cx="61" cy="80" r="1.6" class="dot"/>
+              <path d="M70 60 C 78 60, 80 58, 86 56"/>
+              <rect x="88" y="8" width="86" height="102" rx="6"/>
+              <text x="94" y="20">学生名册</text>
+              <rect x="94" y="26" width="50" height="12" rx="3" class="dashed"/>
+              <rect x="148" y="26" width="20" height="12" rx="6" class="hl-fill"/>
+              <text x="158" y="34.3" text-anchor="middle" class="tw">添加</text>
+              <rect x="94" y="44" width="76" height="14" rx="3"/>
+              <text x="98" y="53.3">甜甜</text>
+              <rect x="94" y="62" width="76" height="14" rx="3" class="hl"/>
+              <text x="98" y="71.3">果果</text>
+              <text x="152" y="71.3" class="tb">当前</text>
+              <text x="94" y="90">新记录自动归属当前学生</text>
+              <text x="94" y="102">详情页可改归属</text>
+            </svg>
+          </figure>
+          <div class="guide-step-text">
+            <strong>多孩家庭：学生名册</strong>
+            <ul>
+              <li>侧边栏「本机数据」卡片底部切换当前学生，点旁边的齿轮打开名册：添加、重命名、移除。</li>
+              <li>新采集的试卷、手机上传的作答、生成的练习都会自动归属当前学生。</li>
+              <li>已有记录在详情页可随时改归属；试卷池与作答列表的蓝色标签即归属学生，错题和报告也会带上名字。</li>
+            </ul>
+          </div>
+        </section>
+        <section class="guide-step">
+          <span class="guide-step-no">6</span>
+          <figure class="guide-fig">
+            <svg class="guide-svg" viewBox="0 0 180 118" aria-hidden="true">
+              <rect x="4" y="4" width="172" height="110" rx="6"/>
+              <text x="10" y="16">学习情况 · 应用设置</text>
+              <rect x="96" y="22" width="76" height="12" rx="6" class="hl"/>
+              <text x="134" y="30.5" text-anchor="middle" class="tb">http://192.168.…</text>
+              <rect x="16" y="30" width="30" height="58" rx="5"/>
+              <line x1="22" y1="36" x2="40" y2="36"/>
+              <path d="M52 56 Q 62 46 72 56"/>
+              <path d="M56 62 Q 62 56 68 62"/>
+              <rect x="112" y="44" width="54" height="34" rx="4"/>
+              <line x1="106" y1="82" x2="172" y2="82"/>
+              <text x="139" y="63" text-anchor="middle">上传作答照片</text>
+              <rect x="16" y="96" width="24" height="12" rx="6" class="hl-fill"/>
+              <circle cx="34" cy="102" r="4" class="knob"/>
+              <text x="46" y="105">开启手机上传 · 备份 / 诊断同面板</text>
+            </svg>
+          </figure>
+          <div class="guide-step-text">
+            <strong>手机上传与日常维护</strong>
+            <ul>
+              <li>「学习情况 → 应用设置」开启手机上传：手机连同一 Wi-Fi，打开显示的网址（或复制链接发给自己），直接上传作答照片，免数据线。</li>
+              <li>同一面板里可配置 AI 接口（切换服务商自动带出接口地址和模型）、导出诊断信息、备份 / 恢复全部本机数据。</li>
+              <li>深浅色外观跟随系统，也可在侧边栏手动切换；所有数据只保存在这台电脑上。</li>
+            </ul>
+          </div>
+        </section>
+      </div>
       <div class="dialog-actions">
         <button class="btn ghost" type="button" data-action="close-guide">下次再提示</button>
         <button class="btn primary" type="button" data-action="dismiss-guide">知道了，不再显示</button>
@@ -1478,6 +1713,20 @@
       <div class="dialog-actions">
         <button class="btn" type="button" id="renameCancel">取消</button>
         <button class="btn primary" type="button" id="renameOk">保存</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog class="dialog" id="studentDialog" style="width:min(480px, calc(100% - 32px))">
+    <div class="dialog-inner">
+      <h2>学生名册</h2>
+      <p class="muted small">家里有多位孩子时先在这里登记姓名。选中的学生会自动归属新采集的试卷、手机上传的作答和新生成的练习；已有的记录也可以在详情里重新指定。</p>
+      <div class="toolbar">
+        <input class="field" id="studentNameInput" type="text" maxlength="40" placeholder="学生姓名" autocomplete="off" />
+        <button class="btn primary" type="button" data-action="add-student">添加学生</button>
+      </div>
+      <div class="student-roster" id="studentRoster"></div>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-action="close-dialog">关闭</button>
       </div>
     </div>
   </dialog>
@@ -1530,6 +1779,12 @@
     <button type="button" role="menuitem" data-menu-action="move-down">后移</button>
     <div class="context-sep" role="separator"></div>
     <button type="button" role="menuitem" class="danger" data-menu-action="remove">移除</button>
+  </div>
+  <!-- 主题菜单必须挂在 body 层级：放进侧边栏会被 .sidebar 的 overflow 滚动容器裁剪，画不到主区域 -->
+  <div class="theme-menu" id="themeMenu" role="menu" aria-label="外观模式" hidden>
+    <button class="theme-menu-item" type="button" role="menuitemradio" aria-checked="true" data-theme-mode="system">跟随系统</button>
+    <button class="theme-menu-item" type="button" role="menuitemradio" aria-checked="false" data-theme-mode="light">浅色模式</button>
+    <button class="theme-menu-item" type="button" role="menuitemradio" aria-checked="false" data-theme-mode="dark">深色模式</button>
   </div>
 
   <script src="../frontend/page-reorder.js"></script>
@@ -1588,6 +1843,19 @@
       if (selected && !values.includes(selected)) values.unshift(selected);
       return '<option value="">未分类</option>' + values.map((s) => '<option' + (s === selected ? " selected" : "") + ">" + escapeHtml(s) + "</option>").join("");
     }
+    function studentById(id) {
+      return state.students.find((student) => student.id === id) || null;
+    }
+    // 作答记录优先显示名册姓名，其次是手机上传时填写的自由文本
+    function answerStudentDisplay(answer) {
+      const student = studentById(answer.studentId);
+      return (student ? student.name : "") || answer.studentName || "";
+    }
+    function studentOptions(selected) {
+      return '<option value="">未指定学生</option>' + state.students.map((student) => (
+        '<option value="' + escapeHtml(student.id) + '"' + (student.id === selected ? " selected" : "") + ">" + escapeHtml(student.name) + "</option>"
+      )).join("");
+    }
     const desktop = window.exam2pdfDesktop;
     const state = {
       posts: desktop ? [] : [
@@ -1615,6 +1883,8 @@
       mistakes: [],
       mobileUpload: { enabled: false, urls: [] },
       aiSettings: null,
+      students: [],
+      activeStudentId: null,
       currentPostId: null,
       nextId: 3,
       reviewSaved: false,
@@ -1736,17 +2006,20 @@
       });
       const paged = paginate(filteredPosts, state.postPage);
       $("#postPager").innerHTML = paginationHtml("post", paged.page, paged.pageCount);
-      list.innerHTML = paged.slice.map((post) => (
+      list.innerHTML = paged.slice.map((post) => {
+        const student = studentById(post.studentId);
+        return (
         '<article class="surface post-card" data-post-id="' + escapeHtml(post.id) + '">' +
           '<div class="post-head">' +
             '<button class="post-open" type="button" data-action="open-post" data-id="' + escapeHtml(post.id) + '">' +
               '<strong>' + escapeHtml(post.title) + '</strong>' +
-            '<span class="post-meta"><span class="pill">' + escapeHtml(post.subject || "未分类") + '</span><span>' + Number(post.pages || (post.pageOrder || []).length) + ' 张图</span>' + (post.missingImages ? '<span class="missing-count">原帖图片已采集 ' + Number(post.sourcePageCount == null ? (post.pages || 0) : post.sourcePageCount) + '/' + Number(post.expectedImages || 0) + ' 张，还缺 ' + post.missingImages + ' 张，可重试采集</span>' : '') + (post.supplementalImages ? '<span>另补充 ' + post.supplementalImages + ' 张本地图片</span>' : '') + '<span>' + escapeHtml(post.author || "") + '</span><span>' + escapeHtml(formatPostDate(post)) + '</span><span>来源：' + escapeHtml(post.source) + '</span></span>' +
+            '<span class="post-meta">' + (student ? '<span class="pill blue">' + escapeHtml(student.name) + '</span>' : '') + '<span class="pill">' + escapeHtml(post.subject || "未分类") + '</span><span>' + Number(post.pages || (post.pageOrder || []).length) + ' 张图</span>' + (post.missingImages ? '<span class="missing-count">原帖图片已采集 ' + Number(post.sourcePageCount == null ? (post.pages || 0) : post.sourcePageCount) + '/' + Number(post.expectedImages || 0) + ' 张，还缺 ' + post.missingImages + ' 张，可重试采集</span>' : '') + (post.supplementalImages ? '<span>另补充 ' + post.supplementalImages + ' 张本地图片</span>' : '') + '<span>' + escapeHtml(post.author || "") + '</span><span>' + escapeHtml(formatPostDate(post)) + '</span><span>来源：' + escapeHtml(post.source) + '</span></span>' +
             '</button>' +
             '<div class="post-ops"><button class="btn small-btn" type="button" data-action="rename-post" data-id="' + escapeHtml(post.id) + '">重命名</button><button class="btn danger small-btn" type="button" data-action="delete-post" data-id="' + escapeHtml(post.id) + '">删除</button></div>' +
           '</div>' +
         '</article>'
-      )).join("");
+        );
+      }).join("");
       $("#postEmpty").hidden = filteredPosts.length > 0;
       if (!filteredPosts.length) {
         $("#postEmpty").innerHTML = state.posts.length
@@ -1785,6 +2058,11 @@
       if (subjectSelect) {
         subjectSelect.innerHTML = subjectOptions(post.subject || "");
         subjectSelect.value = post.subject || "";
+      }
+      const studentSelect = $("#postStudent");
+      if (studentSelect) {
+        studentSelect.innerHTML = studentOptions(post.studentId);
+        studentSelect.value = post.studentId || "";
       }
       const resetOrderBtn = $("#resetPostOrderBtn");
       if (resetOrderBtn) {
@@ -1854,7 +2132,11 @@
       list.innerHTML = paged.slice.map((answer) => {
         const label = answer.reviewStatus === "confirmed" ? "已确认" : answer.reviewStatus === "draft" ? "草稿" : "待批阅";
         const action = answer.reviewStatus === "confirmed" ? "open-answer-report" : "open-answer-review";
-        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta"><span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + answer.pages + ' 张作答</span><span>' + escapeHtml(answer.studentName || "未填写学生姓名") + '</span><span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">重命名</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">删除</button></div></div></article>';
+        const studentLabel = answerStudentDisplay(answer);
+        const studentSpan = answer.studentId
+          ? '<span class="pill blue">' + escapeHtml(studentLabel) + '</span>'
+          : '<span>' + escapeHtml(studentLabel || "未填写学生姓名") + '</span>';
+        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta">' + studentSpan + '<span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + answer.pages + ' 张作答</span><span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">重命名</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">删除</button></div></div></article>';
       }).join("");
       $("#answerEmpty").hidden = filtered.length > 0;
     }
@@ -1939,7 +2221,7 @@
         $("#answerSubject").innerHTML = subjectOptions(answer.subject || "");
         $("#answerSubject").value = answer.subject || "";
         $("#reviewAnswerTitle").textContent = answer.title;
-        $("#reviewAnswerMeta").textContent = [answer.studentName ? "学生：" + answer.studentName : "", answer.pages + " 张作答", formatPostDate(answer)].filter(Boolean).join(" · ");
+        $("#reviewAnswerMeta").textContent = [answerStudentDisplay(answer) ? "学生：" + answerStudentDisplay(answer) : "", answer.pages + " 张作答", formatPostDate(answer)].filter(Boolean).join(" · ");
         const trainingSelect = $("#answerTraining");
         trainingSelect.innerHTML = '<option value="">不关联训练</option>' + state.trainingHistory.filter((training) => training.status === "approved").map((training) => '<option value="' + escapeHtml(training.id) + '">' + escapeHtml(training.topic) + ' · ' + escapeHtml(formatPostDate({ collectedAt: training.createdAt })) + '</option>').join("");
         trainingSelect.value = answer.trainingId || "";
@@ -1971,7 +2253,7 @@
       const counts = { "正确": 0, "部分正确": 0, "错误": 0, "未作答": 0 };
       review.forEach((question) => { if (Object.hasOwn(counts, question.result)) counts[question.result]++; });
       $("#reportTitle").textContent = answer.title + " · 批阅报告";
-      $("#reportMeta").textContent = [answer.studentName ? "学生：" + answer.studentName : "", "已由家长确认", linkedTraining ? "关联训练：" + linkedTraining.topic : "", formatPostDate(answer)].filter(Boolean).join(" · ");
+      $("#reportMeta").textContent = [answerStudentDisplay(answer) ? "学生：" + answerStudentDisplay(answer) : "", "已由家长确认", linkedTraining ? "关联训练：" + linkedTraining.topic : "", formatPostDate(answer)].filter(Boolean).join(" · ");
       $("#reportSummary").textContent = "正确 " + counts["正确"] + " 题 · 部分正确 " + counts["部分正确"] + " 题 · 错误 " + counts["错误"] + " 题 · 未作答 " + counts["未作答"] + " 题";
       $("#reportNotice").hidden = !review.some((question) => question.result !== "正确");
       $("#reportPager").hidden = allQuestions || paged.pageCount <= 1;
@@ -2095,13 +2377,37 @@
         ? (state.mobileUpload.urls.length ? state.mobileUpload.urls.join("\n") : "已开启，但没有检测到局域网 IPv4 地址。请检查电脑的 Wi-Fi 连接。")
         : "关闭状态";
     }
+    function aiProviderPreset(id) {
+      return (state.aiSettings?.providers || []).find((provider) => provider.id === id) || null;
+    }
+    function aiProviderLabel(id) {
+      return aiProviderPreset(id)?.label || id;
+    }
+    // 切换服务商：接口地址/模型还停在别的服务商预设（或为空）时自动带出对应配置；
+    // 手动填过的自定义值保留不动。
+    function onAiProviderChange() {
+      const preset = aiProviderPreset($("#aiProvider").value);
+      if (!preset) return;
+      const providers = state.aiSettings?.providers || [];
+      const presetBaseUrls = providers.map((provider) => provider.baseUrl).filter(Boolean);
+      const presetModels = providers.map((provider) => provider.model).filter(Boolean);
+      const baseInput = $("#aiBaseUrl");
+      const modelInput = $("#aiModel");
+      if (!baseInput.value.trim() || presetBaseUrls.includes(baseInput.value.trim())) baseInput.value = preset.baseUrl;
+      if (!modelInput.value.trim() || presetModels.includes(modelInput.value.trim())) modelInput.value = preset.model;
+      baseInput.placeholder = preset.baseUrl ? "" : "按服务商文档填写，如 https://api.openai.com/v1";
+      modelInput.placeholder = preset.model ? "" : "填写服务商文档中的模型名称";
+    }
     function renderAiSettings(value) {
       state.aiSettings = value;
       if (!value) return;
       $("#aiProvider").value = value.provider || "deepseek";
-      $("#aiModel").value = value.model || "deepseek-chat";
-      $("#aiBaseUrl").value = value.baseUrl || "https://api.deepseek.com/v1";
+      $("#aiModel").value = value.model || "";
+      $("#aiBaseUrl").value = value.baseUrl || "";
       $("#aiApiKey").value = "";
+      const preset = aiProviderPreset($("#aiProvider").value);
+      $("#aiBaseUrl").placeholder = preset?.baseUrl ? "" : "按服务商文档填写，如 https://api.openai.com/v1";
+      $("#aiModel").placeholder = preset?.model ? "" : "填写服务商文档中的模型名称";
       $("#aiKeyStatus").textContent = value.hasKey ? "已加密保存密钥" : "尚未保存密钥";
       $("#aiState").textContent = value.hasKey ? "配置已保存" : "缺少密钥";
       $("#aiState").className = "pill " + (value.hasKey ? "green" : "amber");
@@ -2109,10 +2415,10 @@
       $("#testAiButton").disabled = !value.hasKey;
       $("#aiTrainingButton").disabled = !value.hasKey;
       $("#aiTrainingNotice").textContent = value.hasKey
-        ? "AI 练习只发送所选知识点到“" + value.provider + " / " + value.model + "”，不发送学生作答图片；生成结果需检查题目和答案后才能打印。"
+        ? "AI 练习只发送所选知识点到“" + aiProviderLabel(value.provider) + " / " + value.model + "”，不发送学生作答图片；生成结果需检查题目和答案后才能打印。"
         : "AI 练习需要先在下方保存 AI 服务配置和 API Key；生成结果只作为草稿，检查答案后才能打印。";
       $("#aiReviewNotice").textContent = value.hasKey
-        ? "确认后会把本记录的全部作答图片发送到“" + value.provider + " / " + value.model + "”；结果只填入当前页面，不会自动保存或确认。"
+        ? "确认后会把本记录的全部作答图片发送到“" + aiProviderLabel(value.provider) + " / " + value.model + "”；结果只填入当前页面，不会自动保存或确认。"
         : "方式二 · 直接 API 批阅需要先配置 AI 服务和 API Key；没有 Key 可用上方「外部 AI 网页批阅」。";
     }
     async function saveAiSettings(clearApiKey = false) {
@@ -2189,7 +2495,8 @@
       $("#trainingHistory").innerHTML = paged.slice.map((training) => {
         const progress = trainingProgress(training.id);
         const label = progress.complete ? "已完成 · " + progress.confirmedCount + " 份已确认批阅" : progress.linkedCount ? "已有作答 · 待确认批阅" : (training.status === "approved" ? "家长已审核" : "待家长审核");
-        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '"><strong>' + escapeHtml(training.topic) + ' · ' + training.questions.length + ' 道</strong><span class="post-meta"><span>' + escapeHtml(formatPostDate({ collectedAt: training.createdAt })) + '</span><span>' + escapeHtml(label) + '</span></span></button><div class="post-ops"><button class="btn small-btn" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '">打开</button></div></div></article>';
+        const student = studentById(training.studentId);
+        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '"><strong>' + escapeHtml(training.topic) + ' · ' + training.questions.length + ' 道</strong><span class="post-meta">' + (student ? '<span class="pill blue">' + escapeHtml(student.name) + '</span>' : '') + '<span>' + escapeHtml(formatPostDate({ collectedAt: training.createdAt })) + '</span><span>' + escapeHtml(label) + '</span></span></button><div class="post-ops"><button class="btn small-btn" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '">打开</button></div></div></article>';
       }).join("");
       $("#trainingHistoryEmpty").hidden = state.trainingHistory.length > 0;
     }
@@ -2228,6 +2535,7 @@
       if (!desktop || typeof desktop.generateTraining !== "function") { toast("请在 Electron 中生成本地练习草稿"); return; }
       try {
         const generated = await desktop.generateTraining($("#trainingTopic").value);
+        generated.studentId = state.activeStudentId;
         state.training = await desktop.saveTraining(generated);
         renderTrainingRecord(state.training);
         await loadTrainingHistory();
@@ -2241,6 +2549,7 @@
       button.textContent = "AI 正在生成…";
       try {
         const generated = await desktop.generateAiTraining($("#trainingTopic").value);
+        generated.studentId = state.activeStudentId;
         state.training = await desktop.saveTraining(generated);
         renderTrainingRecord(state.training);
         await loadTrainingHistory();
@@ -2432,10 +2741,13 @@
       if (!desktop) { toast("请在 Electron 中保存本地作答记录"); return; }
       if (!state.gradePages.length) { toast("请先上传学生作答照片"); return; }
       const title = $("#gradeTitle").value.trim() || "学生作答";
-      const studentName = $("#gradeStudent").value.trim();
+      // 名册有学生时用下拉选择（归属 studentId），否则退回手动输入姓名
+      const rosterSelect = $("#gradeStudentSelect");
+      const studentId = !rosterSelect.hidden && rosterSelect.value ? rosterSelect.value : null;
+      const studentName = studentId ? ((studentById(studentId) || {}).name || "") : $("#gradeStudent").value.trim();
       const subject = $("#gradeSubject").value;
       try {
-        const result = await desktop.createAnswer({ title, studentName, subject, images: state.gradePages });
+        const result = await desktop.createAnswer({ title, studentName, studentId, subject, images: state.gradePages });
         state.gradePages = [];
         $("#gradeTitle").value = "";
         $("#gradeStudent").value = "";
@@ -2479,7 +2791,7 @@
       $("#mistakeList").innerHTML = paged.slice.map((item) => (
         '<article class="mistake-row' + (state.mistakeSelection.has(item.id) ? " mistake-selected" : "") + '">' +
           '<input type="checkbox" class="mistake-check" data-mistake-id="' + escapeHtml(item.id) + '" aria-label="勾选第 ' + (filtered.indexOf(item) + 1) + ' 题"' + (state.mistakeSelection.has(item.id) ? " checked" : "") + '>' +
-          '<div class="mistake-open" data-action="open-mistake-detail" data-id="' + escapeHtml(item.id) + '" role="button" tabindex="0"><strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml([item.subject, item.studentName, item.topic, item.errorType, formatPostDate({ collectedAt: item.collectedAt })].filter(Boolean).join(" · ")) + '</p></div>' +
+          '<div class="mistake-open" data-action="open-mistake-detail" data-id="' + escapeHtml(item.id) + '" role="button" tabindex="0"><strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml([item.studentId ? (studentById(item.studentId) || {}).name : "", item.subject, item.studentName, item.topic, item.errorType, formatPostDate({ collectedAt: item.collectedAt })].filter(Boolean).join(" · ")) + '</p></div>' +
           '<button class="btn small-btn" type="button" data-action="toggle-mastery" data-id="' + escapeHtml(item.id) + '">' + (item.status === "mastered" ? "重新复习" : "标记已掌握") + '</button></article>'
       )).join("");
       $("#mistakeEmpty").hidden = filtered.length > 0;
@@ -2512,7 +2824,7 @@
       const subject = items.every((item) => item.subject === items[0].subject) ? (items[0].subject || "全科") : "全科";
       const title = "错题集 · " + subject + "（" + items.length + " 题）";
       const area = $("#mistakePrintArea");
-      area.innerHTML = '<h1>' + escapeHtml(title) + '</h1><p class="print-meta">生成于 ' + formatPostDate({ collectedAt: new Date().toISOString() }) + ' · exam2pdf 家庭试卷工作台</p>' + items.map((item) => (
+      area.innerHTML = '<h1>' + escapeHtml(title) + '</h1><p class="print-meta">生成于 ' + formatPostDate({ collectedAt: new Date().toISOString() }) + ' · 家卷 家庭试卷工作台</p>' + items.map((item) => (
         '<div class="print-item"><h3>第 ' + escapeHtml(item.questionNo) + ' 题 <span class="print-source">· ' + escapeHtml(item.source) + '</span></h3>' +
         '<p><span class="muted small">判定：</span>' + escapeHtml(item.result) + '<span class="muted small"> · 错因：</span>' + escapeHtml(item.errorType || "未标记") + '</p>' +
         '<p><span class="muted small">学生作答：</span>' + (renderHighlight(item.studentAnswer) || '<span class="muted">（空）</span>') + '</p>' +
@@ -2650,7 +2962,7 @@
       currentMistake = item;
       $("#mistakeDetailTitle").textContent = "第 " + item.questionNo + " 题 · " + (item.source || "作答记录");
       $("#mistakeDetailBody").innerHTML = [
-        '<p class="muted small">' + escapeHtml([item.subject, item.studentName, item.errorType, formatPostDate({ collectedAt: item.collectedAt })].filter(Boolean).join(" · ")) + '</p>',
+        '<p class="muted small">' + escapeHtml([item.studentId ? (studentById(item.studentId) || {}).name : "", item.subject, item.studentName, item.errorType, formatPostDate({ collectedAt: item.collectedAt })].filter(Boolean).join(" · ")) + '</p>',
         '<p><span class="muted small">判定结果：</span><span class="pill ' + (item.result === "正确" ? "green" : "amber") + '">' + escapeHtml(item.result) + '</span></p>',
         question ? '<p><span class="muted small">学生作答：</span>' + (renderHighlight(question.studentAnswer) || '<span class="muted">（空）</span>') + '</p>' : "",
         question ? '<p><span class="muted small">正确答案：</span>' + (renderHighlight(question.correctAnswer) || '<span class="muted">（空）</span>') + '</p>' : "",
@@ -2817,10 +3129,96 @@
       $("#overviewMistakes").textContent = state.mistakes.length;
       $("#overviewTrainings").textContent = state.trainingHistory.length;
     }
+    // 学生名册：侧边栏切换当前学生，管理对话框增删改名。
+    // 当前学生自动归属新采集/上传/生成的记录，已有记录可在详情里重新指定。
+    function syncActiveStudent() {
+      if (!desktop || typeof desktop.setActiveStudent !== "function") return;
+      desktop.setActiveStudent(state.activeStudentId).catch(() => {});
+    }
+    function setActiveStudentSelection(id) {
+      state.activeStudentId = id || null;
+      try {
+        if (state.activeStudentId) localStorage.setItem("exam2pdf-active-student", state.activeStudentId);
+        else localStorage.removeItem("exam2pdf-active-student");
+      } catch {}
+      syncActiveStudent();
+      renderStudentControls();
+    }
+    function renderStudentRoster() {
+      const roster = $("#studentRoster");
+      if (!roster) return;
+      if (!state.students.length) {
+        roster.innerHTML = '<p class="muted small student-empty">名册还是空的，先添加第一位学生。</p>';
+        return;
+      }
+      roster.innerHTML = state.students.map((student) => (
+        '<div class="student-row">' +
+          '<strong>' + escapeHtml(student.name) + '</strong>' +
+          (student.id === state.activeStudentId ? '<span class="pill green">当前</span>' : '') +
+          '<button class="btn small-btn" type="button" data-action="rename-student" data-id="' + escapeHtml(student.id) + '">重命名</button>' +
+          '<button class="btn danger small-btn" type="button" data-action="remove-student" data-id="' + escapeHtml(student.id) + '">移除</button>' +
+        '</div>'
+      )).join("");
+    }
+    function renderStudentControls() {
+      const sidebarSelect = $("#activeStudentSelect");
+      if (sidebarSelect) {
+        sidebarSelect.innerHTML = '<option value="">未指定</option>' + state.students.map((student) => (
+          '<option value="' + escapeHtml(student.id) + '"' + (student.id === state.activeStudentId ? " selected" : "") + ">" + escapeHtml(student.name) + "</option>"
+        )).join("");
+        sidebarSelect.value = state.activeStudentId || "";
+      }
+      // 批阅页：名册有学生时用下拉（默认当前学生），否则退回手动输入姓名
+      const rosterSelect = $("#gradeStudentSelect");
+      const manualInput = $("#gradeStudent");
+      if (rosterSelect && manualInput) {
+        rosterSelect.innerHTML = studentOptions(state.activeStudentId);
+        rosterSelect.value = state.activeStudentId || "";
+        rosterSelect.hidden = state.students.length === 0;
+        manualInput.hidden = state.students.length > 0;
+      }
+      renderStudentRoster();
+      renderPosts();
+      renderAnswers();
+      renderTrainingHistory();
+      if ($("#s0c").classList.contains("active")) renderPostDetail();
+    }
+    async function loadStudents() {
+      if (!desktop || typeof desktop.listStudents !== "function") { renderStudentControls(); return; }
+      try {
+        state.students = await desktop.listStudents();
+      } catch (error) {
+        toast("读取学生名册失败：" + (error.message || "请重试"));
+      }
+      // 恢复上次选中的学生；名册里已不存在的选择回退为未指定
+      let stored = null;
+      try { stored = localStorage.getItem("exam2pdf-active-student"); } catch {}
+      if (!state.students.some((student) => student.id === state.activeStudentId)) {
+        state.activeStudentId = state.students.some((student) => student.id === stored) ? stored : null;
+        syncActiveStudent();
+      }
+      renderStudentControls();
+    }
+    async function addStudent() {
+      const input = $("#studentNameInput");
+      const name = input.value.trim();
+      if (!name) { input.focus(); return; }
+      if (!desktop || typeof desktop.createStudent !== "function") { toast("学生名册需要在 Electron 应用中使用"); return; }
+      try {
+        const student = await desktop.createStudent(name);
+        input.value = "";
+        if (!state.activeStudentId) {
+          state.activeStudentId = student.id;
+          try { localStorage.setItem("exam2pdf-active-student", student.id); } catch {}
+          syncActiveStudent();
+        }
+        await loadStudents();
+        toast("已添加学生：" + student.name);
+      } catch (error) { toast("添加学生失败：" + (error.message || "请重试")); }
+    }
     function updateXhsState(value) {
       const status = value && value.status ? value.status : "loading";
       const message = value && value.message ? value.message : "正在打开小红书网页…";
-      $("#xhsState").textContent = message;
       $("#xhsLoadingMessage").textContent = message;
       $("#xhsLoading").dataset.status = status;
       $("#xhsLoading").hidden = status === "ready";
@@ -2878,21 +3276,42 @@
 
     $$(".nav-item").forEach((button) => button.addEventListener("click", () => switchScreen(button.dataset.screen)));
     $$("[data-screen]").filter((button) => !button.classList.contains("nav-item")).forEach((button) => button.addEventListener("click", () => switchScreen(button.dataset.screen)));
-    if (desktop && desktop.isElectron) {
-      document.body.classList.add("electron-shell");
-      $("#xhsBack").addEventListener("click", () => desktop.goBack());
-      $("#xhsForward").addEventListener("click", () => desktop.goForward());
-      $("#xhsReload").addEventListener("click", () => desktop.reload());
-      desktop.onXhsState(updateXhsState);
+      if (desktop && desktop.isElectron) {
+        document.body.classList.add("electron-shell");
+        desktop.onXhsState(updateXhsState);
       desktop.getXhsState().then(updateXhsState).catch(() => {});
       desktop.onPostsChanged(async () => {
         await loadPosts();
         if ($("#s0c").classList.contains("active")) renderPostDetail();
       });
       desktop.onAnswersChanged(() => { void loadAnswers(); void loadTrainingHistory(); });
+      desktop.onStudentsChanged(() => { void loadStudents(); });
+      $("#activeStudentSelect").addEventListener("change", () => setActiveStudentSelection($("#activeStudentSelect").value));
+      $("#studentNameInput").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") { event.preventDefault(); void addStudent(); }
+      });
+      $("#postStudent").addEventListener("change", async () => {
+        const post = activePost();
+        if (!post || !desktop) return;
+        const value = $("#postStudent").value || null;
+        try {
+          const saved = await desktop.setPostStudent(post.id, value);
+          Object.assign(post, saved);
+          renderPosts();
+          toast(value ? "已更新试卷归属学生" : "已清除试卷的学生归属");
+        } catch (error) {
+          toast("更新学生归属失败：" + (error.message || "请重试"));
+          renderPostDetail();
+        }
+      });
 
       const xhsViewport = $("#xhsViewport");
       let boundsFrame = 0;
+      // 小红书是原生置顶视图（WebContentsView），永远盖在所有 HTML 之上：
+      // 任何 dialog 或浮动菜单（主题选择等）打开期间必须隐藏它，否则弹层被盖住无法操作
+      function hasOpenOverlay() {
+        return Boolean(document.querySelector("dialog[open], .theme-menu:not([hidden])"));
+      }
       function updateXhsBounds() {
         cancelAnimationFrame(boundsFrame);
         boundsFrame = requestAnimationFrame(() => {
@@ -2903,7 +3322,7 @@
           const right = Math.min(window.innerWidth, rect.right);
           const bottom = Math.min(window.innerHeight, rect.bottom);
           desktop.setXhsBounds({
-            visible: active && right > left && bottom > top,
+            visible: active && !hasOpenOverlay() && right > left && bottom > top,
             x: left,
             y: top,
             width: Math.max(0, right - left),
@@ -2915,6 +3334,8 @@
       window.addEventListener("scroll", updateXhsBounds, { passive: true });
       new ResizeObserver(updateXhsBounds).observe(xhsViewport);
       document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", updateXhsBounds));
+      // dialog 的 open 属性、浮层的 hidden 属性变化（showModal/show/close/菜单开关）时重新计算原生视图可见性
+      new MutationObserver(updateXhsBounds).observe(document.documentElement, { subtree: true, attributeFilter: ["open", "hidden"] });
       window.addEventListener("beforeunload", () => desktop.setXhsBounds({ visible: false }));
       updateXhsBounds();
     } else {
@@ -3051,6 +3472,28 @@
       if (action === "show-info") $("#infoDialog").showModal();
       if (action === "show-guide") openGuide();
       if (action === "close-dialog") button.closest("dialog").close();
+      if (action === "manage-students") {
+        renderStudentRoster();
+        $("#studentDialog").showModal();
+        $("#studentNameInput").focus();
+      }
+      if (action === "add-student") await addStudent();
+      if (action === "rename-student") {
+        const student = studentById(button.dataset.id);
+        if (!student) return;
+        const name = await promptText("重命名学生", student.name);
+        if (!name || name === student.name) return;
+        try { await desktop.renameStudent(student.id, name); await loadStudents(); }
+        catch (error) { toast("重命名学生失败：" + (error.message || "请重试")); }
+      }
+      if (action === "remove-student") {
+        const student = studentById(button.dataset.id);
+        if (!student) return;
+        const confirmed = await confirmAction("移除学生「" + student.name + "」？", "已有的试卷、作答和练习会保留，只是不再关联这个学生；之后可在详情里重新指定归属。", "移除");
+        if (!confirmed) return;
+        try { await desktop.removeStudent(student.id); await loadStudents(); toast("已移除学生"); }
+        catch (error) { toast("移除学生失败：" + (error.message || "请重试")); }
+      }
       if (action === "close-guide") button.closest("dialog").close();
       if (action === "dismiss-guide") {
         try { localStorage.setItem("exam2pdf-guide-done", "1"); } catch {}
@@ -3432,18 +3875,59 @@
         $("#repairPromptText").select();
       }
     });
-    function applyTheme(theme) {
-      document.body.setAttribute("data-theme", theme);
-      $("#themeToggle .side-util-label").textContent = theme === "dark" ? "浅色模式" : "深色模式";
+    // 外观模式三态：跟随系统 / 浅色 / 深色。localStorage 存的是模式本身，
+    // "system" 时实时跟随 prefers-color-scheme 变化。
+    function resolveTheme(mode) {
+      return mode === "dark" || mode === "light" ? mode : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     }
-    let storedTheme = null;
-    try { storedTheme = localStorage.getItem("exam2pdf-theme"); } catch {}
-    applyTheme(storedTheme === "dark" || storedTheme === "light" ? storedTheme : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
-    $("#themeToggle").addEventListener("click", () => {
-      const next = document.body.getAttribute("data-theme") === "dark" ? "light" : "dark";
-      try { localStorage.setItem("exam2pdf-theme", next); } catch {}
-      applyTheme(next);
+    function applyTheme(mode) {
+      document.body.setAttribute("data-theme", resolveTheme(mode));
+      document.body.dataset.themeMode = mode;
+      const label = mode === "system" ? "跟随系统" : mode === "dark" ? "深色模式" : "浅色模式";
+      $("#themeToggle .side-util-label").textContent = label;
+      $("#themeToggle").setAttribute("aria-label", "外观模式：" + label);
+      $$("#themeMenu .theme-menu-item").forEach((item) => item.setAttribute("aria-checked", String(item.dataset.themeMode === mode)));
+    }
+    let themeMode = "system";
+    try {
+      const storedTheme = localStorage.getItem("exam2pdf-theme");
+      themeMode = storedTheme === "dark" || storedTheme === "light" || storedTheme === "system" ? storedTheme : "system";
+    } catch {}
+    applyTheme(themeMode);
+    if (window.matchMedia) {
+      const colorSchemeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+      const onSystemThemeChange = () => { if (themeMode === "system") applyTheme("system"); };
+      if (colorSchemeMedia.addEventListener) colorSchemeMedia.addEventListener("change", onSystemThemeChange);
+      else if (colorSchemeMedia.addListener) colorSchemeMedia.addListener(onSystemThemeChange);
+    }
+    const themeMenu = $("#themeMenu");
+    function closeThemeMenu() {
+      if (themeMenu.hidden) return;
+      themeMenu.hidden = true;
+      $("#themeToggle").setAttribute("aria-expanded", "false");
+    }
+    function setThemeMode(mode) {
+      themeMode = mode;
+      try { localStorage.setItem("exam2pdf-theme", mode); } catch {}
+      applyTheme(mode);
+      closeThemeMenu();
+    }
+    $("#themeToggle").addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (themeMenu.hidden) {
+        const rect = $("#themeToggle").getBoundingClientRect();
+        themeMenu.hidden = false;
+        const menuRect = themeMenu.getBoundingClientRect();
+        themeMenu.style.left = Math.round(Math.min(rect.right + 8, window.innerWidth - menuRect.width - 10)) + "px";
+        themeMenu.style.top = Math.round(Math.max(10, Math.min(rect.top - 4, window.innerHeight - menuRect.height - 10))) + "px";
+        $("#themeToggle").setAttribute("aria-expanded", "true");
+      } else closeThemeMenu();
     });
+    $$("#themeMenu .theme-menu-item").forEach((item) => item.addEventListener("click", () => setThemeMode(item.dataset.themeMode)));
+    document.addEventListener("click", (event) => {
+      if (!themeMenu.hidden && !themeMenu.contains(event.target) && !event.target.closest("#themeToggle")) closeThemeMenu();
+    });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeThemeMenu(); });
     $("#sidebarToggle").addEventListener("click", () => {
       const collapsed = !document.body.classList.contains("sidebar-collapsed");
       document.body.classList.toggle("sidebar-collapsed", collapsed);
@@ -3451,6 +3935,7 @@
       try { localStorage.setItem("exam2pdf-sidebar", collapsed ? "collapsed" : "expanded"); } catch {}
     });
     try { document.body.classList.toggle("sidebar-collapsed", localStorage.getItem("exam2pdf-sidebar") === "collapsed"); } catch {}
+    $("#aiProvider").addEventListener("change", onAiProviderChange);
     $("#lanSwitch").addEventListener("click", async () => {
       if (!desktop || typeof desktop.startMobileUpload !== "function") { toast("手机上传需要在 Electron 应用中开启"); return; }
       const shouldEnable = $("#lanSwitch").getAttribute("aria-checked") !== "true";
@@ -3475,6 +3960,7 @@
       void loadPosts();
       void loadAnswers();
       void loadTrainingHistory();
+      void loadStudents();
       if (typeof desktop.getMobileUploadState === "function") desktop.getMobileUploadState().then(renderMobileUpload).catch(() => {});
       if (typeof desktop.getAiSettings === "function") desktop.getAiSettings().then(renderAiSettings).catch((error) => toast("读取 AI 配置失败：" + (error.message || "请重试")));
     }

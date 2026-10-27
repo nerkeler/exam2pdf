@@ -15,7 +15,7 @@ const UPLOAD_PAGE = `<!doctype html>
 <html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>上传学生作答</title>
 <style>body{font:16px system-ui,sans-serif;max-width:620px;margin:0 auto;padding:24px 18px;color:#202733;background:#f5f7fb}main{background:white;border:1px solid #dce2ec;border-radius:18px;padding:22px}h1{font-size:22px;margin:0 0 8px}p{color:#637083;line-height:1.55}label{display:block;margin:18px 0 7px;font-weight:600}input{box-sizing:border-box;width:100%;min-height:48px;border:1px solid #ccd4e0;border-radius:10px;padding:10px;font:inherit}input[type=file]{padding:12px;background:#f8f9fb}button{width:100%;min-height:50px;margin-top:20px;border:0;border-radius:11px;background:#1764ff;color:white;font:inherit;font-weight:700}button:disabled{opacity:.55}#status{min-height:24px;margin-top:14px}</style>
-<main><h1>上传学生作答</h1><p>选择学生完成后的答题照片，提交后会直接保存到电脑上的 exam2pdf 作答记录。支持 JPG、PNG、WebP，最多 24 张，每张不超过 16 MB。</p>
+<main><h1>上传学生作答</h1><p>选择学生完成后的答题照片，提交后会直接保存到电脑上的「家卷」作答记录。支持 JPG、PNG、WebP，最多 24 张，每张不超过 16 MB。</p>
 <form id="uploadForm"><label for="title">试卷名称</label><input id="title" name="title" maxlength="160" placeholder="例如：八年级数学周练">
 <label for="studentName">学生姓名（可选）</label><input id="studentName" name="studentName" maxlength="80" autocomplete="name">
 <label for="images">作答照片</label><input id="images" name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple required>
@@ -115,7 +115,7 @@ function sendJson(response, statusCode, body) {
   response.end(JSON.stringify(body));
 }
 
-function createUploadHandler({ token, answerStore, onUploaded }) {
+function createUploadHandler({ token, answerStore, onUploaded, getStudentId }) {
   if (!token || !answerStore || typeof answerStore.createPost !== "function") throw new Error("手机上传服务配置无效");
   const tokenPath = "/u/" + token;
   return async (request, response) => {
@@ -147,6 +147,7 @@ function createUploadHandler({ token, answerStore, onUploaded }) {
         recordType: "answer",
         title: fields.title || "手机上传作答",
         studentName: fields.studentName || "",
+        studentId: typeof getStudentId === "function" ? getStudentId() : null,
         images: files.map(({ mime, bytes }) => ({ mime, base64: bytes.toString("base64") }))
       });
       if (typeof onUploaded === "function") await onUploaded(result.post);
@@ -159,11 +160,11 @@ function createUploadHandler({ token, answerStore, onUploaded }) {
   };
 }
 
-async function startMobileUploadServer({ answerStore, onUploaded, host = "0.0.0.0", port = 0, networkInterfaces } = {}) {
+async function startMobileUploadServer({ answerStore, onUploaded, getStudentId, host = "0.0.0.0", port = 0, networkInterfaces } = {}) {
   if (!answerStore || typeof answerStore.createPost !== "function") throw new Error("作答记录存储尚未就绪");
   const token = randomBytes(32).toString("hex");
   const tokenPath = "/u/" + token;
-  const server = http.createServer(createUploadHandler({ token, answerStore, onUploaded }));
+  const server = http.createServer(createUploadHandler({ token, answerStore, onUploaded, getStudentId }));
   server.requestTimeout = 120_000;
   server.headersTimeout = 15_000;
   await new Promise((resolve, reject) => {

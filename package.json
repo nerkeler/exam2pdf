@@ -1,8 +1,8 @@
 {
   "name": "exam2pdf",
-  "version": "0.1.1-preview.1",
+  "version": "0.1.2-preview.1",
   "private": true,
-  "description": "家庭试卷工作台 Electron 原型",
+  "description": "家卷 · 家庭试卷工作台",
   "main": "electron/main.cjs",
   "engines": {
     "node": ">=22.13.0"

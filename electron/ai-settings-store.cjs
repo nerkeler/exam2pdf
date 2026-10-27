@@ -1,8 +1,9 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
+const { AI_PROVIDERS, DEFAULT_PROVIDER, providerPreset } = require("./ai-providers.cjs");
 
-const PROVIDERS = new Set(["deepseek", "zhipu", "qwen", "kimi", "openai-compatible"]);
+const PROVIDERS = new Set(AI_PROVIDERS.map((provider) => provider.id));
 
 function clean(value, maxLength) {
   return String(value == null ? "" : value).trim().slice(0, maxLength);
@@ -42,12 +43,22 @@ class AiSettingsStore {
     }
   }
 
+  // 未显式保存过的字段回落到当前服务商自己的预设（而不是固定 DeepSeek 的端点）
+  defaultsFor(provider, model, baseUrl) {
+    const preset = providerPreset(provider) || providerPreset(DEFAULT_PROVIDER);
+    return {
+      provider: preset.id,
+      model: model || preset.model,
+      baseUrl: baseUrl || preset.baseUrl
+    };
+  }
+
   async getStatus() {
     const settings = await this.read();
+    const defaults = this.defaultsFor(settings.provider, settings.model, settings.baseUrl);
     return {
-      provider: settings.provider || "deepseek",
-      model: settings.model || "deepseek-chat",
-      baseUrl: settings.baseUrl || "https://api.deepseek.com/v1",
+      ...defaults,
+      providers: AI_PROVIDERS,
       hasKey: typeof settings.encryptedKey === "string" && settings.encryptedKey.length > 0
     };
   }
@@ -55,11 +66,12 @@ class AiSettingsStore {
   async getBackupProfile() {
     const settings = await this.read();
     if (!Object.keys(settings).length) return null;
+    const defaults = this.defaultsFor(settings.provider, settings.model, settings.baseUrl);
     return {
       schemaVersion: 1,
-      provider: settings.provider || "deepseek",
-      model: settings.model || "deepseek-chat",
-      baseUrl: settings.baseUrl || "https://api.deepseek.com/v1"
+      provider: defaults.provider,
+      model: defaults.model,
+      baseUrl: defaults.baseUrl
     };
   }
 
@@ -74,12 +86,8 @@ class AiSettingsStore {
     try { apiKey = await this.safeStorage.decryptStringAsync(Buffer.from(settings.encryptedKey, "base64")); }
     catch { throw new Error("无法解密已保存的 API Key，请重新保存密钥"); }
     if (!apiKey) throw new Error("请先在应用设置中保存 AI API Key");
-    return {
-      provider: settings.provider || "deepseek",
-      model: settings.model || "deepseek-chat",
-      baseUrl: settings.baseUrl || "https://api.deepseek.com/v1",
-      apiKey
-    };
+    const defaults = this.defaultsFor(settings.provider, settings.model, settings.baseUrl);
+    return { ...defaults, apiKey };
   }
 
   async save(input) {

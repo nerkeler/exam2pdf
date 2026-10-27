@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         exam2pdf 采集助手（小红书 → 帖子池）
+// @name         家卷采集助手（小红书 → 帖子池）
 // @namespace    exam2pdf
 // @version      3.1.0
 // @description  在小红书笔记详情页采集图片并写入 exam2pdf 本地帖子池。
@@ -365,7 +365,7 @@
   function createCollectButton() {
     var b = document.createElement("button");
     b.id = "e2p-btn";
-    b.textContent = "采集到 exam2pdf";
+    b.textContent = "采集到家卷";
     b.style.cssText =
       "position:fixed;right:24px;bottom:24px;z-index:2147483647;background:#ff2442;color:#fff;" +
       "border:none;border-radius:24px;padding:11px 20px;font-size:14px;cursor:pointer;" +

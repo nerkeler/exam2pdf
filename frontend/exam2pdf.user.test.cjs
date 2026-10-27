@@ -125,7 +125,7 @@ test("collects note-detail images with metadata and dimensions before releasing 
   );
   assert.equal(payload.images[0].base64, imageBytes.toString("base64"));
   assert.equal(button.disabled, false);
-  assert.equal(button.textContent, "采集到 exam2pdf");
+  assert.equal(button.textContent, "采集到家卷");
 });
 
 test("does not collect feed pages without a note-detail route", async () => {
