@@ -85,6 +85,7 @@ jobs:
           BUILD_SHA: ${{ steps.build.outputs.head_sha }}
         run: |
           set -euo pipefail
+          echo "Token repo permissions: $(gh api "$GH_REPO" --jq '.permissions')"
           mapfile -d '' assets < <(find release-assets -maxdepth 1 -type f -print0 | sort -z)
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --target "$BUILD_SHA" \
