@@ -3243,10 +3243,12 @@
       select.innerHTML = studentOptions(state.activeStudentId); select.value = state.activeStudentId || "";
       select.disabled = !state.studentReady || studentFocus.changing;
       const label = $("#currentStudentLabel");
-      if (label) label.textContent = (state.students.find(student => student.id === state.activeStudentId)?.name || "正在加载") + " · 学习工作台";
+      // 名册为空/未指定时不能显示"正在加载"——那是加载失败的观感
+      const fallbackStudentLabel = state.students.length ? "未指定学生" : "未添加学生";
+      if (label) label.textContent = (state.students.find(student => student.id === state.activeStudentId)?.name || fallbackStudentLabel) + " · 学习工作台";
       const student = studentById(state.activeStudentId);
       $("#studentAvatar").innerHTML = studentAvatar(student);
-      $("#studentProfileName").textContent = student?.name || "正在加载";
+      $("#studentProfileName").textContent = student?.name || fallbackStudentLabel;
       $("#studentAvatarButton").disabled = select.disabled;
       $("#studentAvatarButton").title = (student?.name || "当前学生") + " · 点击切换学生";
       $("#studentSwitchList").innerHTML = state.students.map(item => '<button type="button" class="student-row" data-action="select-student" data-id="' + escapeHtml(item.id) + '"><span class="student-avatar" aria-hidden="true">' + studentAvatar(item) + '</span><strong>' + escapeHtml(item.name) + '</strong>' + (item.id === state.activeStudentId ? '<span class="pill green">当前</span>' : '') + '</button>').join("");
