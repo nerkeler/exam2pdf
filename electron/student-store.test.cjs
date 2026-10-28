@@ -42,3 +42,38 @@ test("removes students from the roster", async (t) => {
   assert.deepEqual(await store.list(), []);
   await assert.rejects(store.remove(created.id), /找不到这个学生/);
 });
+
+test('student avatars persist through rename and reject invalid choices without changing the roster', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'student-avatar-'));
+  try {
+    const store = new StudentStore(root); await store.initialize();
+    const student = await store.create('小雨', 'female');
+    assert.equal(student.gender, 'female');
+    await store.rename(student.id, '小宇', 'male');
+    assert.equal((await new StudentStore(root).list())[0].gender, 'male');
+    await store.rename(student.id, '小宇同学');
+    assert.equal((await store.list())[0].gender, 'male');
+    await assert.rejects(store.rename(student.id, '不保存', 'invalid'));
+    await assert.rejects(store.create('不保存', 'invalid'));
+    assert.equal((await store.list())[0].name, '小宇同学');
+    assert.equal((await store.list()).length, 1);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+
+test('custom avatar is persisted and can be cleared while invalid data cannot overwrite it', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'student-custom-avatar-'));
+  try {
+    const store = new StudentStore(root); await store.initialize();
+    const avatar = 'data:image/jpeg;base64,/9j/AAAA';
+    const student = await store.create('自定义头像', 'female', avatar);
+    assert.equal((await new StudentStore(root).list())[0].avatar, avatar);
+    await store.rename(student.id, '保留头像');
+    assert.equal((await store.list())[0].avatar, avatar);
+    await assert.rejects(store.rename(student.id, '非法', 'male', 'https://example.com/photo.jpg'));
+    await assert.rejects(store.rename(student.id, '非法', 'male', 'data:image/svg+xml;base64,AAAA'));
+    assert.equal((await store.list())[0].avatar, avatar);
+    await store.rename(student.id, '使用预置', 'male', null);
+    assert.equal((await store.list())[0].avatar, null);
+  } finally { await fs.rm(root, {recursive:true,force:true}); }
+});

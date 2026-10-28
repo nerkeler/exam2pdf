@@ -44,7 +44,7 @@ app.whenReady().then(async () => {
     applyTheme('light');
     state.posts = ${JSON.stringify(posts)};
     state.students = [{ id: 'demo-student', name: '演示学生' }];
-    state.activeStudentId = 'demo-student';
+    state.activeStudentId = 'demo-student'; state.studentReady = true; studentFocus.set('demo-student');
     state.answers = [${JSON.stringify(answer)}];
     state.currentAnswer = state.answers[0];
     state.currentAnswerId = 'demo-answer';

@@ -1,3 +1,4 @@
+const { validateRoster } = require("./student-store.cjs");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
@@ -69,6 +70,14 @@ async function listLibraryEntries(libraryRoot) {
     }
     await walk(root, "");
   }
+  for (const name of ["students.json", "workspace.json"]) {
+    const absolute = path.join(libraryRoot, name);
+    try {
+      const stat = await fsp.lstat(absolute);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > (name === "students.json" ? 16 : 1) * 1024 * 1024) throw new Error("学生配置文件无效");
+      entries.push({ absolute, archivePath: name, directory: false, size: stat.size });
+    } catch (error) { if (error.code !== "ENOENT") throw error; }
+  }
   return entries;
 }
 
@@ -135,7 +144,7 @@ function validateEntryPath(name) {
   if (!name || name.includes("\\") || name.startsWith("/") || /^[A-Za-z]:/.test(name)) throw new Error("备份中含有无效路径");
   const normalized = path.posix.normalize(name);
   if (normalized === ".." || normalized.startsWith("../") || normalized !== name.replace(/\/$/, "")) throw new Error("备份中含有越界路径");
-  if (!(normalized === "posts" || normalized.startsWith("posts/") || normalized === "answers" || normalized.startsWith("answers/") || normalized === "trainings" || normalized.startsWith("trainings/") || normalized === "settings" || normalized === "settings/ai-settings.json")) {
+  if (!(["students.json", "workspace.json"].includes(normalized) || normalized === "posts" || normalized.startsWith("posts/") || normalized === "answers" || normalized.startsWith("answers/") || normalized === "trainings" || normalized.startsWith("trainings/") || normalized === "settings" || normalized === "settings/ai-settings.json")) {
     throw new Error("备份中包含不支持的数据目录：" + normalized);
   }
   return normalized;
@@ -217,6 +226,20 @@ async function extractBackupToTemp(archivePath, tempRoot) {
 }
 
 async function validateRestoredLibrary(libraryRoot) {
+  let roster;
+  try { roster = validateRoster(JSON.parse(await fsp.readFile(path.join(libraryRoot, "students.json"), "utf8"))); }
+  catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    roster = []; await fsp.writeFile(path.join(libraryRoot, "students.json"), "[]\n", { flag: "wx" });
+  }
+  const studentIds = new Set(roster.map(student => student.id));
+  try {
+    const context = JSON.parse(await fsp.readFile(path.join(libraryRoot, "workspace.json"), "utf8"));
+    if (!context || context.schemaVersion !== 1 || (context.activeStudentId !== null && !studentIds.has(context.activeStudentId))) throw new Error("备份中的当前学生无效");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    await fsp.writeFile(path.join(libraryRoot, "workspace.json"), JSON.stringify({ schemaVersion: 1, activeStudentId: roster[0]?.id || null }) + "\n", { flag: "wx" });
+  }
   const linkedTrainingIds = new Set();
   for (const category of ["posts", "answers"]) {
     const categoryPath = path.join(libraryRoot, category);
@@ -284,7 +307,7 @@ async function restoreBackup(archivePath, libraryRoot) {
     const stagedLibrary = path.join(tempRoot, "library");
     const settingsProfile = await validateRestoredLibrary(stagedLibrary);
     await fsp.mkdir(libraryRoot, { recursive: true });
-    for (const category of ["posts", "answers", "trainings"]) {
+    for (const category of ["posts", "answers", "trainings", "students.json", "workspace.json"]) {
       const destination = path.join(libraryRoot, category);
       const staged = path.join(stagedLibrary, category);
       const previous = path.join(tempRoot, "previous-" + category);

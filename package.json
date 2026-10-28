@@ -1,8 +1,9 @@
 {
   "name": "exam2pdf",
-  "version": "0.1.2-preview.1",
+  "version": "0.1.3-preview.1",
   "private": true,
   "description": "家卷 · 家庭试卷工作台",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "main": "electron/main.cjs",
   "engines": {
     "node": ">=22.13.0"
@@ -47,7 +48,19 @@
       "node_modules/pdfjs-dist/LICENSE",
       "!node_modules/@napi-rs/**/*",
       "THIRD_PARTY_NOTICES.md",
-      "node_modules/katex/LICENSE"
+      "node_modules/katex/LICENSE",
+      "!**/node_modules/pdfjs-dist/{legacy,web,types,image_decoders}/**/*",
+      "!**/node_modules/pdfjs-dist/**/*.map",
+      "!**/node_modules/pdfjs-dist/build/{pdf.min.mjs,pdf.worker.min.mjs,pdf.sandbox*.mjs}",
+      "!**/node_modules/pdfjs-dist/{webpack.mjs,CODE_OF_CONDUCT.md}",
+      "!**/node_modules/katex/{src,types,contrib}/**/*",
+      "!**/node_modules/katex/{cli.js,katex.ts}",
+      "!**/node_modules/katex/dist/{katex.js,katex.mjs,katex.css}",
+      "!**/node_modules/katex/dist/**/*.map",
+      "!**/node_modules/katex/dist/fonts/*.{ttf,woff}",
+      "!**/node_modules/katex/dist/contrib/!(auto-render.min.js)",
+      "frontend/student-focus.js",
+      "frontend/assets/avatars/*.jpg"
     ],
     "directories": {
       "output": "release"
@@ -79,13 +92,19 @@
         "deb"
       ],
       "category": "Education",
-      "maintainer": "exam2pdf contributors <nerkeler@users.noreply.github.com>"
+      "maintainer": "nerkeler <nerkeler@users.noreply.github.com>"
     },
     "publish": {
       "provider": "github",
       "owner": "nerkeler",
       "repo": "exam2pdf"
-    }
+    },
+    "compression": "maximum",
+    "electronLanguages": [
+      "en",
+      "zh-CN",
+      "zh-TW"
+    ]
   },
   "devDependencies": {
     "electron": "^44.9.3",
@@ -95,9 +114,10 @@
   "dependencies": {
     "electron-updater": "^6.8.11",
     "katex": "^0.19.1",
-    "pdfjs-dist": "6.4.299"
+    "pdfjs-dist": "6.4.299",
+    "qrcode": "1.5.4"
   },
-  "author": "exam2pdf contributors",
+  "author": "nerkeler",
   "homepage": "https://github.com/nerkeler/exam2pdf",
   "repository": {
     "type": "git",

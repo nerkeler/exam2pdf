@@ -121,7 +121,7 @@ class PostStore {
     let title = cleanText(input.title, 160, "未命名试卷");
     // 同类记录标题重名时自动追加序号（固定格式）：错题本/列表能区分不同来源；
     // 输入标题本身已带"（n）"尾缀时，从基准名继续找下一个可用序号
-    const siblingTitles = (await this.listPosts(recordType)).map((post) => post.title);
+    const siblingTitles = (await this.listPosts(recordType)).filter(post => (post.studentId || null) === (input.studentId || null)).map((post) => post.title);
     if (siblingTitles.includes(title)) {
       const baseMatch = title.match(/^(.*)（(\d+)）$/);
       const base = baseMatch ? baseMatch[1] : title;
@@ -180,7 +180,7 @@ class PostStore {
     }
 
     if (source === "小红书采集" && noteId) {
-      const existing = (await this.listPosts()).find((post) => post.noteId === noteId);
+      const existing = (await this.listPosts()).find((post) => post.noteId === noteId && (post.studentId || null) === (input.studentId || null));
       if (existing) {
         const existingPost = await this.readPost(existing.id);
         if (existingPost.expectedImages !== expectedImages) throw new Error("笔记图片数量已变化，请刷新详情页后重新采集");

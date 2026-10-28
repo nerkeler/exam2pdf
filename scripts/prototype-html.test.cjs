@@ -69,7 +69,8 @@ test("workspace HTML has valid inline JavaScript and unique static IDs", () => {
   const packageConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
   assert.ok(packageConfig.build.files.includes("frontend/page-reorder.js"), "touch reordering helper must be included in the desktop build");
 
-  const ids = [...html.matchAll(/\bid\s*=\s*["']([^"']+)["']/gi)].map((match) => match[1]);
+  const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "");
+  const ids = [...markup.matchAll(/\bid\s*=\s*["']([^"']+)["']/gi)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, "static DOM IDs must be unique");
   assert.match(html, /id="renderFatal"/, "workspace must expose a visible runtime failure panel");
   assert.match(html, /window\.addEventListener\("error"/);

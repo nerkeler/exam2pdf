@@ -8,7 +8,16 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM.xmlHttpRequest
 // @run-at       document-idle
+// @license      PolyForm-Noncommercial-1.0.0
+// @source       https://github.com/nerkeler/exam2pdf
 // ==/UserScript==
+
+/*
+ * 家卷采集助手 · exam2pdf 官方发布。许可：PolyForm Noncommercial 1.0.0，
+ * 仅限非商业用途；售卖、付费分发、捆绑广告或推广变现均未授权。
+ * 修改版再分发须随附许可、保留 Required Notice 版权行并改名。
+ * 唯一官方渠道：https://github.com/nerkeler/exam2pdf
+ */
 
 (function () {
   if (window.top !== window.self) return;
@@ -281,6 +290,11 @@
   }
 
   async function collect(btn) {
+    var scopeToken;
+    if (window.exam2pdfCollector && typeof window.exam2pdfCollector.beginCollection === "function") {
+      try { scopeToken = await window.exam2pdfCollector.beginCollection(); }
+      catch (error) { alert(error.message || "请打开笔记详情页"); return; }
+    }
     if (busy) return;
     var d = extract();
     if (!d) {
@@ -329,6 +343,7 @@
           if (totalBytes > 80 * 1024 * 1024) throw new Error("图片总大小超过 80 MB，请减少图片后重试");
           setBtn("保存到帖子池…");
           var result = await bridge.collectPost({
+            scopeToken: scopeToken,
             title: d.title,
             author: d.author,
             noteId: d.noteId,

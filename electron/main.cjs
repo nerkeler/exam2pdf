@@ -1,4 +1,7 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, session, shell, protocol, dialog, safeStorage, Menu } = require("electron");
+const { app, BrowserWindow, WebContentsView, ipcMain, session, shell, protocol, dialog, safeStorage, Menu, nativeImage } = require("electron");
+const { AsyncLocalStorage } = require("node:async_hooks");
+const { StudentWorkspace, scopedStore } = require("./student-workspace.cjs");
+const studentRequests = new AsyncLocalStorage();
 const fsSync = require("node:fs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -11,6 +14,7 @@ const { deriveLearningStats } = require("./learning-stats.cjs");
 const { generatePractice } = require("./training-generator.cjs");
 const { generateAiPractice } = require("./ai-practice-service.cjs");
 const { createBackup, restoreBackup } = require("./backup-service.cjs");
+const { mobileUploadState } = require("./mobile-upload-qr.cjs");
 const { startMobileUploadServer } = require("./mobile-upload-server.cjs");
 const { TrainingStore } = require("./training-store.cjs");
 const { StudentStore } = require("./student-store.cjs");
@@ -34,7 +38,11 @@ const {
 
 // 显示名「家卷」；数据目录显式钉在 exam2pdf（改名不迁移，老数据无缝延续）
 app.setName("家卷");
-app.setPath("userData", path.join(app.getPath("appData"), "exam2pdf"));
+// Tests and diagnostic launches can supply an isolated absolute profile.
+const isolatedProfile = process.env.EXAM2PDF_USER_DATA;
+if (isolatedProfile && !path.isAbsolute(isolatedProfile)) throw new Error("EXAM2PDF_USER_DATA must be absolute");
+if (isolatedProfile) fsSync.mkdirSync(isolatedProfile, { recursive: true });
+app.setPath("userData", isolatedProfile || path.join(app.getPath("appData"), "exam2pdf"));
 
 const startupSmoke = process.env.EXAM2PDF_STARTUP_SMOKE === "1";
 // 诊断错误日志：内存环形 + 落盘（userData/logs/error.log），供"导出诊断信息"使用
@@ -75,8 +83,14 @@ let trainingStore;
 let studentStore;
 // 当前选中的学生：采集/手机上传时自动归属，渲染层切换学生时同步过来
 let activeStudentId = null;
+let studentWorkspace;
+let rawAnswerStore;
+let workspaceRevision = 0;
+const collectionContexts = new Map();
+const requestStudentId = () => studentRequests.getStore()?.studentId || activeStudentId;
 let aiSettingsStore;
 let mobileUploadServer;
+let mobileUploadStarting = null;
 let xhsSession;
 let xhsViewAttached = false;
 let xhsSearchOverlayAttached = false;
@@ -96,8 +110,16 @@ let currentXhsState = { status: "loading", message: "正在打开小红书…" }
 let startupFailureShown = false;
 let libraryMaintenance = Promise.resolve();
 
+function syncSearchStudent() {
+  xhsSearchPanelOpen = false;
+  if (xhsSearchOverlayView && !xhsSearchOverlayView.webContents.isDestroyed() && xhsSearchOverlayReady) {
+    xhsSearchOverlayView.webContents.send("xhs-search-overlay:student", activeStudentId);
+    applyXhsSearchOverlayBounds();
+  }
+}
+
 function maintainLibrary(task) {
-  const current = libraryMaintenance.then(() => withStoreLocks([postStore, answerStore, trainingStore], task));
+  const current = libraryMaintenance.then(() => withStoreLocks([postStore, answerStore, trainingStore, studentStore], task));
   libraryMaintenance = current.catch(() => {});
   return current;
 }
@@ -438,6 +460,7 @@ function createXhsView() {
   xhsSearchOverlayView.setBackgroundColor("#00000000");
   xhsSearchOverlayView.webContents.on("did-finish-load", () => {
     xhsSearchOverlayReady = true;
+    syncSearchStudent();
     applyXhsSearchOverlayBounds();
   });
   xhsSearchOverlayView.webContents.loadFile(path.join(__dirname, "xhs-search-overlay.html")).catch((error) => {
@@ -695,8 +718,11 @@ function showInitializationFailure(error) {
 function appHandle(channel, handler) {
   ipcMain.handle(channel, async (event, ...args) => {
     if (!isAppWindow(event)) throw new Error("此操作只能从 exam2pdf 工作台发起");
+    const studentId = activeStudentId;
     await libraryMaintenance;
-    return handler(...args);
+    const scoped = /^(posts:|answers:|training:|workspace:|mistakes:|mobile-upload:)/.test(channel);
+    if (scoped && studentId !== activeStudentId) throw new Error("学生已切换，请重试当前操作");
+    return studentRequests.run({ studentId }, () => handler(...args));
   });
 }
 
@@ -706,9 +732,9 @@ function notifyPostsChanged(id) {
   }
 }
 
-function notifyStudentsChanged() {
+function notifyStudentsChanged(value = {}) {
   if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
-    mainWindow.webContents.send("students:changed");
+    mainWindow.webContents.send("students:changed", value);
   }
 }
 
@@ -852,38 +878,48 @@ ipcMain.on("desktop:xhs-reload", async (event) => {
 });
 
 appHandle("posts:list", () => postStore.listPosts());
-appHandle("posts:set-student", (id, studentId) => {
-  return postStore.setStudent(id, studentId).then((post) => {
-    notifyPostsChanged(id);
-    return post;
+appHandle("students:list", () => studentStore.list());
+appHandle("students:pick-avatar", async () => {
+  const choice = await dialog.showOpenDialog(mainWindow, { title: "选择学生头像", properties: ["openFile"], filters: [{ name: "图片", extensions: ["jpg", "jpeg", "png", "webp"] }] });
+  if (choice.canceled || !choice.filePaths[0]) return null;
+  const file = choice.filePaths[0];
+  if ((await fs.stat(file)).size > 10 * 1024 * 1024) throw new Error("请选择小于 10 MB 的图片");
+  const image = nativeImage.createFromPath(file);
+  if (image.isEmpty()) throw new Error("无法读取这张图片，请选择 JPG、PNG 或 WebP");
+  const size = image.getSize();
+  const edge = Math.min(size.width, size.height);
+  const square = image.crop({ x: Math.floor((size.width-edge)/2), y: Math.floor((size.height-edge)/2), width: edge, height: edge }).resize({ width:256, height:256 });
+  return "data:image/jpeg;base64," + square.toJPEG(85).toString("base64");
+});
+appHandle("students:create", async (name, gender, avatar) => {
+  const student = await studentStore.create(name, gender, avatar);
+  notifyStudentsChanged();
+  return student;
+});
+appHandle("students:rename", async (id, name, gender, avatar) => {
+  const student = await studentStore.rename(id, name, gender, avatar);
+  notifyStudentsChanged();
+  return student;
+});
+async function stopPhoneUpload() {
+  if (mobileUploadStarting) await mobileUploadStarting.catch(() => {});
+  if (mobileUploadServer) { const server = mobileUploadServer; mobileUploadServer = null; await server.close(); }
+}
+appHandle("students:remove", async (id) => {
+  return maintainLibrary(async () => {
+    const context = await studentWorkspace.remove(id);
+    notifyStudentsChanged(); return context;
   });
 });
-appHandle("students:list", () => studentStore.list());
-appHandle("students:create", async (name) => {
-  const student = await studentStore.create(name);
-  notifyStudentsChanged();
-  return student;
-});
-appHandle("students:rename", async (id, name) => {
-  const student = await studentStore.rename(id, name);
-  notifyStudentsChanged();
-  return student;
-});
-appHandle("students:remove", async (id) => {
-  const removed = await studentStore.remove(id);
-  if (activeStudentId === id) activeStudentId = null;
-  notifyStudentsChanged();
-  return removed;
-});
+appHandle("students:context", () => studentWorkspace.context());
 appHandle("students:set-active", async (id) => {
-  if (id === null || id === "") {
-    activeStudentId = null;
-    return { studentId: null };
-  }
-  const roster = await studentStore.list();
-  if (!roster.some((student) => student.id === id)) throw new Error("找不到这个学生");
-  activeStudentId = id;
-  return { studentId: activeStudentId };
+  await stopPhoneUpload();
+  return maintainLibrary(async () => {
+    const context = await studentWorkspace.select(id);
+    activeStudentId = context.studentId; workspaceRevision++; collectionContexts.clear();
+    syncSearchStudent();
+    return context;
+  });
 });
 appHandle("posts:get", (id) => postStore.getPost(id));
 appHandle("posts:create", async (payload) => {
@@ -1017,21 +1053,36 @@ appHandle("training:list", async () => {
   return deriveTrainingProgress(trainings, answers).trainings;
 });
 appHandle("training:save", (practice) => trainingStore.create(practice));
-appHandle("training:set-status", (id, status) => trainingStore.setStatus(id, status));
+appHandle("training:set-status", async (id, status) => {
+  await trainingStore.get(id);
+  if (status === "draft" && (await answerStore.listPosts()).some(answer => answer.trainingId === id)) throw new Error("已有作答关联这份练习，不能撤回审核");
+  return trainingStore.setStatus(id, status);
+});
 appHandle("ai:get-settings", () => aiSettingsStore.getStatus());
 appHandle("ai:save-settings", (settings) => aiSettingsStore.save(settings));
 appHandle("ai:test-connection", async () => testAiConnection(await aiSettingsStore.getCredentials()));
 appHandle("mobile-upload:start", async () => {
-  if (mobileUploadServer) return { enabled: true, urls: mobileUploadServer.urls };
-  mobileUploadServer = await startMobileUploadServer({
-    answerStore,
-    getStudentId: () => activeStudentId,
-    onUploaded: (answer) => notifyAnswersChanged(answer.id)
-  });
-  return { enabled: true, urls: mobileUploadServer.urls };
+  if (mobileUploadStarting) return mobileUploadStarting;
+  const studentId = requestStudentId();
+  const revision = workspaceRevision;
+  mobileUploadStarting = (async () => {
+    if (mobileUploadServer) return mobileUploadState(mobileUploadServer);
+    const studentName = (await studentStore.list()).find(student => student.id === studentId)?.name || "当前学生";
+    const server = await startMobileUploadServer({
+      answerStore: scopedStore(rawAnswerStore, () => studentId),
+      getStudentId: () => studentId,
+      studentName,
+      onUploaded: (answer) => notifyAnswersChanged(answer.id)
+    });
+    if (activeStudentId !== studentId || revision !== workspaceRevision) { await server.close(); throw new Error("学生已切换，请重新开启上传"); }
+    mobileUploadServer = server;
+    return mobileUploadState(server);
+  })();
+  const starting = mobileUploadStarting;
+  try { return await starting; } finally { if (mobileUploadStarting === starting) mobileUploadStarting = null; }
 });
 appHandle("mobile-upload:state", () => mobileUploadServer
-  ? { enabled: true, urls: mobileUploadServer.urls }
+  ? mobileUploadState(mobileUploadServer)
   : { enabled: false, urls: [] });
 appHandle("mobile-upload:stop", async () => {
   if (mobileUploadServer) {
@@ -1062,7 +1113,7 @@ appHandle("backup:restore", async () => {
   const confirmation = await dialog.showMessageBox(mainWindow, {
     type: "warning",
     title: "确认恢复本地备份",
-    message: "恢复将替换当前帖子池、学生作答记录和训练历史。",
+    message: "恢复将替换所有学生的名册、试卷、作答和训练历史。",
     detail: "新备份还会恢复非敏感的 AI 服务商、模型和接口地址设置。备份不包含 API Key；恢复了 AI 设置时需要重新输入密钥。本操作不会更改小红书登录会话。",
     buttons: ["取消", "恢复并替换"],
     defaultId: 0,
@@ -1070,6 +1121,7 @@ appHandle("backup:restore", async () => {
     noLink: true
   });
   if (confirmation.response !== 1) return { canceled: true };
+  await stopPhoneUpload();
   return maintainLibrary(async () => {
     const libraryPath = path.join(app.getPath("userData"), "library");
     const result = await restoreBackup(selection.filePaths[0], libraryPath);
@@ -1078,7 +1130,10 @@ appHandle("backup:restore", async () => {
     await postStore.initialize();
     await answerStore.initialize();
     await trainingStore.initialize();
-    await studentStore.initialize();
+    const context = await studentWorkspace.initialize();
+    activeStudentId = context.studentId; workspaceRevision++; collectionContexts.clear();
+    syncSearchStudent();
+    notifyStudentsChanged({ reset: true });
     notifyPostsChanged(null);
     notifyAnswersChanged(null);
     return { canceled: false, restoredRecords: result.restoredRecords, settingsRestored };
@@ -1110,6 +1165,7 @@ appHandle("answers:rename", async (id, title) => {
 });
 appHandle("answers:import-pdf", (input) => importAnswerPdf(input));
 appHandle("answers:save-review", async (id, questions, confirmed, trainingId) => {
+  await answerStore.getPost(id);
   if (trainingId) {
     const training = await trainingStore.get(trainingId);
     if (training.status !== "approved") throw new Error("只能关联已审核的练习");
@@ -1162,12 +1218,24 @@ appHandle("answers:delete", async (id) => {
   return result;
 });
 
+ipcMain.handle("xhs:begin-collection", (event) => {
+  const url = xhsView?.webContents.getURL();
+  if (!xhsView || event.sender !== xhsView.webContents || event.senderFrame?.url !== url || !noteIdFromUrl(url)) throw new Error("请打开笔记详情页");
+  const token = randomUUID();
+  collectionContexts.clear();
+  collectionContexts.set(token, { studentId: activeStudentId, revision: workspaceRevision, url });
+  return token;
+});
 ipcMain.handle("xhs:collect-post", async (event, payload) => {
+  await libraryMaintenance;
   if (!xhsView || event.sender !== xhsView.webContents) throw new Error("采集请求来源无效");
   const sourceUrl = xhsView.webContents.getURL();
   const noteId = noteIdFromUrl(sourceUrl);
   if (event.senderFrame?.url !== sourceUrl) throw new Error("采集请求必须来自当前小红书笔记页面");
   if (!noteId) throw new Error("请打开小红书笔记详情页后再采集");
+  const context = collectionContexts.get(payload?.scopeToken);
+  if (!context || context.studentId !== activeStudentId || context.revision !== workspaceRevision || context.url !== sourceUrl) throw new Error("采集期间学生或笔记已切换，请重新采集");
+  collectionContexts.delete(payload.scopeToken);
   const input = buildXhsCollectionInput(payload, sourceUrl, noteId);
   input.subject = input.subject || inferSubject(input.title);
   input.studentId = activeStudentId;
@@ -1226,6 +1294,12 @@ if (!hasSingleInstanceLock) {
     await answerStore.initialize();
     await trainingStore.initialize();
     await studentStore.initialize();
+    rawAnswerStore = answerStore;
+    studentWorkspace = new StudentWorkspace(libraryPath, studentStore, postStore, answerStore, trainingStore);
+    const context = await studentWorkspace.initialize(); activeStudentId = context.studentId;
+    postStore = scopedStore(postStore, requestStudentId);
+    answerStore = scopedStore(answerStore, requestStudentId);
+    trainingStore = scopedStore(trainingStore, requestStudentId, "training");
     protocol.handle("exam2pdf-media", async (request) => {
       try {
         const url = new URL(request.url);

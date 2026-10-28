@@ -8,7 +8,7 @@ app.whenReady().then(async()=>{
   const source=new BrowserWindow({show:false,webPreferences:{sandbox:true,nodeIntegration:false}});
   try {
     async function makePdf(count){
-      const html='<style>@page{size:A4;margin:0}.page{break-after:page;height:900px;padding:40px;background:#fff;color:#000;font:40px sans-serif}.page:last-child{break-after:auto}</style>'+Array.from({length:count},(_,i)=>'<section class="page"><h1>PDF import test page '+(i+1)+'</h1><p>Offline cross-platform canvas rendering.</p><div style="width:300px;height:200px;background:'+(i%2?'#e52':'#26c')+'"></div></section>').join('');
+      const html='<style>@page{size:A4;margin:0}.page{break-after:page;height:900px;padding:40px;background:#fff;color:#000;font:40px sans-serif}.page:last-child{break-after:auto}</style>'+Array.from({length:count},(_,i)=>'<section class="page"><h1>PDF import test page '+(i+1)+'</h1><p>数学作答演示：有理数运算与一元一次方程。</p><p>Offline cross-platform canvas rendering.</p><div style="width:300px;height:200px;background:'+(i%2?'#e52':'#26c')+'"></div></section>').join('');
       await source.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(html));return source.webContents.printToPDF({printBackground:true,preferCSSPageSize:true});
     }
     const bytes=await makePdf(2);
@@ -18,7 +18,25 @@ app.whenReady().then(async()=>{
     await assert.rejects(importAnswerPdf({base64:Buffer.from('%PDF-1.4\ncorrupt').toString('base64')}), /PDF 转换失败/);
     const tooMany=await makePdf(25);
     await assert.rejects(importAnswerPdf({base64:tooMany.toString('base64')}),/最多 24 页/);
-    console.log(JSON.stringify({status:'passed',engine:process.versions.electron,moduleRoot:root,checks:['real two-page PDF -> JPEG','actual JPEG dimensions and nonempty content','malformed PDF rejected','25-page PDF rejected'],pages:result.pages.map(({width,height,base64})=>({width,height,bytes:Buffer.from(base64,'base64').length}))}));
+    // Exercise the exact browser assets shipped in ASAR, including the WOFF2-only font set.
+    await source.loadFile(path.join(root,'docs/原型图.html'));
+    const assets = await source.webContents.executeJavaScript(`(async () => {
+      const formula = document.createElement('div');
+      document.body.appendChild(formula);
+      katex.render(String.raw\`\\frac{1}{2}x^2+\\sqrt{9}\`, formula);
+      for (const gender of ['male','female']) {
+        const holder = document.createElement('div'); holder.innerHTML = studentAvatar({gender});
+        document.body.append(holder); await holder.querySelector('img').decode();
+        if (holder.querySelector('img').naturalWidth !== 256) throw new Error('Bundled student avatar missing');
+      }
+      const fonts = await document.fonts.load('20px KaTeX_Main');
+      await document.fonts.ready;
+      return { boot: window.__exam2pdfBootComplete, formula: !!formula.querySelector('.katex'),
+        fontsLoaded: fonts.length > 0 && fonts.every(font => font.status === 'loaded'),
+        autoRender: typeof renderMathInElement === 'function' };
+    })()`);
+    assert.deepEqual(assets, {boot:true,formula:true,fontsLoaded:true,autoRender:true});
+    console.log(JSON.stringify({status:'passed',engine:process.versions.electron,moduleRoot:root,checks:['real two-page PDF -> JPEG','actual JPEG dimensions and nonempty content','malformed PDF rejected','25-page PDF rejected','packaged renderer boot, avatars and WOFF2 math fonts'],pages:result.pages.map(({width,height,base64})=>({width,height,bytes:Buffer.from(base64,'base64').length,sha256:require('node:crypto').createHash('sha256').update(Buffer.from(base64,'base64')).digest('hex')}))}));
     clearTimeout(deadline);app.exit(0);
   }finally{if(!source.isDestroyed())source.destroy();}
 }).catch(error=>{console.error(error);clearTimeout(deadline);app.exit(1);});

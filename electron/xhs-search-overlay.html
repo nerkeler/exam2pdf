@@ -96,14 +96,14 @@
       let layout = { open: false, buttonHeight: 32, buttonWidth: 80, panelWidth: 350, panelHeight: 420 };
       let searchQueryLocked = false;
       let selected = Object.assign({}, defaults);
-      try { selected = Object.assign(selected, JSON.parse(localStorage.getItem("e2p-search-sel") || "{}")); } catch {}
+      let studentStorageKey = null;
 
       function buildQuery() {
         return [selected.grade, selected.subject, selected.version, selected.paperType, selected.unit]
           .map((value) => String(value || "").trim()).filter(Boolean).join(" ");
       }
       function save() {
-        try { localStorage.setItem("e2p-search-sel", JSON.stringify(selected)); } catch {}
+        try { studentStorageKey && localStorage.setItem(studentStorageKey, JSON.stringify(selected)); } catch {}
       }
       function refresh() {
         root.querySelectorAll("[data-key]").forEach((button) => {
@@ -179,6 +179,12 @@
       });
       root.addEventListener("click", (event) => {
         if (layout.open && event.target === root) togglePanel();
+      });
+      window.exam2pdfXhsOverlay.onStudentContext(id => {
+        studentStorageKey = id ? "e2p-search-sel:" + id : null;
+        selected = Object.assign({}, defaults); searchQueryLocked = false;
+        try { if (studentStorageKey) selected = Object.assign(selected, JSON.parse(localStorage.getItem(studentStorageKey) || "{}")); } catch {}
+        refresh();
       });
       window.exam2pdfXhsOverlay.onLayout(updateLayout);
       refresh();

@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("exam2pdfXhsOverlay", {
   search(query) {
     ipcRenderer.send("xhs-search-overlay:search", String(query || "").slice(0, 300));
   },
+  onStudentContext(callback) { return listen("xhs-search-overlay:student", callback); },
   onLayout(callback) {
     return listen("xhs-search-overlay:layout", callback);
   }

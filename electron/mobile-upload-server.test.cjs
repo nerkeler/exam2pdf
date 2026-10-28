@@ -125,3 +125,16 @@ test("serves an upload over a real local HTTP socket and closes the temporary ad
   closed = true;
   await assert.rejects(fetch(server.localUrl), (error) => error.cause?.code === "ECONNREFUSED");
 });
+
+test("phone page and forged form cannot override the student bound to the session", async () => {
+  const token = randomBytes(32).toString("hex");
+  const saved = [];
+  const handler = createUploadHandler({ token, studentName: '甲<script>', getStudentId: () => 'student-A', answerStore: { async createPost(payload) { saved.push(payload); return { post: { id: 'one', title: payload.title, pages: 1 } }; } } });
+  const page = await invoke(handler, '/u/' + token);
+  assert.match(page.body, /甲&lt;script&gt;/);
+  assert.doesNotMatch(page.body, /name="studentName"/);
+  const form = new FormData(); form.set('studentName', '乙');
+  form.append('images', new Blob([PNG], { type: 'image/png' }), 'answer.png');
+  assert.equal((await invoke(handler, '/u/' + token + '/upload', { method: 'POST', form })).status, 201);
+  assert.equal(saved[0].studentName, '甲<script>'); assert.equal(saved[0].studentId, 'student-A');
+});

@@ -14,6 +14,7 @@ const screenshotPath = path.join(testData, 'search-panel.png');
 const userData = path.join(testData, 'user-data');
 fs.mkdirSync(userData);
 app.setPath('userData', userData);
+process.env.EXAM2PDF_USER_DATA = userData;
 let destinationPdf = pdfPath;
 dialog.showSaveDialog = async () => ({ canceled: false, filePath: destinationPdf });
 const report = { checks: [], fixture: 'isolated local HTTPS protocol fixture; no real account or user data', status: 'running' };
@@ -55,17 +56,23 @@ app.whenReady().then(async () => {
 });
 process.on('uncaughtException', finish);
 process.on('unhandledRejection', finish);
-setTimeout(() => finish(new Error('Overall Electron review timeout')), 55000).unref();
+setTimeout(() => finish(new Error('Overall Electron review timeout')), 90000).unref();
 
 async function run() {
   const win = await waitFor(() => BrowserWindow.getAllWindows().find((window) => !window.isDestroyed()), 'workbench window');
   await waitFor(async () => win.webContents.getURL().includes('原型图') || win.webContents.getURL().includes('%E5%8E%9F'), 'workbench URL');
   await waitFor(() => win.webContents.executeJavaScript('window.__exam2pdfBootComplete === true'), 'renderer boot');
+  await waitFor(() => win.webContents.executeJavaScript('state.studentReady === true'), 'current student context');
+  assert.equal(app.getPath('userData'), userData);
+  pass('Isolated user-data profile is retained');
+  win.webContents.setBackgroundThrottling(false);
   pass('Electron workbench boot', { electron: process.versions.electron });
   const views = await waitFor(() => {
     const current = findViews(win);
     return current.xhs && current.overlay ? current : null;
   }, 'embedded view and native overlay');
+  views.xhs.webContents.setBackgroundThrottling(false);
+  views.overlay.webContents.setBackgroundThrottling(false);
   await sleep(400);
   const input = await views.xhs.webContents.executeJavaScript('(() => {const r=document.querySelector(".search-row").getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom}})()');
   const xhsBounds = views.xhs.getBounds();
@@ -110,7 +117,7 @@ async function run() {
   assert.ok(narrowBounds.x >= narrowXhs.x && narrowBounds.x + narrowBounds.width <= narrowXhs.x + narrowXhs.width, 'overlay remains horizontally within the XHS view');
   assert.ok(narrowBounds.y >= narrowXhs.y && narrowBounds.y + narrowBounds.height <= narrowXhs.y + narrowXhs.height, 'overlay remains vertically within the XHS view');
   pass('Minimum desktop width keeps overlay in bounds', { narrowBounds, narrowXhs });
-  const pagination = await win.webContents.executeJavaScript('(() => {const review=Array.from({length:18},(_,index)=>({questionNo:String(index+1),result:["正确","错误","部分正确","未作答"][index%4],knowledgePoints:["测试知识点"],solutionSummary:"本地验收公式：$x^2+1$【重点：复核】"}));renderReport({id:"local-review",title:"本地18题验收",review,reviewStatus:"confirmed",collectedAt:new Date().toISOString()});switchScreen("s4");const first=document.querySelectorAll("#reportQuestions .report-question-row").length;document.querySelector("#reportPager [data-page=\\"2\\"]").click();return {first,second:document.querySelectorAll("#reportQuestions .report-question-row").length,page:state.reportPage}})()');
+  const pagination = await win.webContents.executeJavaScript('(() => {const review=Array.from({length:18},(_,index)=>({questionNo:String(index+1),result:["正确","错误","部分正确","未作答"][index%4],knowledgePoints:["测试知识点"],solutionSummary:"本地验收公式：$x^2+1$【重点：复核】"}));renderReport({id:"local-review",studentId:state.activeStudentId,title:"本地18题验收",review,reviewStatus:"confirmed",collectedAt:new Date().toISOString()});switchScreen("s4");const first=document.querySelectorAll("#reportQuestions .report-question-row").length;document.querySelector("#reportPager [data-page=\\"2\\"]").click();return {first,second:document.querySelectorAll("#reportQuestions .report-question-row").length,page:state.reportPage}})()');
   assert.deepEqual(pagination, { first: 10, second: 8, page: 2 });
   pass('Report pagination renders 18 questions as 10 and 8', pagination);
   const badges = await win.webContents.executeJavaScript('Array.from(document.querySelectorAll("#reportQuestions .report-question-status"), badge=>({text:badge.textContent,width:badge.getBoundingClientRect().width,height:badge.getBoundingClientRect().height,overflow:badge.scrollWidth>badge.clientWidth||badge.scrollHeight>badge.clientHeight}))');
@@ -154,6 +161,7 @@ async function run() {
   assert.equal(darkPdf.subarray(0, 5).toString(), '%PDF-');
   pass('Native PDF export works from dark theme and retains UI theme and page', { ...darkExport, bytes: darkPdf.length, pdf: darkPdfPath });
   assert.equal(await win.webContents.executeJavaScript('Boolean(window.__exam2pdfBootComplete)'), true);
+  await require('./student-scope-acceptance.cjs')(win, pass, { waitFor, dialog, directory: testData, overlay: views.overlay, setDestination: value => { destinationPdf = value; } });
   finish();
 }
 require(path.join(projectRoot, 'electron', 'main.cjs'));

@@ -1,6 +1,6 @@
 # Third-party notices
 
-exam2pdf's own source code is covered by the root [MIT License](LICENSE). That license does not replace the licenses of bundled dependencies, imported content, user documents, or platform content.
+exam2pdf's own source code is covered by the root [PolyForm Noncommercial 1.0.0 License](LICENSE) (noncommercial use only). That license does not replace the licenses of bundled dependencies, imported content, user documents, or platform content.
 
 ## PDF.js / pdfjs-dist
 
@@ -27,3 +27,8 @@ PDF.js distribution resources include their own license files: `cmaps/LICENSE`, 
 `package-lock.json` records the exact dependency resolution. `electron-builder` and npm build tools are used to produce the installers; their licenses remain applicable to any portions redistributed. Check the final packaged dependency tree and accompanying notices when changing the lockfile or build file filters.
 
 Third-party web pages and user-imported papers are not software dependencies and are not licensed by this document. exam2pdf does not ship a paper bank, answer collection, student data, API credentials, or a login session.
+
+## QRCode
+
+- Project: <https://github.com/soldair/node-qrcode>, MIT license.
+- Purpose: generate phone-upload URL QR images locally. The dependency license is retained in the application archive.

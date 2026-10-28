@@ -190,7 +190,7 @@
     .nav-item:hover { background: rgba(255,255,255,.72); color: var(--text); }
     .nav-item.active { background: #fff; color: var(--brand); font-weight: 650; box-shadow: 0 1px 3px rgba(20,30,45,.06); animation: nav-pop .26s var(--ease-out) backwards; }
     @keyframes nav-pop { from { transform: scale(.975); } to { transform: none; } }
-    /* 底部区域：本机数据 + 次级操作，与导航共用同一套缩进和行高 */
+    /* 底部区域：当前学生数据 + 次级操作，与导航共用同一套缩进和行高 */
     .sidebar-foot {
       margin-top: auto;
       padding-top: 14px;
@@ -222,6 +222,16 @@
     .overview-student .manage-students { flex: none; width: 26px; height: 26px; padding: 0; justify-content: center; border: 1px solid #dfe3e9; border-radius: 7px; background: rgba(255,255,255,.7); color: var(--muted); }
     .overview-student .manage-students:hover { color: var(--text); border-color: var(--muted); }
     .student-roster { display: grid; gap: 6px; margin-top: 12px; }
+    .student-profile { display:flex; align-items:center; gap:10px; width:100%; padding:10px 8px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); text-align:left; cursor:pointer; }
+    .student-avatar { display:inline-flex; width:42px; height:42px; flex:none; border-radius:50%; overflow:hidden; }
+    .student-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+    .student-profile-copy { min-width:0; display:grid; gap:3px; }
+    .student-profile-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
+    .student-profile-copy small { font-size:11px; color:var(--muted); }
+    body.sidebar-collapsed .student-profile { padding:5px 2px; border-color:transparent; justify-content:center; }
+    body.sidebar-collapsed .student-profile-copy { display:none; }
+    #studentSwitchList button { text-align:left; width:100%; cursor:pointer; color:var(--text); }
+    @media(max-width:760px) { #currentStudentLabel { display:block; } }
     .student-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #e2e6ec; border-radius: 9px; background: rgba(255,255,255,.6); }
     .student-row strong { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .student-row .pill { flex: none; }
@@ -305,6 +315,7 @@
       body.sidebar-collapsed .side-account { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; border-width: 0; pointer-events: none; }
       body.sidebar-collapsed .side-util { padding: 8px 15.5px; gap: 0; min-height: 0; }
       body.sidebar-collapsed #guideButton,
+      body.sidebar-collapsed #aboutButton,
       body.sidebar-collapsed #themeToggle { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; pointer-events: none; }
       body.sidebar-collapsed .side-util .side-util-label { opacity: 0; max-width: 0; }
       body.sidebar-collapsed #sidebarToggle svg { transform: rotate(180deg); }
@@ -319,6 +330,7 @@
     }
     .page-head h1 { margin: 0; font-size: 23px; line-height: 1.25; letter-spacing: -.02em; }
     .page-head p { margin: 6px 0 0; color: var(--muted); }
+    #currentStudentLabel { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
     .page-meta { color: var(--muted); font-size: 12px; white-space: nowrap; padding-top: 5px; }
     .screen { display: none; }
     /* 页面切换：整体淡入，内容块按顺序轻微上浮；前进/后退带一点方向感 */
@@ -1137,33 +1149,33 @@
         <div class="nav-label">学习流程</div>
         <nav class="nav-list">
           <button class="nav-item active" type="button" data-screen="s0"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span><span class="nav-caption-desktop">采集浏览</span><span class="nav-caption-mobile">浏览</span></button>
-          <button class="nav-item" type="button" data-screen="s0b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-caption-desktop">帖子池</span><span class="nav-caption-mobile">帖子</span></button>
+          <button class="nav-item" type="button" data-screen="s0b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-caption-desktop">试卷库</span><span class="nav-caption-mobile">试卷</span></button>
           <button class="nav-item" type="button" data-screen="s1" hidden><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span><span class="nav-caption-desktop">整理打印</span><span class="nav-caption-mobile">打印</span></button>
           <button class="nav-item" type="button" data-screen="s1b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span><span class="nav-caption-desktop">试卷批阅</span><span class="nav-caption-mobile">批阅</span></button>
           <button class="nav-item" type="button" data-screen="s5"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span><span class="nav-caption-desktop">错题本</span><span class="nav-caption-mobile">错题</span></button>
           <button class="nav-item" type="button" data-screen="s6"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span><span class="nav-caption-desktop">学习情况</span><span class="nav-caption-mobile">学习</span></button>
         </nav>
         <div class="sidebar-foot">
-          <div class="foot-label">本机数据</div>
-          <div class="side-account" id="sideDataOverview" aria-label="本机数据总览">
+          <div class="foot-label">当前学生数据</div>
+          <div class="side-account" id="sideDataOverview" aria-label="当前学生数据总览">
             <div class="overview-grid">
-              <span class="overview-cell"><strong id="overviewPosts">0</strong><small>帖子</small></span>
+              <span class="overview-cell"><strong id="overviewPosts">0</strong><small>试卷</small></span>
               <span class="overview-cell"><strong id="overviewAnswers">0</strong><small>作答</small></span>
               <span class="overview-cell"><strong id="overviewMistakes">0</strong><small>错题</small></span>
               <span class="overview-cell"><strong id="overviewTrainings">0</strong><small>训练</small></span>
             </div>
-            <div class="overview-student">
-              <small>学生</small>
-              <select id="activeStudentSelect" class="field filter-select" aria-label="当前学生"></select>
-              <button class="manage-students" id="manageStudentsButton" type="button" data-action="manage-students" aria-label="管理学生名册" title="管理学生名册">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              </button>
-            </div>
+
           </div>
+          <button id="studentAvatarButton" class="student-profile" type="button" data-action="switch-student" aria-label="切换当前学生"><span id="studentAvatar" class="student-avatar" aria-hidden="true"></span><span class="student-profile-copy"><strong id="studentProfileName">正在加载</strong><small>当前学生 · 点击切换</small></span></button>
+          <select id="activeStudentSelect" hidden aria-label="当前学生"></select>
           <div class="side-utils">
             <button class="side-util" id="guideButton" type="button" data-action="show-guide">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.2 9a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4"/><line x1="12" y1="17.4" x2="12.01" y2="17.4"/></svg>
               <span class="side-util-label">使用引导</span>
+            </button>
+            <button class="side-util" id="aboutButton" type="button" data-action="show-about">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="11" x2="12" y2="16.5"/><line x1="12" y1="7.6" x2="12.01" y2="7.6"/></svg>
+              <span class="side-util-label">关于声明</span>
             </button>
             <button class="side-util" id="themeToggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="外观模式：跟随系统">
               <svg class="theme-icon theme-icon-system" data-mode="system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 21a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg>
@@ -1182,7 +1194,7 @@
       <main class="main">
         <header class="page-head">
           <div><h1 id="pageTitle">采集浏览</h1><p id="pageSubtitle">在小红书网页中登录、浏览并采集试卷。</p></div>
-          <div class="page-meta">家庭试卷工作台</div>
+          <button class="btn small-btn" type="button" data-action="switch-student" id="currentStudentLabel" aria-live="polite">正在加载当前学生</button>
         </header>
 
         <section class="screen active" id="s0" aria-label="采集浏览">
@@ -1203,10 +1215,10 @@
           </div>
         </section>
 
-        <section class="screen" id="s0b" aria-label="帖子池">
+        <section class="screen" id="s0b" aria-label="试卷库">
           <div class="toolbar filter-bar" style="margin-bottom:14px">
             <select id="postSubjectFilter" class="field filter-select" aria-label="按科目筛选"></select>
-            <input class="field filter-search" id="postSearch" type="search" placeholder="搜索试卷或作者" aria-label="搜索帖子池" />
+            <input class="field filter-search" id="postSearch" type="search" placeholder="搜索试卷或作者" aria-label="搜索试卷库" />
             <button class="btn" type="button" data-action="pick-post-files">导入图片</button>
             <button class="btn" type="button" data-action="pick-post-folder">导入文件夹</button>
             <input class="file-input" id="postFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple />
@@ -1217,16 +1229,14 @@
             <p>每张图片作为一页，导入后可预览、拖动排序并打印或生成 PDF。</p>
           </div>
           <div class="post-list" id="postList" style="margin-top:14px"></div>
-          <nav class="pager" id="postPager" aria-label="帖子池分页"></nav>
-          <div class="empty" id="postEmpty" hidden><strong>帖子池还是空的</strong>去采集浏览页采集笔记，或从本地导入试卷。</div>
+          <nav class="pager" id="postPager" aria-label="试卷库分页"></nav>
+          <div class="empty" id="postEmpty" hidden><strong>当前学生还没有试卷</strong>去采集浏览页采集笔记，或从本地导入试卷。</div>
         </section>
 
-        <section class="screen" id="s0c" aria-label="帖子详情">
+        <section class="screen" id="s0c" aria-label="试卷详情">
           <div class="section-head">
-            <button class="btn ghost" type="button" data-screen="s0b">返回帖子池</button>
+            <button class="btn ghost" type="button" data-screen="s0b">返回试卷库</button>
             <div class="toolbar">
-              <label class="muted small" for="postStudent">学生</label>
-              <select id="postStudent" class="field filter-select" aria-label="学生"></select>
               <label class="muted small" for="postSubject">科目</label>
               <select id="postSubject" class="field filter-select" aria-label="科目"></select>
               <span class="pill blue" id="postPageCount">8 页</span>
@@ -1271,8 +1281,6 @@
           <div class="surface panel">
             <div class="toolbar" style="margin-bottom:12px">
               <input class="field" id="gradeTitle" style="max-width:300px" placeholder="试卷名称" aria-label="试卷名称" />
-              <select id="gradeStudentSelect" class="field" style="max-width:160px" aria-label="学生（名册）" hidden></select>
-              <input class="field" id="gradeStudent" style="max-width:220px" placeholder="学生姓名（可选）" aria-label="学生姓名" />
               <select id="gradeSubject" class="field" style="max-width:130px" aria-label="科目"></select>
             </div>
             <div class="dropzone" data-drop-kind="grade">
@@ -1389,11 +1397,11 @@
 
         <section class="screen" id="s6" aria-label="个人学习情况">
           <div class="learning-overview">
-            <div class="overview-meta"><span class="pill">来自本地确认记录</span></div>
+            <div class="overview-meta"><span class="pill">当前学生 · 已确认记录</span></div>
             <div class="learning-stats" aria-label="学习统计">
               <button class="learning-stat" type="button" data-screen="s1b" aria-label="查看近期批阅记录"><span>近 30 天批阅</span><strong id="statRecent">暂无数据</strong><small>查看批阅记录 →</small></button>
               <button class="learning-stat" type="button" data-screen="s5" aria-label="查看待复习错题"><span>待复习错题</span><strong id="statMistakes">暂无数据</strong><small>打开错题本 →</small></button>
-              <button class="learning-stat" type="button" data-screen="s4" aria-label="查看最近批阅报告"><span>已批阅题目正确率</span><strong id="statAccuracy">暂无数据</strong><small>查看批阅报告 →</small></button>
+              <button class="learning-stat" type="button" data-screen="s4" aria-label="查看最近批阅报告"><span>已确认记录正确率</span><strong id="statAccuracy">暂无数据</strong><small>查看批阅报告 →</small></button>
               <button class="learning-stat" type="button" data-screen="s7" aria-label="查看已完成训练"><span>已完成训练</span><strong id="statTraining">0 组</strong><small>查看练习草稿 →</small></button>
             </div>
           </div>
@@ -1426,10 +1434,10 @@
             <div class="section-head"><div><h2>训练历史</h2><p class="muted small">本机保存生成的练习和家长审核状态。</p></div></div>
             <div class="post-list" id="trainingHistory"></div>
             <nav class="pager" id="trainingPager" aria-label="训练历史分页"></nav>
-            <div class="empty" id="trainingHistoryEmpty"><strong>还没有训练记录</strong>从薄弱知识点生成练习后会保存在这里。</div>
+            <div class="empty" id="trainingHistoryEmpty"><strong>当前学生还没有训练记录</strong>从薄弱知识点生成练习后会保存在这里。</div>
           </div>
           <details class="surface embedded-settings">
-            <summary>应用设置 <span class="muted small">AI 服务、手机上传、本地数据</span></summary>
+            <summary>应用设置 <span class="muted small">AI 服务、当前学生手机上传</span></summary><div class="toolbar" style="margin-top:12px"><button class="btn" id="manageStudentsButton" type="button" data-action="manage-students">学生设置</button></div>
             <div class="embedded-settings-body">
               <div class="surface panel">
                 <div class="section-head"><div><h2>AI 批阅接口配置</h2><p class="muted small">选择支持图片输入的模型；AI 只生成草稿，不会自动确认批阅。</p></div><span class="pill amber" id="aiState">未配置</span></div>
@@ -1448,13 +1456,11 @@
               </div>
               <div class="surface panel" style="margin-top:12px">
                 <div class="section-head"><div><h2>手机上传</h2><p class="muted small">手机与电脑连接同一 Wi-Fi 后，可直接上传作答照片；仅在可信网络内短时开启。</p></div><span class="pill" id="lanStateLabel">已关闭</span></div>
-                <div class="toolbar"><button class="switch" id="lanSwitch" type="button" role="switch" aria-checked="false" aria-label="开启局域网手机上传"></button><span id="lanText">局域网访问已关闭</span><button class="btn small-btn" type="button" data-action="show-upload-link">查看手机上传地址</button><button class="btn small-btn" type="button" data-action="copy-upload-link">复制手机地址</button></div>
+                <div class="toolbar"><button class="switch" id="lanSwitch" type="button" role="switch" aria-checked="false" aria-label="开启局域网手机上传"></button><span id="lanText">局域网访问已关闭</span><button class="btn small-btn" type="button" data-action="show-upload-link">查看扫码入口</button><button class="btn small-btn" type="button" data-action="copy-upload-link">复制手机地址</button></div>
+                <div id="uploadQrCodes" hidden style="margin-top:16px;display:flex;flex-wrap:wrap;gap:20px"></div>
                 <p class="muted small" id="uploadUrl" style="overflow-wrap:anywhere;white-space:pre-line">关闭状态</p>
               </div>
-              <div class="surface panel" style="margin-top:12px">
-                <div class="section-head"><div><h2>本地数据</h2><p class="muted small">备份帖子、作答记录、训练历史和图片；新备份还会保存 AI 服务配置，但不包含 API Key。</p></div></div>
-                <div class="toolbar"><button class="btn" type="button" data-action="backup">导出本地备份</button><button class="btn" type="button" data-action="restore-backup">恢复备份</button><button class="btn" type="button" data-action="export-diagnostics">导出诊断信息</button></div>
-              </div>
+
             </div>
           </details>
         </section>
@@ -1482,6 +1488,16 @@
       <div class="dialog-actions"><button class="btn primary" type="button" data-action="close-dialog">知道了</button></div>
     </div>
   </dialog>
+  <dialog class="dialog" id="aboutDialog" style="width:min(660px, calc(100% - 32px))">
+    <div class="dialog-inner">
+      <h2>关于家卷 · 使用声明</h2>
+      <p><b>家卷（exam2pdf）</b>面向家庭学习场景：整理打印 → 拍照批阅，全程在本机完成，学生资料不上传服务器。</p>
+      <p><b>仅限非商业用途。</b>本项目按 PolyForm Noncommercial 1.0.0 许可发布：售卖安装包、付费分发、捆绑广告或推广变现均未获授权；再分发修改版须随附许可、保留版权行并改名，不得暗示官方出品。</p>
+      <p><b>资料来源请自行确认。</b>平台公开图片不等于可任意下载传播，请使用自行制作或已获授权的试卷资料；处理真实学生信息前应取得必要授权，涉及未成年人由监护人确认处理范围。</p>
+      <p><b>唯一官方渠道：</b><a href="https://github.com/nerkeler/exam2pdf" target="_blank" rel="noreferrer">github.com/nerkeler/exam2pdf</a>，其他渠道的安装包与脚本不受官方支持。版本与运行环境可在学生管理的「整机备份与维护」中导出诊断信息。</p>
+      <div class="dialog-actions"><button class="btn primary" type="button" data-action="close-dialog">知道了</button></div>
+    </div>
+  </dialog>
   <dialog class="dialog" id="guideDialog" style="width:min(760px, calc(100% - 32px))">
     <div class="dialog-inner">
       <h2>家卷 使用引导</h2>
@@ -1501,17 +1517,17 @@
               <line x1="90" y1="58" x2="168" y2="58"/>
               <line x1="90" y1="66" x2="158" y2="66"/>
               <rect x="10" y="88" width="50" height="14" rx="3" class="hl"/>
-              <text x="35" y="97.5" text-anchor="middle" class="tb">存入帖子池</text>
+              <text x="35" y="97.5" text-anchor="middle" class="tb">存入试卷库</text>
               <path d="M62 95 C 84 100, 96 102, 114 102"/>
               <rect x="116" y="95" width="56" height="14" rx="7" class="hl-red"/>
               <text x="144" y="104.3" text-anchor="middle" class="tw">采集到家卷</text>
             </svg>
           </figure>
           <div class="guide-step-text">
-            <strong>采集试卷到帖子池</strong>
+            <strong>采集试卷到试卷库</strong>
             <ul>
               <li>在「采集浏览」登录小红书，登录状态保存在本机，之后无需重复扫码。</li>
-              <li>打开一份试卷笔记的详情页，点右下角红色「采集到家卷」按钮，整套图片自动存入帖子池。</li>
+              <li>打开一份试卷笔记的详情页，点右下角红色「采集到家卷」按钮，整套图片自动存入试卷库。</li>
               <li>个别图片下载失败时，刷新笔记页再采集一次即可补齐缺页（图片链接会过期）。</li>
               <li>顶部「搜试卷」面板可按年级 / 科目 / 教材版本 / 试卷类型组合关键词，一键跳到搜索结果。</li>
             </ul>
@@ -1523,7 +1539,7 @@
             <svg class="guide-svg" viewBox="0 0 180 118" aria-hidden="true">
               <rect x="4" y="4" width="172" height="110" rx="6"/>
               <rect x="10" y="12" width="70" height="9" rx="2" class="soft"/>
-              <text x="13" y="19">帖子池 · 试卷详情</text>
+              <text x="13" y="19">试卷库 · 试卷详情</text>
               <rect x="10" y="30" width="28" height="36" rx="3"/>
               <rect x="44" y="30" width="28" height="36" rx="3" class="hl"/>
               <circle cx="58" cy="36" r="1.1" class="dot"/><circle cx="58" cy="40" r="1.1" class="dot"/><circle cx="58" cy="44" r="1.1" class="dot"/>
@@ -1544,10 +1560,10 @@
           <div class="guide-step-text">
             <strong>整理页序，生成 PDF 或打印</strong>
             <ul>
-              <li>帖子池点开试卷进入详情：拖动页面卡片调整打印顺序。</li>
+              <li>试卷库点开试卷进入详情：拖动页面卡片调整打印顺序。</li>
               <li>点卡片右上角 ✕ 移除封面或广告页——原文件保留，需要时可一键恢复全部页序。</li>
               <li>「补充图片」把本地照片并入这份试卷（比如老师另外发的补充页）。</li>
-              <li>顶部可指定归属学生与科目；「生成 PDF」存档，「直接打印」直接出卷。</li>
+              <li>资料自动归属当前学生，可调整科目；「生成 PDF」存档，「直接打印」直接出卷。</li>
             </ul>
           </div>
         </section>
@@ -1623,7 +1639,7 @@
           <figure class="guide-fig">
             <svg class="guide-svg" viewBox="0 0 180 118" aria-hidden="true">
               <rect x="6" y="10" width="62" height="98" rx="6"/>
-              <text x="12" y="22">本机数据</text>
+              <text x="12" y="22">当前学生数据</text>
               <rect x="12" y="28" width="20" height="16" rx="2"/>
               <rect x="36" y="28" width="20" height="16" rx="2"/>
               <rect x="12" y="48" width="20" height="16" rx="2"/>
@@ -1651,9 +1667,9 @@
           <div class="guide-step-text">
             <strong>多孩家庭：学生名册</strong>
             <ul>
-              <li>侧边栏「本机数据」卡片底部切换当前学生，点旁边的齿轮打开名册：添加、重命名、移除。</li>
+              <li>点击侧边栏底部的头像和姓名切换学生；进入「学生设置」可新增学生、修改姓名和男女头像，也可移除空学生。</li>
               <li>新采集的试卷、手机上传的作答、生成的练习都会自动归属当前学生。</li>
-              <li>已有记录在详情页可随时改归属；试卷池与作答列表的蓝色标签即归属学生，错题和报告也会带上名字。</li>
+              <li>所有页面只展示当前学生的资料；切换学生会清空未保存内容与旧页面，已保存的资料保持不变。</li>
             </ul>
           </div>
         </section>
@@ -1680,8 +1696,8 @@
           <div class="guide-step-text">
             <strong>手机上传与日常维护</strong>
             <ul>
-              <li>「学习情况 → 应用设置」开启手机上传：手机连同一 Wi-Fi，打开显示的网址（或复制链接发给自己），直接上传作答照片，免数据线。</li>
-              <li>同一面板里可配置 AI 接口（切换服务商自动带出接口地址和模型）、导出诊断信息、备份 / 恢复全部本机数据。</li>
+              <li>「学习情况 → 应用设置」开启手机上传：手机连同一 Wi-Fi，扫描本页二维码打开上传页面（也可复制网址），直接上传作答照片，免数据线。</li>
+              <li>同一面板里可配置 AI 接口（切换服务商自动带出接口地址和模型）、导出诊断信息、备份 / 恢复全部当前学生数据。</li>
               <li>深浅色外观跟随系统，也可在侧边栏手动切换；所有数据只保存在这台电脑上。</li>
             </ul>
           </div>
@@ -1716,15 +1732,20 @@
       </div>
     </div>
   </dialog>
+  <dialog class="dialog" id="studentSwitchDialog" style="width:min(380px, calc(100% - 32px))"><div class="dialog-inner"><h2>切换学生</h2><div id="studentSwitchList" class="student-roster"></div><div class="dialog-actions"><button class="btn" type="button" data-action="manage-students">学生设置</button><button class="btn" type="button" data-action="close-dialog">关闭</button></div></div></dialog>
   <dialog class="dialog" id="studentDialog" style="width:min(480px, calc(100% - 32px))">
     <div class="dialog-inner">
-      <h2>学生名册</h2>
-      <p class="muted small">家里有多位孩子时先在这里登记姓名。选中的学生会自动归属新采集的试卷、手机上传的作答和新生成的练习；已有的记录也可以在详情里重新指定。</p>
+      <h2>学生设置</h2>
+      <p class="muted small">家里有多位孩子时先在这里登记姓名。所有资料页面只属于左侧选中的学生。请关闭本窗口后在侧边栏切换；切换会关闭旧手机上传地址。只能移除没有资料且未被选中的学生。</p>
       <div class="toolbar">
         <input class="field" id="studentNameInput" type="text" maxlength="40" placeholder="学生姓名" autocomplete="off" />
-        <button class="btn primary" type="button" data-action="add-student">添加学生</button>
+        <select id="studentGenderInput" class="field" aria-label="头像"><option value="male">男生头像</option><option value="female">女生头像</option></select>
+        <button class="btn primary" id="saveStudentButton" type="button" data-action="add-student">添加学生</button><button class="btn" type="button" data-action="cancel-student-edit" hidden id="cancelStudentEdit">取消编辑</button>
       </div>
+      <div class="toolbar" style="margin:12px 0"><span id="studentAvatarPreview" class="student-avatar" aria-hidden="true"></span><button class="btn small-btn" type="button" data-action="pick-student-avatar">选择本地图片</button><button class="btn small-btn" type="button" data-action="reset-student-avatar">使用系统预置</button><span class="muted small">居中裁为方形 · JPG / PNG / WebP</span></div>
       <div class="student-roster" id="studentRoster"></div>
+      <details style="margin-top:18px"><summary>整机备份与维护（所有学生）</summary><p class="muted small">包含所有学生名册与学习资料；恢复会替换所有学生的数据，不是仅恢复当前学生。</p><div class="toolbar"><button class="btn" type="button" data-action="backup">导出整机备份</button><button class="btn" type="button" data-action="restore-backup">恢复整机备份</button><button class="btn" type="button" data-action="export-diagnostics">导出诊断信息</button></div></details>
+
       <div class="dialog-actions">
         <button class="btn" type="button" data-action="close-dialog">关闭</button>
       </div>
@@ -1788,6 +1809,7 @@
   </div>
 
   <script src="../frontend/page-reorder.js"></script>
+  <script src="../frontend/student-focus.js"></script>
   <script>
     window.__exam2pdfBootComplete = false;
     function reportBootError(reason) {
@@ -1809,10 +1831,10 @@
     const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
     const screenInfo = {
       s0: ["采集浏览", "在小红书网页中登录、浏览并采集试卷。"],
-      s0b: ["帖子池", "管理采集和导入的试卷。"],
-      s0c: ["帖子详情", "预览页面、拖动排序并打印试卷。"],
+      s0b: ["试卷库", "管理采集和导入的试卷。"],
+      s0c: ["试卷详情", "预览页面、拖动排序并打印试卷。"],
       s1: ["整理打印", "整理试卷页面并生成 PDF。"],
-      s1b: ["学生作答", "上传学生写完的作答照片；空白试卷仍在帖子池打印。"],
+      s1b: ["学生作答", "上传学生写完的作答照片；空白试卷仍在试卷库打印。"],
       s3: ["人工批阅", "核对作答图片、逐题标记并确认；确认后才会进入错题本与学情统计。"],
       s4: ["批阅报告", "查看确认后的逐题结果。"],
       s5: ["错题本", "按知识点复习，跟踪掌握情况。"],
@@ -1852,11 +1874,12 @@
       return (student ? student.name : "") || answer.studentName || "";
     }
     function studentOptions(selected) {
-      return '<option value="">未指定学生</option>' + state.students.map((student) => (
+      return state.students.map((student) => (
         '<option value="' + escapeHtml(student.id) + '"' + (student.id === selected ? " selected" : "") + ">" + escapeHtml(student.name) + "</option>"
       )).join("");
     }
     const desktop = window.exam2pdfDesktop;
+    const studentFocus = new StudentFocus();
     const state = {
       posts: desktop ? [] : [
         { id: "p1", title: "2026-2027 八年级上册数学沪科版第一次月考试卷", pages: 8, date: "2026-10-18", source: "小红书采集" },
@@ -1885,6 +1908,7 @@
       aiSettings: null,
       students: [],
       activeStudentId: null,
+      studentReady: false,
       currentPostId: null,
       nextId: 3,
       reviewSaved: false,
@@ -1903,6 +1927,9 @@
     const screenOrder = ["s0", "s0b", "s0c", "s1", "s1b", "s3", "s4", "s5", "s6", "s7"];
     function switchScreen(id) {
       if (!screenInfo[id]) return;
+      if (id === "s0c" && !activePost()) id = "s0b";
+      if (["s3", "s4"].includes(id) && (!state.currentAnswer || state.currentAnswer.studentId !== state.activeStudentId)) id = "s1b";
+      if (id === "s7" && (!state.training || state.training.studentId !== state.activeStudentId)) id = "s6";
       const previous = document.querySelector(".screen.active");
       const previousIndex = previous ? screenOrder.indexOf(previous.id) : -1;
       const nextIndex = screenOrder.indexOf(id);
@@ -1999,7 +2026,7 @@
       const subjectValues = [...new Set(state.posts.map((post) => post.subject || "未分类"))].sort((a, b) => a.localeCompare(b, "zh-CN"));
       updateFilterOptions($("#postSubjectFilter"), "全部科目", subjectValues);
       const subjectFilter = $("#postSubjectFilter").value;
-      const filteredPosts = state.posts.filter((post) => {
+      const filteredPosts = state.posts.filter((post) => post.studentId === state.activeStudentId).filter((post) => {
         const matchesQuery = !query || (post.title + " " + (post.author || "") + " " + post.source).toLowerCase().includes(query);
         const matchesSubject = subjectFilter === "all" || (post.subject || "未分类") === subjectFilter;
         return matchesQuery && matchesSubject;
@@ -2007,15 +2034,14 @@
       const paged = paginate(filteredPosts, state.postPage);
       $("#postPager").innerHTML = paginationHtml("post", paged.page, paged.pageCount);
       list.innerHTML = paged.slice.map((post) => {
-        const student = studentById(post.studentId);
         return (
         '<article class="surface post-card" data-post-id="' + escapeHtml(post.id) + '">' +
           '<div class="post-head">' +
             '<button class="post-open" type="button" data-action="open-post" data-id="' + escapeHtml(post.id) + '">' +
               '<strong>' + escapeHtml(post.title) + '</strong>' +
-            '<span class="post-meta">' + (student ? '<span class="pill blue">' + escapeHtml(student.name) + '</span>' : '') + '<span class="pill">' + escapeHtml(post.subject || "未分类") + '</span><span>' + Number(post.pages || (post.pageOrder || []).length) + ' 张图</span>' + (post.missingImages ? '<span class="missing-count">原帖图片已采集 ' + Number(post.sourcePageCount == null ? (post.pages || 0) : post.sourcePageCount) + '/' + Number(post.expectedImages || 0) + ' 张，还缺 ' + post.missingImages + ' 张，可重试采集</span>' : '') + (post.supplementalImages ? '<span>另补充 ' + post.supplementalImages + ' 张本地图片</span>' : '') + '<span>' + escapeHtml(post.author || "") + '</span><span>' + escapeHtml(formatPostDate(post)) + '</span><span>来源：' + escapeHtml(post.source) + '</span></span>' +
+            '<span class="post-meta">' +  '<span class="pill">' + escapeHtml(post.subject || "未分类") + '</span><span>' + Number(post.pages || (post.pageOrder || []).length) + ' 张图</span>' + (post.missingImages ? '<span class="missing-count">原帖图片已采集 ' + Number(post.sourcePageCount == null ? (post.pages || 0) : post.sourcePageCount) + '/' + Number(post.expectedImages || 0) + ' 张，还缺 ' + post.missingImages + ' 张，可重试采集</span>' : '') + (post.supplementalImages ? '<span>另补充 ' + post.supplementalImages + ' 张本地图片</span>' : '') + '<span>' + escapeHtml(post.author || "") + '</span><span>' + escapeHtml(formatPostDate(post)) + '</span><span>来源：' + escapeHtml(post.source) + '</span></span>' +
             '</button>' +
-            '<div class="post-ops"><button class="btn small-btn" type="button" data-action="rename-post" data-id="' + escapeHtml(post.id) + '">重命名</button><button class="btn danger small-btn" type="button" data-action="delete-post" data-id="' + escapeHtml(post.id) + '">删除</button></div>' +
+            '<div class="post-ops"><button class="btn small-btn" type="button" data-action="rename-post" data-id="' + escapeHtml(post.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="delete-post" data-id="' + escapeHtml(post.id) + '">删除</button></div>' +
           '</div>' +
         '</article>'
         );
@@ -2024,7 +2050,7 @@
       if (!filteredPosts.length) {
         $("#postEmpty").innerHTML = state.posts.length
           ? "<strong>没有匹配的试卷</strong>换个关键词再试试。"
-          : "<strong>帖子池还是空的</strong>去小红书笔记详情页点击采集，或从本地导入图片。";
+          : "<strong>当前学生还没有试卷</strong>去小红书笔记详情页点击采集，或从本地导入图片。";
       }
     }
     function formatPostDate(post) {
@@ -2036,7 +2062,7 @@
       return "exam2pdf-media://" + encodeURIComponent(post.id) + "/" + encodeURIComponent(file);
     }
     function activePost() {
-      return state.posts.find((post) => post.id === state.currentPostId);
+      return state.posts.find((post) => post.id === state.currentPostId && post.studentId === state.activeStudentId);
     }
     function renderPostDetail() {
       const post = activePost();
@@ -2058,11 +2084,6 @@
       if (subjectSelect) {
         subjectSelect.innerHTML = subjectOptions(post.subject || "");
         subjectSelect.value = post.subject || "";
-      }
-      const studentSelect = $("#postStudent");
-      if (studentSelect) {
-        studentSelect.innerHTML = studentOptions(post.studentId);
-        studentSelect.value = post.studentId || "";
       }
       const resetOrderBtn = $("#resetPostOrderBtn");
       if (resetOrderBtn) {
@@ -2126,25 +2147,24 @@
       const subjectValues = [...new Set(state.answers.map((answer) => answer.subject || "未分类"))].sort((a, b) => a.localeCompare(b, "zh-CN"));
       updateFilterOptions($("#answerSubjectFilter"), "全部科目", subjectValues);
       const subjectFilter = $("#answerSubjectFilter").value;
-      const filtered = state.answers.filter((answer) => subjectFilter === "all" || (answer.subject || "未分类") === subjectFilter);
+      const filtered = state.answers.filter((answer) => answer.studentId === state.activeStudentId).filter((answer) => subjectFilter === "all" || (answer.subject || "未分类") === subjectFilter);
       const paged = paginate(filtered, state.answerPage);
       $("#answerPager").innerHTML = paginationHtml("answer", paged.page, paged.pageCount);
       list.innerHTML = paged.slice.map((answer) => {
         const label = answer.reviewStatus === "confirmed" ? "已确认" : answer.reviewStatus === "draft" ? "草稿" : "待批阅";
         const action = answer.reviewStatus === "confirmed" ? "open-answer-report" : "open-answer-review";
-        const studentLabel = answerStudentDisplay(answer);
-        const studentSpan = answer.studentId
-          ? '<span class="pill blue">' + escapeHtml(studentLabel) + '</span>'
-          : '<span>' + escapeHtml(studentLabel || "未填写学生姓名") + '</span>';
-        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta">' + studentSpan + '<span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + answer.pages + ' 张作答</span><span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">重命名</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">删除</button></div></div></article>';
+        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta">' + '<span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + answer.pages + ' 张作答</span><span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">删除</button></div></div></article>';
       }).join("");
       $("#answerEmpty").hidden = filtered.length > 0;
     }
     async function loadAnswers() {
+      const ticket = studentFocus.ticket();
       if (!desktop) { renderAnswers(); return; }
       try {
-        state.answers = await desktop.listAnswers();
-        state.learningStats = await desktop.getLearningStats();
+        const [answers, stats] = await Promise.all([desktop.listAnswers(), desktop.getLearningStats()]);
+        if (!studentFocus.accepts(ticket)) return;
+        state.answers = answers.filter(record => record.studentId === state.activeStudentId);
+        state.learningStats = stats;
         state.mistakes = state.learningStats.mistakes;
         pruneMistakeSelection();
         renderAnswers();
@@ -2214,6 +2234,7 @@
       try {
         await loadTrainingHistory();
         const answer = await desktop.getAnswer(id);
+        if (answer.studentId !== state.activeStudentId) return;
         state.currentAnswerId = answer.id;
         state.currentAnswer = answer;
         state.reviewDraft = answer.review || [];
@@ -2236,6 +2257,7 @@
         await loadTrainingHistory();
         const answer = await desktop.getAnswer(id);
         if (answer.reviewStatus !== "confirmed") { await openAnswer(id); return; }
+        if (answer.studentId !== state.activeStudentId) return;
         state.currentAnswerId = answer.id;
         state.currentAnswer = answer;
         state.reportPage = 1;
@@ -2244,7 +2266,9 @@
       } catch (error) { toast("读取批阅报告失败：" + (error.message || "请重试")); }
     }
     function renderReport(answer, { allQuestions = false } = {}) {
+      if (!answer || answer.studentId !== state.activeStudentId) return;
       state.currentAnswerId = answer.id;
+      if (answer.studentId !== state.activeStudentId) return;
       state.currentAnswer = answer;
       const review = Array.isArray(answer.review) ? answer.review : [];
       const linkedTraining = state.trainingHistory.find((training) => training.id === answer.trainingId);
@@ -2349,7 +2373,12 @@
     }
     function renderLearningStats() {
       const stats = state.learningStats;
-      if (!stats) return;
+      if (!stats) {
+        ["statRecent", "statMistakes", "statAccuracy", "statTraining"].forEach(id => $("#" + id).textContent = "—");
+        $("#weakTopicList").innerHTML = ""; $("#errorSummary").textContent = "";
+        $("#trainingTopic").innerHTML = ["一元一次方程", "有理数运算", "分数加减", "几何与角"].map(topic => "<option>" + topic + "</option>").join("");
+        $("#learningEmpty").hidden = false; return;
+      }
       $("#statRecent").textContent = stats.confirmedCount ? stats.recentCount + " 份" : "暂无数据";
       $("#statMistakes").textContent = stats.mistakes.length ? stats.mistakes.filter((item) => item.status !== "mastered").length + " 道" : "0 道";
       $("#statAccuracy").textContent = stats.accuracy == null ? "暂无数据" : stats.accuracy + "%";
@@ -2369,6 +2398,24 @@
     function renderMobileUpload(value) {
       state.mobileUpload = value && value.enabled ? value : { enabled: false, urls: [] };
       const enabled = state.mobileUpload.enabled;
+      const qrContainer = $("#uploadQrCodes");
+      qrContainer.replaceChildren();
+      qrContainer.hidden = !enabled || !state.mobileUpload.urls.length;
+      if (enabled) state.mobileUpload.urls.forEach((url, index) => {
+        const source = state.mobileUpload.qrCodes?.[index];
+        if (!source || !source.startsWith("data:image/png;base64,")) return;
+        const figure = document.createElement("figure");
+        figure.style.cssText = "margin:0;max-width:256px";
+        const image = document.createElement("img");
+        image.src = source;
+        image.alt = "手机扫码打开作答上传页面";
+        image.width = 220; image.height = 220;
+        image.style.cssText = "display:block;width:220px;max-width:100%;height:auto;background:#fff;border-radius:8px";
+        const caption = document.createElement("figcaption");
+        caption.className = "muted small";
+        caption.textContent = "手机扫码上传 · " + (state.students.find(student => student.id === state.activeStudentId)?.name || "当前学生") + (state.mobileUpload.urls.length > 1 ? " · 地址 " + (index + 1) : "");
+        figure.append(image, caption); qrContainer.append(figure);
+      });
       $("#lanSwitch").setAttribute("aria-checked", String(enabled));
       $("#lanSwitch").disabled = false;
       $("#lanStateLabel").textContent = enabled ? "已开启" : "已关闭";
@@ -2490,25 +2537,28 @@
     }
     function renderTrainingHistory() {
       $("#statTraining").textContent = completedTrainingCount() + " 组";
-      const paged = paginate(state.trainingHistory, state.trainingPage);
+      const paged = paginate(state.trainingHistory.filter(record => record.studentId === state.activeStudentId), state.trainingPage);
       $("#trainingPager").innerHTML = paginationHtml("training", paged.page, paged.pageCount);
       $("#trainingHistory").innerHTML = paged.slice.map((training) => {
         const progress = trainingProgress(training.id);
         const label = progress.complete ? "已完成 · " + progress.confirmedCount + " 份已确认批阅" : progress.linkedCount ? "已有作答 · 待确认批阅" : (training.status === "approved" ? "家长已审核" : "待家长审核");
-        const student = studentById(training.studentId);
-        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '"><strong>' + escapeHtml(training.topic) + ' · ' + training.questions.length + ' 道</strong><span class="post-meta">' + (student ? '<span class="pill blue">' + escapeHtml(student.name) + '</span>' : '') + '<span>' + escapeHtml(formatPostDate({ collectedAt: training.createdAt })) + '</span><span>' + escapeHtml(label) + '</span></span></button><div class="post-ops"><button class="btn small-btn" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '">打开</button></div></div></article>';
+        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '"><strong>' + escapeHtml(training.topic) + ' · ' + training.questions.length + ' 道</strong><span class="post-meta">' +  '<span>' + escapeHtml(formatPostDate({ collectedAt: training.createdAt })) + '</span><span>' + escapeHtml(label) + '</span></span></button><div class="post-ops"><button class="btn small-btn" type="button" data-action="open-training" data-id="' + escapeHtml(training.id) + '">打开</button></div></div></article>';
       }).join("");
       $("#trainingHistoryEmpty").hidden = state.trainingHistory.length > 0;
     }
     async function loadTrainingHistory() {
+      const ticket = studentFocus.ticket();
       if (!desktop || typeof desktop.listTrainings !== "function") return;
       try {
-        state.trainingHistory = await desktop.listTrainings();
+        const rows = await desktop.listTrainings();
+        if (!studentFocus.accepts(ticket)) return;
+        state.trainingHistory = rows.filter(record => record.studentId === state.activeStudentId);
         renderTrainingHistory();
       } catch (error) { toast("读取训练历史失败：" + (error.message || "请重试")); }
       renderSideDataOverview();
     }
     function renderTrainingRecord(training) {
+      if (!training || training.studentId !== state.activeStudentId) return;
       state.training = training;
       state.trainingAnswersViewed = false;
       const approved = training.status === "approved";
@@ -2589,7 +2639,7 @@
       const supported = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
       const overLimit = file.size > 16 * 1024 * 1024;
       // 作答照片入库即压缩：长边 ≤2200px + JPEG 85（约 7MB/页 → 400KB/页），
-      // 批阅清晰度足够且批阅页加载不再走几十 MB 原图；帖子池仍保留原图
+      // 批阅清晰度足够且批阅页加载不再走几十 MB 原图；试卷库仍保留原图
       const answerMode = kind === "answer";
       const maxSide = answerMode ? 2200 : 3600;
       const needsWork = answerMode
@@ -2741,16 +2791,13 @@
       if (!desktop) { toast("请在 Electron 中保存本地作答记录"); return; }
       if (!state.gradePages.length) { toast("请先上传学生作答照片"); return; }
       const title = $("#gradeTitle").value.trim() || "学生作答";
-      // 名册有学生时用下拉选择（归属 studentId），否则退回手动输入姓名
-      const rosterSelect = $("#gradeStudentSelect");
-      const studentId = !rosterSelect.hidden && rosterSelect.value ? rosterSelect.value : null;
-      const studentName = studentId ? ((studentById(studentId) || {}).name || "") : $("#gradeStudent").value.trim();
+      const studentId = state.activeStudentId;
+      const studentName = studentById(studentId)?.name || "";
       const subject = $("#gradeSubject").value;
       try {
         const result = await desktop.createAnswer({ title, studentName, studentId, subject, images: state.gradePages });
         state.gradePages = [];
         $("#gradeTitle").value = "";
-        $("#gradeStudent").value = "";
         renderPageGrid("grade");
         await loadAnswers();
         toast("作答记录已保存在本机，可开始人工批阅");
@@ -3091,13 +3138,16 @@
     window.addEventListener("blur", closeTileMenu);
     window.addEventListener("resize", closeTileMenu);
     async function loadPosts(shouldRender = true) {
+      const ticket = studentFocus.ticket();
       if (!desktop) { if (shouldRender) renderPosts(); renderSideDataOverview(); return; }
       try {
-        state.posts = await desktop.listPosts();
+        const rows = await desktop.listPosts();
+        if (!studentFocus.accepts(ticket)) return;
+        state.posts = rows.filter(record => record.studentId === state.activeStudentId);
         if (shouldRender) renderPosts();
       } catch (error) {
         console.error("Unable to load local posts:", error);
-        if (shouldRender) toast("读取本地帖子池失败：" + (error.message || "请重试"));
+        if (shouldRender) toast("读取本地试卷库失败：" + (error.message || "请重试"));
       }
       renderSideDataOverview();
     }
@@ -3129,75 +3179,90 @@
       $("#overviewMistakes").textContent = state.mistakes.length;
       $("#overviewTrainings").textContent = state.trainingHistory.length;
     }
-    // 学生名册：侧边栏切换当前学生，管理对话框增删改名。
-    // 当前学生自动归属新采集/上传/生成的记录，已有记录可在详情里重新指定。
-    function syncActiveStudent() {
-      if (!desktop || typeof desktop.setActiveStudent !== "function") return;
-      desktop.setActiveStudent(state.activeStudentId).catch(() => {});
+    function hasStudentDraft() {
+      return state.gradePages.length > 0 || (state.reviewDraft.length > 0 && JSON.stringify(collectReviewQuestions()) !== JSON.stringify(state.currentAnswer?.review || []));
     }
-    function setActiveStudentSelection(id) {
-      state.activeStudentId = id || null;
-      try {
-        if (state.activeStudentId) localStorage.setItem("exam2pdf-active-student", state.activeStudentId);
-        else localStorage.removeItem("exam2pdf-active-student");
-      } catch {}
-      syncActiveStudent();
-      renderStudentControls();
+    function clearStudentWorkspace() {
+      state.posts = []; state.answers = []; state.trainingHistory = []; state.mistakes = [];
+      state.learningStats = null; state.currentPostId = null; state.currentAnswerId = null;
+      state.currentAnswer = null; state.reviewDraft = []; state.gradePages = []; state.printPages = [];
+      state.training = null; state.trainingAnswersViewed = false; state.reviewPreviewMode = false;
+      state.mistakeSelection.clear(); state.visibleMistakeIds = [];
+      previewState.items = []; previewState.index = 0; $("#imagePreview").removeAttribute("src");
+      for (const key of ["postPage", "answerPage", "mistakePage", "reportPage", "trainingPage"]) state[key] = 1;
+      document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+      document.querySelectorAll('input[type="file"]').forEach(input => input.value = "");
+      for (const id of ["gradeTitle", "postSearch", "externalReviewText"]) { const input = $("#" + id); if (input) input.value = ""; }
+      for (const id of ["postPages", "reviewPages", "reviewQuestionList", "reportQuestions", "trainingQuestions", "trainingDetailQuestions", "trainingDetailAnswers", "mistakeDetailBody"]) { const node = $("#" + id); if (node) node.innerHTML = ""; }
+      for (const id of ["postDetailTitle", "reviewAnswerTitle", "reportTitle", "trainingDetailTitle"]) { const node = $("#" + id); if (node) node.textContent = "尚未选择当前学生的资料"; }
+      for (const id of ["postDetailMeta", "reviewAnswerMeta", "reportMeta", "reportSummary", "trainingSource"]) { const node = $("#" + id); if (node) node.textContent = ""; }
+      document.querySelectorAll('.filter-select, #mistakeFilter, #mistakeDateFilter, #mistakeTopicFilter, #mistakeErrorFilter').forEach(select => { if ([...select.options].some(option => option.value === "all")) select.value = "all"; });
+      $("#trainingResult").hidden = true;
+      renderMobileUpload({ enabled: false, urls: [] });
+      renderPosts(); renderAnswers(); renderMistakes(); renderLearningStats(); renderTrainingHistory();
+      renderPageGrid("grade"); renderSideDataOverview();
     }
-    function renderStudentRoster() {
-      const roster = $("#studentRoster");
-      if (!roster) return;
-      if (!state.students.length) {
-        roster.innerHTML = '<p class="muted small student-empty">名册还是空的，先添加第一位学生。</p>';
-        return;
+    async function setActiveStudentSelection(id) {
+      if (!id || id === state.activeStudentId) { renderStudentControls(); return; }
+      if (studentFocus.pending || studentFocus.changing || desktop?.isStudentBusy?.()) {
+        renderStudentControls(); toast("当前操作尚未完成，请完成后再切换学生"); return;
       }
-      roster.innerHTML = state.students.map((student) => (
-        '<div class="student-row">' +
-          '<strong>' + escapeHtml(student.name) + '</strong>' +
-          (student.id === state.activeStudentId ? '<span class="pill green">当前</span>' : '') +
-          '<button class="btn small-btn" type="button" data-action="rename-student" data-id="' + escapeHtml(student.id) + '">重命名</button>' +
-          '<button class="btn danger small-btn" type="button" data-action="remove-student" data-id="' + escapeHtml(student.id) + '">移除</button>' +
-        '</div>'
-      )).join("");
+      if (hasStudentDraft() && !await confirmAction("切换学生？", "当前未保存的作答图片或批阅修改将清空，已保存资料不会删除。", "切换学生")) { renderStudentControls(); return; }
+      const previous = document.querySelector(".screen.active")?.id || "s0b";
+      try {
+        await studentFocus.change(async () => {
+          document.querySelector("main").inert = true;
+          const context = await desktop.setActiveStudent(id);
+          state.activeStudentId = context.studentId; state.students = context.students;
+          studentFocus.set(context.studentId);
+          clearStudentWorkspace(); renderStudentControls();
+          const destination = { s0c: "s0b", s3: "s1b", s4: "s1b", s7: "s6", s1: "s0b" }[previous] || previous;
+          switchScreen(destination);
+        });
+        await Promise.all([loadPosts(), loadAnswers(), loadTrainingHistory()]);
+        toast("已切换到 " + (state.students.find(student => student.id === state.activeStudentId)?.name || "当前学生"));
+      } catch (error) { toast("切换失败：" + (error.message || "请重试")); }
+      finally { document.querySelector("main").inert = false; renderStudentControls(); }
+    }
+    let editingStudentId = null;
+    let editingStudentAvatar = null;
+    let avatarEditEpoch = 0;
+    function renderAvatarPreview() { $("#studentAvatarPreview").innerHTML = studentAvatar({gender:$("#studentGenderInput").value, avatar:editingStudentAvatar}); }
+    function studentAvatar(student) {
+      if (student?.avatar && /^data:image\/jpeg;base64,/.test(student.avatar)) return '<img src="' + escapeHtml(student.avatar) + '" alt="" width="42" height="42" />';
+      const female = student?.gender === "female";
+      return '<img src="../frontend/assets/avatars/' + (female ? 'student-girl.jpg' : 'student-boy.jpg') + '" alt="" width="42" height="42" />';
+    }
+    function resetStudentEdit() { avatarEditEpoch++; editingStudentAvatar = null; editingStudentId = null; $("#studentNameInput").value = ""; $("#studentGenderInput").value = "male"; $("#saveStudentButton").textContent = "添加学生"; $("#cancelStudentEdit").hidden = true; renderAvatarPreview(); }
+    function renderStudentRoster() {
+      const roster = $("#studentRoster"); if (!roster) return;
+      roster.innerHTML = state.students.map(student => '<div class="student-row"><span class="student-avatar" aria-hidden="true">' + studentAvatar(student) + '</span><strong>' + escapeHtml(student.name) + '</strong>' + (student.id === state.activeStudentId ? '<span class="pill green">当前</span>' : '') + '<button class="btn small-btn" type="button" data-action="rename-student" data-id="' + escapeHtml(student.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="remove-student" data-id="' + escapeHtml(student.id) + '">移除</button></div>').join("");
     }
     function renderStudentControls() {
-      const sidebarSelect = $("#activeStudentSelect");
-      if (sidebarSelect) {
-        sidebarSelect.innerHTML = '<option value="">未指定</option>' + state.students.map((student) => (
-          '<option value="' + escapeHtml(student.id) + '"' + (student.id === state.activeStudentId ? " selected" : "") + ">" + escapeHtml(student.name) + "</option>"
-        )).join("");
-        sidebarSelect.value = state.activeStudentId || "";
-      }
-      // 批阅页：名册有学生时用下拉（默认当前学生），否则退回手动输入姓名
-      const rosterSelect = $("#gradeStudentSelect");
-      const manualInput = $("#gradeStudent");
-      if (rosterSelect && manualInput) {
-        rosterSelect.innerHTML = studentOptions(state.activeStudentId);
-        rosterSelect.value = state.activeStudentId || "";
-        rosterSelect.hidden = state.students.length === 0;
-        manualInput.hidden = state.students.length > 0;
-      }
+      const select = $("#activeStudentSelect");
+      select.innerHTML = studentOptions(state.activeStudentId); select.value = state.activeStudentId || "";
+      select.disabled = !state.studentReady || studentFocus.changing;
+      const label = $("#currentStudentLabel");
+      if (label) label.textContent = (state.students.find(student => student.id === state.activeStudentId)?.name || "正在加载") + " · 学习工作台";
+      const student = studentById(state.activeStudentId);
+      $("#studentAvatar").innerHTML = studentAvatar(student);
+      $("#studentProfileName").textContent = student?.name || "正在加载";
+      $("#studentAvatarButton").disabled = select.disabled;
+      $("#studentAvatarButton").title = (student?.name || "当前学生") + " · 点击切换学生";
+      $("#studentSwitchList").innerHTML = state.students.map(item => '<button type="button" class="student-row" data-action="select-student" data-id="' + escapeHtml(item.id) + '"><span class="student-avatar" aria-hidden="true">' + studentAvatar(item) + '</span><strong>' + escapeHtml(item.name) + '</strong>' + (item.id === state.activeStudentId ? '<span class="pill green">当前</span>' : '') + '</button>').join("");
       renderStudentRoster();
-      renderPosts();
-      renderAnswers();
-      renderTrainingHistory();
-      if ($("#s0c").classList.contains("active")) renderPostDetail();
     }
-    async function loadStudents() {
-      if (!desktop || typeof desktop.listStudents !== "function") { renderStudentControls(); return; }
+    async function loadStudents(reset = false) {
+      if (!desktop || !desktop.getStudentContext) return;
       try {
-        state.students = await desktop.listStudents();
-      } catch (error) {
-        toast("读取学生名册失败：" + (error.message || "请重试"));
-      }
-      // 恢复上次选中的学生；名册里已不存在的选择回退为未指定
-      let stored = null;
-      try { stored = localStorage.getItem("exam2pdf-active-student"); } catch {}
-      if (!state.students.some((student) => student.id === state.activeStudentId)) {
-        state.activeStudentId = state.students.some((student) => student.id === stored) ? stored : null;
-        syncActiveStudent();
-      }
-      renderStudentControls();
+        const context = await desktop.getStudentContext();
+        const changed = context.studentId !== state.activeStudentId;
+        state.students = context.students; state.activeStudentId = context.studentId;
+        studentFocus.set(context.studentId); state.studentReady = true;
+        if (changed || reset) { clearStudentWorkspace(); const current = document.querySelector(".screen.active")?.id; if (["s0c", "s3", "s4", "s7"].includes(current)) switchScreen("s0b"); }
+        renderStudentControls();
+        await Promise.all([loadPosts(), loadAnswers(), loadTrainingHistory()]);
+      } catch (error) { toast("读取学生资料失败：" + (error.message || "请重试")); }
     }
     async function addStudent() {
       const input = $("#studentNameInput");
@@ -3205,15 +3270,13 @@
       if (!name) { input.focus(); return; }
       if (!desktop || typeof desktop.createStudent !== "function") { toast("学生名册需要在 Electron 应用中使用"); return; }
       try {
-        const student = await desktop.createStudent(name);
+        const gender = $("#studentGenderInput").value;
+        const student = editingStudentId ? await desktop.renameStudent(editingStudentId, name, gender, editingStudentAvatar) : await desktop.createStudent(name, gender, editingStudentAvatar);
+        const updated = Boolean(editingStudentId);
+        resetStudentEdit();
         input.value = "";
-        if (!state.activeStudentId) {
-          state.activeStudentId = student.id;
-          try { localStorage.setItem("exam2pdf-active-student", student.id); } catch {}
-          syncActiveStudent();
-        }
         await loadStudents();
-        toast("已添加学生：" + student.name);
+        toast((updated ? "已更新学生：" : "已添加学生：") + student.name);
       } catch (error) { toast("添加学生失败：" + (error.message || "请重试")); }
     }
     function updateXhsState(value) {
@@ -3276,7 +3339,21 @@
 
     $$(".nav-item").forEach((button) => button.addEventListener("click", () => switchScreen(button.dataset.screen)));
     $$("[data-screen]").filter((button) => !button.classList.contains("nav-item")).forEach((button) => button.addEventListener("click", () => switchScreen(button.dataset.screen)));
-      if (desktop && desktop.isElectron) {
+      const bindStudentOperation = fn => (...args) => studentFocus.run(() => fn(...args)).catch(error => toast(error.message || "操作失败"));
+    addImportedFiles = bindStudentOperation(addImportedFiles);
+    addImagesToActivePost = bindStudentOperation(addImagesToActivePost);
+    addPages = bindStudentOperation(addPages);
+    saveAnswerRecord = bindStudentOperation(saveAnswerRecord);
+    saveReview = bindStudentOperation(saveReview);
+    requestAiAnswerReview = bindStudentOperation(requestAiAnswerReview);
+    generateTraining = bindStudentOperation(generateTraining);
+    generateAiTraining = bindStudentOperation(generateAiTraining);
+    exportActivePost = bindStudentOperation(exportActivePost);
+    exportReportPdf = bindStudentOperation(exportReportPdf);
+    performTileAction = bindStudentOperation(performTileAction);
+    persistPostOrder = bindStudentOperation(persistPostOrder);
+    persistAnswerOrder = bindStudentOperation(persistAnswerOrder);
+    if (desktop && desktop.isElectron) {
         document.body.classList.add("electron-shell");
         desktop.onXhsState(updateXhsState);
       desktop.getXhsState().then(updateXhsState).catch(() => {});
@@ -3285,26 +3362,12 @@
         if ($("#s0c").classList.contains("active")) renderPostDetail();
       });
       desktop.onAnswersChanged(() => { void loadAnswers(); void loadTrainingHistory(); });
-      desktop.onStudentsChanged(() => { void loadStudents(); });
+      desktop.onStudentsChanged(value => { void loadStudents(Boolean(value?.reset)); });
+      $("#studentGenderInput").addEventListener("change", renderAvatarPreview);
       $("#activeStudentSelect").addEventListener("change", () => setActiveStudentSelection($("#activeStudentSelect").value));
       $("#studentNameInput").addEventListener("keydown", (event) => {
         if (event.key === "Enter") { event.preventDefault(); void addStudent(); }
       });
-      $("#postStudent").addEventListener("change", async () => {
-        const post = activePost();
-        if (!post || !desktop) return;
-        const value = $("#postStudent").value || null;
-        try {
-          const saved = await desktop.setPostStudent(post.id, value);
-          Object.assign(post, saved);
-          renderPosts();
-          toast(value ? "已更新试卷归属学生" : "已清除试卷的学生归属");
-        } catch (error) {
-          toast("更新学生归属失败：" + (error.message || "请重试"));
-          renderPostDetail();
-        }
-      });
-
       const xhsViewport = $("#xhsViewport");
       let boundsFrame = 0;
       // 小红书是原生置顶视图（WebContentsView），永远盖在所有 HTML 之上：
@@ -3470,9 +3533,20 @@
       if (!button) return;
       const action = button.dataset.action;
       if (action === "show-info") $("#infoDialog").showModal();
+      if (action === "show-about") $("#aboutDialog").showModal();
       if (action === "show-guide") openGuide();
       if (action === "close-dialog") button.closest("dialog").close();
+      if (action === "switch-student") { renderStudentControls(); $("#studentSwitchDialog").showModal(); }
+      if (action === "select-student") { $("#studentSwitchDialog").close(); await setActiveStudentSelection(button.dataset.id); }
+      if (action === "pick-student-avatar") {
+        const epoch = avatarEditEpoch;
+        try { const avatar = await desktop.pickStudentAvatar(); if (avatar && epoch === avatarEditEpoch && $("#studentDialog").open) { editingStudentAvatar = avatar; renderAvatarPreview(); } }
+        catch (error) { toast(error.message || "头像读取失败"); }
+      }
+      if (action === "reset-student-avatar") { avatarEditEpoch++; editingStudentAvatar = null; renderAvatarPreview(); }
+      if (action === "cancel-student-edit") resetStudentEdit();
       if (action === "manage-students") {
+        $("#studentSwitchDialog").close(); resetStudentEdit();
         renderStudentRoster();
         $("#studentDialog").showModal();
         $("#studentNameInput").focus();
@@ -3481,15 +3555,21 @@
       if (action === "rename-student") {
         const student = studentById(button.dataset.id);
         if (!student) return;
-        const name = await promptText("重命名学生", student.name);
-        if (!name || name === student.name) return;
-        try { await desktop.renameStudent(student.id, name); await loadStudents(); }
-        catch (error) { toast("重命名学生失败：" + (error.message || "请重试")); }
+        avatarEditEpoch++; editingStudentAvatar = student.avatar || null;
+        editingStudentId = student.id;
+        $("#studentNameInput").value = student.name;
+        $("#studentGenderInput").value = student.gender || "male";
+        renderAvatarPreview();
+        $("#saveStudentButton").textContent = "保存修改";
+        $("#cancelStudentEdit").hidden = false;
+        $("#studentNameInput").focus();
       }
       if (action === "remove-student") {
+        if (studentFocus.pending || studentFocus.changing || desktop.isStudentBusy()) { toast("当前操作尚未完成，请稍后移除学生"); return; }
+        if (button.dataset.id === state.activeStudentId && hasStudentDraft()) { toast("请先保存或清空当前学生的未保存内容"); return; }
         const student = studentById(button.dataset.id);
         if (!student) return;
-        const confirmed = await confirmAction("移除学生「" + student.name + "」？", "已有的试卷、作答和练习会保留，只是不再关联这个学生；之后可在详情里重新指定归属。", "移除");
+        const confirmed = await confirmAction("移除学生「" + student.name + "」？", "仅能移除没有试卷、作答或训练资料的学生；至少保留一位学生；移除当前学生前请先切换。", "移除");
         if (!confirmed) return;
         try { await desktop.removeStudent(student.id); await loadStudents(); toast("已移除学生"); }
         catch (error) { toast("移除学生失败：" + (error.message || "请重试")); }
@@ -3606,10 +3686,10 @@
         } catch (error) { toast("删除作答记录失败：" + (error.message || "请重试")); }
       }
       if (action === "post-pdf") await exportActivePost("pdf");
-      if (action === "make-pdf") toast("请先从帖子池打开试卷，再生成 PDF");
+      if (action === "make-pdf") toast("请先从试卷库打开试卷，再生成 PDF");
       if (action === "print") {
         if (button.closest("#s0c")) await exportActivePost("print");
-        else toast("请先从帖子池打开试卷，再打印");
+        else toast("请先从试卷库打开试卷，再打印");
       }
       if (action === "move-page" || action === "delete-page") {
         const kind = button.dataset.kind;
@@ -3792,10 +3872,9 @@
         } catch (error) { toast("恢复备份失败：" + (error.message || "请检查备份文件")); }
       }
       if (action === "show-upload-link") {
-        const message = state.mobileUpload.enabled
-          ? (state.mobileUpload.urls.length ? state.mobileUpload.urls.join("\n") : "服务已开启，但没有检测到局域网 IPv4 地址。请检查电脑的 Wi-Fi 连接。")
-          : "请先开启“手机上传”，确保手机和电脑连在同一 Wi-Fi，再复制地址到手机浏览器打开。";
-        showDialog("手机上传地址", message);
+        if (!state.mobileUpload.enabled) { toast("请先开启手机上传，手机和电脑需连接同一 Wi-Fi"); return; }
+        $("#uploadQrCodes").scrollIntoView({ block: "center", behavior: "smooth" });
+
       }
       if (action === "copy-upload-link") {
         const url = state.mobileUpload.urls[0];
@@ -3944,7 +4023,7 @@
         const result = shouldEnable ? await desktop.startMobileUpload() : await desktop.stopMobileUpload();
         renderMobileUpload(result);
         if (shouldEnable) {
-          toast(result.urls.length ? "手机上传已开启；地址已显示在本页" : "手机上传已开启，但未检测到局域网地址");
+          toast(result.urls.length ? "手机上传已开启；用手机扫描本页二维码" : "手机上传已开启，但未检测到局域网地址");
         } else toast("手机上传已关闭，原地址随即失效");
       } catch (error) {
         $("#lanSwitch").disabled = false;
@@ -3957,9 +4036,6 @@
     document.body.classList.add("screen-s0");
     $("#gradeSubject").innerHTML = subjectOptions("数学");
     if (desktop) {
-      void loadPosts();
-      void loadAnswers();
-      void loadTrainingHistory();
       void loadStudents();
       if (typeof desktop.getMobileUploadState === "function") desktop.getMobileUploadState().then(renderMobileUpload).catch(() => {});
       if (typeof desktop.getAiSettings === "function") desktop.getAiSettings().then(renderAiSettings).catch((error) => toast("读取 AI 配置失败：" + (error.message || "请重试")));
