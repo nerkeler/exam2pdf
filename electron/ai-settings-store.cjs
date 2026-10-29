@@ -75,15 +75,35 @@ class AiSettingsStore {
     };
   }
 
+  // 优先用同步 safeStorage API（久经考验）；async 变体在部分 Electron 44 构建上
+  // 存在"解密恒返回首次明文"的问题（2026-10-29 实测：换存任何新 key 发出去的都是旧 key）
+  async encryptKey(apiKey) {
+    if (typeof this.safeStorage.encryptString === "function") {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("系统安全密钥存储暂不可用");
+      return this.safeStorage.encryptString(apiKey);
+    }
+    if (typeof this.safeStorage.encryptStringAsync !== "function") throw new Error("当前系统没有可用的安全密钥存储");
+    if (typeof this.safeStorage.isAsyncEncryptionAvailable === "function" && !await this.safeStorage.isAsyncEncryptionAvailable()) throw new Error("系统安全密钥存储暂不可用");
+    return this.safeStorage.encryptStringAsync(apiKey);
+  }
+
+  async decryptKey(encrypted) {
+    if (typeof this.safeStorage.decryptString === "function") {
+      return this.safeStorage.decryptString(encrypted);
+    }
+    if (typeof this.safeStorage.decryptStringAsync !== "function") throw new Error("当前系统没有可用的安全密钥存储");
+    if (typeof this.safeStorage.isAsyncEncryptionAvailable === "function" && !await this.safeStorage.isAsyncEncryptionAvailable()) throw new Error("系统安全密钥存储暂不可用");
+    return this.safeStorage.decryptStringAsync(encrypted);
+  }
+
   async getCredentials() {
     const settings = await this.read();
     if (!settings.encryptedKey) throw new Error("请先在应用设置中保存 AI API Key");
-    if (!this.safeStorage || typeof this.safeStorage.isAsyncEncryptionAvailable !== "function" || typeof this.safeStorage.decryptStringAsync !== "function") {
+    if (!this.safeStorage || typeof this.safeStorage.decryptString !== "function" && typeof this.safeStorage.decryptStringAsync !== "function") {
       throw new Error("当前系统没有可用的安全密钥存储");
     }
-    if (!await this.safeStorage.isAsyncEncryptionAvailable()) throw new Error("系统安全密钥存储暂不可用");
     let apiKey;
-    try { apiKey = await this.safeStorage.decryptStringAsync(Buffer.from(settings.encryptedKey, "base64")); }
+    try { apiKey = await this.decryptKey(Buffer.from(settings.encryptedKey, "base64")); }
     catch { throw new Error("无法解密已保存的 API Key，请重新保存密钥"); }
     if (!apiKey) throw new Error("请先在应用设置中保存 AI API Key");
     const defaults = this.defaultsFor(settings.provider, settings.model, settings.baseUrl);
@@ -102,11 +122,7 @@ class AiSettingsStore {
       let encryptedKey = input.clearApiKey === true ? "" : previous.encryptedKey || "";
       const apiKey = clean(input.apiKey, 4096);
       if (apiKey) {
-        if (!this.safeStorage || typeof this.safeStorage.isAsyncEncryptionAvailable !== "function" || typeof this.safeStorage.encryptStringAsync !== "function") {
-          throw new Error("当前系统没有可用的安全密钥存储");
-        }
-        if (!await this.safeStorage.isAsyncEncryptionAvailable()) throw new Error("系统安全密钥存储暂不可用");
-        encryptedKey = (await this.safeStorage.encryptStringAsync(apiKey)).toString("base64");
+        encryptedKey = (await this.encryptKey(apiKey)).toString("base64");
       }
       const settings = { schemaVersion: 1, provider, model, baseUrl, encryptedKey };
       await fs.mkdir(path.dirname(this.filePath), { recursive: true });

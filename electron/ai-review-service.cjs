@@ -169,7 +169,7 @@ async function probeVisionSupport({ baseUrl, model, apiKey, fetchImpl, timeoutMs
       body: JSON.stringify({ model, messages: [{ role: "user", content: [
         { type: "text", text: "图片输入测试。请只回复 OK。" },
         { type: "image_url", image_url: { url: VISION_PROBE_IMAGE } }
-      ] }], max_tokens: 16, temperature: 0 }),
+      ] }], max_tokens: 64, temperature: 0 }),
       signal: controller.signal
     });
     const raw = await readResponseText(response, MAX_RESPONSE_BYTES);
@@ -204,7 +204,8 @@ async function testAiConnection({ baseUrl, model, apiKey, fetchImpl = globalThis
         method: "POST",
         redirect: "error",
         headers: { "Authorization": "Bearer " + normalizedKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: normalizedModel, messages: [{ role: "user", content: "连接测试。请只回复 OK。" }], max_tokens: 16, temperature: 0 }),
+        // 推理模型（如 DeepSeek deepseek-flash）会先产出思维链，max_tokens 太小会导致正文为空
+        body: JSON.stringify({ model: normalizedModel, messages: [{ role: "user", content: "连接测试。请只回复 OK。" }], max_tokens: 512, temperature: 0 }),
         signal: controller.signal
       });
     } catch (error) {
@@ -219,7 +220,8 @@ async function testAiConnection({ baseUrl, model, apiKey, fetchImpl = globalThis
       const detail = cleanText(payload?.error?.message || payload?.message || "", 300);
       throw new Error("AI 服务请求失败（HTTP " + response.status + "）" + (detail ? "：" + detail : ""));
     }
-    if (!textContent(payload?.choices?.[0]?.message?.content)) throw new Error("AI 服务已响应，但没有返回文本；请检查模型配置");
+    // 推理模型的 token 会先花在 reasoning_content 上，只要 message 存在即视为连接成功
+    if (!payload?.choices?.[0]?.message) throw new Error("AI 服务已响应，但没有返回文本；请检查模型配置");
     const probe = await probeVisionSupport({ baseUrl, model: normalizedModel, apiKey: normalizedKey, fetchImpl, timeoutMs });
     return { model: normalizedModel, connected: true, vision: probe.vision, visionDetail: probe.visionDetail || "" };
   } finally {
