@@ -189,3 +189,33 @@ test("keeps search controls out of the Xiaohongshu page", () => {
   assert.equal(harness.window.document.getElementById("e2p-search-btn"), null);
   assert.equal(harness.window.exam2pdfSearch, undefined);
 });
+
+test("throttles different notes within the interval but allows same-note retries", async () => {
+  const { button, collected, window: fakeWindow } = createCollectorHarness("/explore/note-123");
+  const notes = fakeWindow.__INITIAL_STATE__.note.noteDetailMap;
+  notes["note-456"] = {
+    note: {
+      title: "另一篇笔记",
+      imageList: [{ urlDefault: "https://sns-webpic.xhscdn.com/note-page.jpg", infoList: [{ width: 1200, url: "https://sns-webpic.xhscdn.com/note-page.jpg" }] }]
+    }
+  };
+
+  await button.onclick();
+  assert.equal(collected.length, 1);
+
+  fakeWindow.location.pathname = "/explore/note-456";
+  await button.onclick();
+  assert.equal(collected.length, 1, "不同笔记且间隔不足时应被限速");
+
+  fakeWindow.location.pathname = "/explore/note-123";
+  await button.onclick();
+  assert.equal(collected.length, 2, "同一篇笔记的补采不应被限速");
+});
+
+test("stops collecting after the per-session cap", async () => {
+  const { button, collected } = createCollectorHarness("/explore/note-123");
+  for (let i = 0; i < 40; i++) await button.onclick();
+  assert.equal(collected.length, 40, "会话上限内应正常采集");
+  await button.onclick();
+  assert.equal(collected.length, 40, "超出会话上限后应被拒绝");
+});

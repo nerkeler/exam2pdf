@@ -10,7 +10,7 @@ function scopedStore(store, getStudentId, kind = 'post') {
   const create = kind === 'training' ? 'create' : 'createPost';
   const guarded = new Set(kind === 'training' ? ['get', 'setStatus'] : [
     'getPost', 'readPost', 'renamePost', 'reorderPost', 'appendPostImages', 'removePostPage',
-    'setSubject', 'setStudent', 'resetPostOrder', 'deletePost', 'saveReview', 'resolveImage'
+    'setSubject', 'setLinkedPost', 'setStudent', 'resetPostOrder', 'deletePost', 'saveReview', 'resolveImage'
   ]);
   const owner = () => {
     const id = getStudentId();

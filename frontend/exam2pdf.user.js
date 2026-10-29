@@ -285,6 +285,13 @@
 
   var busy = false;
 
+  // 采集限速：家庭学习场景远用不到这些额度，主要用于提高被改成批量抓取工具的门槛
+  var MAX_COLLECTS_PER_SESSION = 40;
+  var MIN_COLLECT_INTERVAL_MS = 2000;
+  var collectsDone = 0;
+  var lastCollectAt = 0;
+  var lastNoteId = "";
+
   function failureSummary(reasons) {
     return Object.keys(reasons).map(function (key) { return key + "×" + reasons[key]; }).join("、");
   }
@@ -301,6 +308,16 @@
       toast("未找到帖子图片：请打开笔记详情页（能左右滑动看图）后重试", false);
       return;
     }
+    var now = Date.now();
+    if (collectsDone >= MAX_COLLECTS_PER_SESSION) {
+      toast("已达本次会话采集上限（" + MAX_COLLECTS_PER_SESSION + " 篇）。家庭学习正常使用不会触及此上限；请勿批量抓取", false);
+      return;
+    }
+    if (d.noteId !== lastNoteId && now - lastCollectAt < MIN_COLLECT_INTERVAL_MS) {
+      toast("采集太频繁，请间隔约 2 秒再采集下一篇；同一篇笔记的补采不受限制", false);
+      return;
+    }
+    lastCollectAt = now;
     busy = true;
     btn.disabled = true;
     btn.style.opacity = "0.6";
@@ -371,6 +388,8 @@
     } catch (e) {
       toast("采集失败：" + (e && e.message ? e.message : "未知错误"), false);
     }
+    collectsDone++;
+    lastNoteId = d ? d.noteId : "";
     busy = false;
     btn.disabled = false;
     btn.style.opacity = "";

@@ -36,7 +36,7 @@ for (const failure of ["html-write", "native-window"]) {
       async getPost() { return { id: "fixture", title: "fixture", pageOrder: ["page-001.jpg"], images: [{ file: "page-001.jpg", mime: "image/jpeg" }] }; },
       postDirectory: () => root
     };
-    await assert.rejects(context.preparePrintWindow(store, "fixture", null, "fixture", false), /simulated/);
+    await assert.rejects(context.preparePrintWindow(store, "fixture", null, "fixture"), /simulated/);
     assert.deepEqual(await fs.readdir(root), ["page-001.jpg"]);
     assert.equal(await fs.readFile(path.join(root, "page-001.jpg"), "utf8"), "original image");
   });

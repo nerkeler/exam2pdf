@@ -9,7 +9,6 @@ const { pathToFileURL } = require("node:url");
 const { randomUUID } = require("node:crypto");
 const { PostStore } = require("./post-store.cjs");
 const { createPrintHtml, safePdfFileName } = require("./print-document.cjs");
-const { printAndCleanup } = require("./print-job.cjs");
 const { deriveLearningStats } = require("./learning-stats.cjs");
 const { generatePractice } = require("./training-generator.cjs");
 const { generateAiPractice } = require("./ai-practice-service.cjs");
@@ -31,9 +30,7 @@ const { createStartupErrorUrl } = require("./startup-error-page.cjs");
 const { withStoreLocks } = require("./library-maintenance.cjs");
 const {
   buildSearchUrl,
-  resolveSearchGuidePosition,
-  SEARCH_BUTTON_WIDTH,
-  SEARCH_BUTTON_HEIGHT
+  resolveSearchPanelBounds
 } = require("./xhs-search.cjs");
 
 // 显示名「家卷」；数据目录显式钉在 exam2pdf（改名不迁移，老数据无缝延续）
@@ -97,13 +94,6 @@ let xhsSearchOverlayAttached = false;
 let xhsSearchOverlayReady = false;
 let xhsSearchPositionReady = false;
 let xhsSearchPanelOpen = false;
-let xhsSearchPosition = { left: 12, top: 12, width: SEARCH_BUTTON_WIDTH, height: SEARCH_BUTTON_HEIGHT };
-let xhsSearchMeasureTimer;
-let xhsSearchMeasureAttempts = 0;
-let xhsSearchSyncTimer = null;
-let xhsSearchMeasuring = false;
-let xhsSearchAppliedWidth = 0;
-let xhsPageRevision = 0;
 let xhsReady = false;
 let requestedXhsBounds = null;
 let currentXhsState = { status: "loading", message: "正在打开小红书…" };
@@ -169,7 +159,6 @@ function sendXhsState(status, message) {
 
 function hideXhsView() {
   if (!mainWindow) return;
-  stopXhsSearchSync();
   if (xhsSearchOverlayView && xhsSearchOverlayAttached) {
     mainWindow.contentView.removeChildView(xhsSearchOverlayView);
     xhsSearchOverlayAttached = false;
@@ -190,49 +179,17 @@ function applyXhsSearchOverlayBounds() {
   }
 
   const base = requestedXhsBounds;
-  // 侧栏折叠/展开时内嵌视图宽度会逐帧变化。按钮贴着搜索框右端，位置随视图宽度平移；
-  // 这里先按宽度差保持“距右边缘的距离”不变，让按钮跟着一起滑，过渡结束后再由实测校正。
-  if (xhsSearchAppliedWidth > 0 && Math.abs(base.width - xhsSearchAppliedWidth) > 0.5) {
-    xhsSearchPosition = {
-      ...xhsSearchPosition,
-      left: Math.max(8, xhsSearchPosition.left + (base.width - xhsSearchAppliedWidth))
-    };
-  }
-  xhsSearchAppliedWidth = base.width;
-  const position = xhsSearchPosition;
-  const buttonWidth = Math.min(position.width, Math.max(1, base.width - 16));
-  const buttonHeight = Math.min(position.height, Math.max(1, base.height - 16));
-  let overlayBounds;
-  let panelWidth = Math.min(350, Math.max(180, base.width - 16));
-  let panelHeight = Math.max(1, Math.min(500, base.height - position.top - buttonHeight - 24));
-
-  if (xhsSearchPanelOpen) {
-    // 面板在按钮下方展开；视图右缘对齐按钮右缘、面板向左延伸——按钮贴近视口右缘时面板仍完整在屏内
-    const downwardRoom = Math.max(160, Math.round(base.height - position.top - 16));
-    panelHeight = Math.min(panelHeight, downwardRoom - buttonHeight - 8);
-    const left = Math.max(8, Math.min(position.left + buttonWidth - panelWidth, base.width - panelWidth - 8));
-    overlayBounds = {
-      x: Math.round(base.x + left),
-      y: Math.round(base.y + position.top),
-      width: Math.round(panelWidth),
-      height: Math.round(buttonHeight + 8 + panelHeight)
-    };
-  } else {
-    overlayBounds = {
-      x: Math.round(base.x + position.left),
-      y: Math.round(base.y + position.top),
-      width: Math.round(buttonWidth),
-      height: Math.round(buttonHeight)
-    };
-    panelWidth = Math.min(350, Math.max(180, base.width - 16));
-  }
+  const panel = resolveSearchPanelBounds(base, xhsSearchPanelOpen);
+  const panelWidth = Math.min(350, Math.max(1,base.width-24)), panelHeight = Math.max(1, Math.min(500,base.height-64));
+  const overlayBounds = { x:Math.round(base.x + panel.left), y:Math.round(base.y + panel.top), width:panel.width, height:panel.height };
+  const buttonWidth = 80, buttonHeight = 32;
 
   if (!xhsViewAttached) {
     mainWindow.contentView.addChildView(xhsView);
     xhsViewAttached = true;
     xhsView.setBounds({
       x: Math.round(base.x), y: Math.round(base.y),
-      width: Math.round(base.width), height: Math.round(base.height)
+      width: Math.round(base.width), height: Math.max(1, Math.round(base.height))
     });
   }
   if (!xhsSearchOverlayAttached) {
@@ -249,127 +206,11 @@ function applyXhsSearchOverlayBounds() {
   });
 }
 
-async function measureXhsSearchPosition(options = {}) {
-  const quiet = options.quiet === true;
-  if (!xhsView || xhsView.webContents.isDestroyed() || !xhsReady || !requestedXhsBounds?.visible) return;
-  const measuredView = xhsView;
-  const measuredBounds = requestedXhsBounds;
-  const measuredRevision = xhsPageRevision;
-  let measured = null;
-  try {
-    measured = await measuredView.webContents.executeJavaScript(`(() => {
-      const visibleRect = (el) => {
-        const rect = el.getBoundingClientRect();
-        if (rect.width < 160 || rect.height < 20) return null;
-        const style = getComputedStyle(el);
-        if (style.visibility === "hidden" || style.display === "none") return null;
-        return rect;
-      };
-      // 小红书页面上的 #search-input 是 0×0 的隐藏节点，真正可见的输入框是 textarea/可编辑节点，
-      // 因此按可见性挑选候选，而不是取 DOM 里第一个匹配。
-      const selectors = [
-        "#search-input-in-feeds",
-        "#search-input",
-        "[class*='search'] textarea",
-        "[class*='search'] input",
-        "textarea[placeholder*='搜索']",
-        "input[placeholder*='搜索']",
-        "textarea[placeholder*='小红书']",
-        "input[placeholder*='小红书']"
-      ];
-      let input = null;
-      let inputBounds = null;
-      for (const selector of selectors) {
-        for (const el of document.querySelectorAll(selector)) {
-          const rect = visibleRect(el);
-          if (rect) { input = el; inputBounds = rect; break; }
-        }
-        if (input) break;
-      }
-      if (!input) return null;
-      // 输入框外侧的可视圆角容器才是按钮需要让开的边界。
-      let row = inputBounds;
-      let ancestor = input.parentElement;
-      for (let depth = 0; ancestor && depth < 4; depth++, ancestor = ancestor.parentElement) {
-        const rect = ancestor.getBoundingClientRect();
-        if (rect.width < inputBounds.width || rect.height <= 0 || rect.height > Math.max(inputBounds.height * 3, 96)) continue;
-        if (!/search|input-box|textarea-container|wrapper/i.test(String(ancestor.className || ""))) continue;
-        row = rect;
-      }
-      // 搜索放大镜按钮：输入框右侧最近的可见按钮（小红书把搜索图标放在输入框右端）
-      let iconEl = null;
-      let iconRect = null;
-      let iconScanRoot = input.parentElement;
-      for (let depth = 0; iconScanRoot && depth < 4 && !iconEl; depth++, iconScanRoot = iconScanRoot.parentElement) {
-        for (const cand of iconScanRoot.querySelectorAll("button, [role='button'], [class*='button']")) {
-          const rect = visibleRect(cand);
-          if (!rect || rect.left <= inputBounds.right) continue;
-          iconEl = cand;
-          iconRect = rect;
-          break;
-        }
-      }
-      const box = (rect) => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom });
-      return { input: box(inputBounds), row: box(row), icon: iconRect ? box(iconRect) : null, viewport: { width: window.innerWidth, height: window.innerHeight } };
-    })()`, true);
-  } catch (error) {
-    if (!quiet) console.warn("Unable to measure the Xiaohongshu search box:", error.message);
-  }
-
-  // A page navigation, screen switch, resize, or window close may finish while the
-  // renderer is measuring. Discard that result rather than reopening an obsolete view.
-  if (xhsView !== measuredView || measuredView.webContents.isDestroyed() ||
-      requestedXhsBounds !== measuredBounds || !xhsReady || !requestedXhsBounds?.visible ||
-      xhsPageRevision !== measuredRevision) return;
-
-  if (!measured && !quiet && xhsSearchMeasureAttempts < 8) {
-    xhsSearchMeasureAttempts++;
-    xhsSearchMeasureTimer = setTimeout(() => { void measureXhsSearchPosition(); }, 500);
-    return;
-  }
-  if (!measured && quiet && xhsSearchPositionReady) return;
-
-  const viewport = measured ? measured.viewport : { width: requestedXhsBounds.width, height: requestedXhsBounds.height };
-  const next = resolveSearchGuidePosition(measured ? measured.input : null, measured ? measured.row : null, measured ? measured.icon : null, viewport, {
-    width: SEARCH_BUTTON_WIDTH,
-    height: SEARCH_BUTTON_HEIGHT
-  });
-  const changed = !xhsSearchPositionReady || !sameXhsSearchPosition(next, xhsSearchPosition);
-  xhsSearchPosition = next;
-  xhsSearchPositionReady = true;
-  xhsSearchMeasureAttempts = 0;
-  if (changed) applyXhsSearchOverlayBounds();
-}
-
-function sameXhsSearchPosition(a, b) {
-  return ["left", "top", "width", "height"].every((key) => a[key] === b[key]);
-}
-
 function scheduleXhsSearchPosition() {
-  clearTimeout(xhsSearchMeasureTimer);
-  xhsSearchMeasureAttempts = 0;
-  xhsSearchMeasureTimer = setTimeout(() => { void measureXhsSearchPosition(); }, 180);
+  if (!xhsReady || !requestedXhsBounds?.visible) return;
+  xhsSearchPositionReady = true;
+  applyXhsSearchOverlayBounds();
 }
-
-// 小红书的搜索区会随页面状态变化尺寸（大卡片 / 吸顶窄条），
-// 低频复测一次即可让按钮始终贴着搜索框，避免布局切换后压住输入框。
-function startXhsSearchSync() {
-  if (xhsSearchSyncTimer) return;
-  xhsSearchSyncTimer = setInterval(() => {
-    if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized() || !requestedXhsBounds?.visible || xhsSearchMeasuring) return;
-    xhsSearchMeasuring = true;
-    measureXhsSearchPosition({ quiet: true }).finally(() => { xhsSearchMeasuring = false; });
-  }, 2000);
-  xhsSearchSyncTimer.unref?.();
-}
-
-function stopXhsSearchSync() {
-  clearTimeout(xhsSearchMeasureTimer);
-  clearInterval(xhsSearchSyncTimer);
-  xhsSearchSyncTimer = null;
-  xhsSearchMeasuring = false;
-}
-
 
 // 能拿到任何 HTTP 状态码都说明 TCP/TLS 通；超时/连接错误才视为不可达。
 async function checkXhsReachable() {
@@ -415,7 +256,6 @@ function updateXhsView(event, requested) {
     requestedXhsBounds = null;
     xhsSearchPanelOpen = false;
     xhsSearchPositionReady = false;
-    xhsSearchAppliedWidth = 0;
     hideXhsView();
     return;
   }
@@ -424,14 +264,13 @@ function updateXhsView(event, requested) {
     requestedXhsBounds = null;
     xhsSearchPanelOpen = false;
     xhsSearchPositionReady = false;
-    xhsSearchAppliedWidth = 0;
     hideXhsView();
     return;
   }
   requestedXhsBounds = { x: bounds[0], y: bounds[1], width: bounds[2], height: bounds[3], visible: true };
   applyXhsBounds();
   scheduleXhsSearchPosition();
-  startXhsSearchSync();
+
 }
 
 function createXhsView() {
@@ -485,13 +324,10 @@ function createXhsView() {
   let xhsNavOverlayTimer = null;
   xhsView.webContents.on("did-start-navigation", (_event, url, isInPlace, isMainFrame) => {
     if (!isMainFrame) return;
-    xhsPageRevision++;
     if (isInPlace) return;
     xhsReady = false;
     xhsSearchPanelOpen = false;
     xhsSearchPositionReady = false;
-    xhsSearchAppliedWidth = 0;
-    xhsSearchMeasureAttempts = 0;
     // 保留已渲染画面（浏览器行为），超过 1.2s 才切换加载遮罩，减少"感觉慢"
     if (xhsNavOverlayTimer) clearTimeout(xhsNavOverlayTimer);
     xhsNavOverlayTimer = setTimeout(() => {
@@ -515,7 +351,7 @@ function createXhsView() {
     xhsReady = true;
     applyXhsBounds();
     scheduleXhsSearchPosition();
-    startXhsSearchSync();
+
     if (collectorAsset.error) {
       sendXhsState("ready", "小红书已连接 · 采集脚本不可用");
       return;
@@ -640,8 +476,7 @@ function createWindow() {
     scheduleXhsSearchPosition();
   });
   mainWindow.on("closed", () => {
-    stopXhsSearchSync();
-    if (xhsView && !xhsView.webContents.isDestroyed()) xhsView.webContents.close();
+      if (xhsView && !xhsView.webContents.isDestroyed()) xhsView.webContents.close();
     if (xhsSearchOverlayView && !xhsSearchOverlayView.webContents.isDestroyed()) xhsSearchOverlayView.webContents.close();
     xhsView = null;
     xhsSearchOverlayView = null;
@@ -649,7 +484,6 @@ function createWindow() {
     xhsSearchOverlayAttached = false;
     xhsSearchOverlayReady = false;
     xhsSearchPositionReady = false;
-    xhsSearchAppliedWidth = 0;
     xhsReady = false;
     requestedXhsBounds = null;
     mainWindow = null;
@@ -738,13 +572,20 @@ function notifyStudentsChanged(value = {}) {
   }
 }
 
-function notifyAnswersChanged(id) {
+function notifyAnswersChanged(id, detail = {}) {
   if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
-    mainWindow.webContents.send("answers:changed", { id });
+    mainWindow.webContents.send("answers:changed", { id, ...detail });
   }
 }
 
-async function preparePrintWindow(store, postId, order, requestedTitle, showWindow) {
+// 手机上传的照片不落库，原样移交渲染层进「待保存页面」暂存区，确认后才保存
+function notifyMobileUploadReceived(payload) {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+    mainWindow.webContents.send("mobile-upload:received", payload);
+  }
+}
+
+async function preparePrintWindow(store, postId, order, requestedTitle) {
   const post = await store.getPost(postId);
   if (!post.pageOrder.length) throw new Error("这份试卷没有可打印的图片");
   const pageOrder = Array.isArray(order) ? order : post.pageOrder;
@@ -781,6 +622,8 @@ async function preparePrintWindow(store, postId, order, requestedTitle, showWind
       height: 760,
       title: title + " · 打印预览",
       show: false,
+      // 隐藏窗口必须保持渲染活动，否则系统打印在部分平台会输出空白页
+      paintWhenInitiallyHidden: true,
       parent: mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined,
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }
     });
@@ -790,7 +633,6 @@ async function preparePrintWindow(store, postId, order, requestedTitle, showWind
         'Promise.all(Array.from(document.images, image => image.decode().then(() => true).catch(() => false)))'
       );
       if (!imagesReady.every(Boolean)) throw new Error("有图片未能载入，尚未生成打印文件");
-      if (showWindow) printWindow.show();
     } catch (error) {
       if (!printWindow.isDestroyed()) printWindow.destroy();
       await fs.rm(printDirectory, { recursive: true, force: true });
@@ -806,7 +648,7 @@ async function preparePrintWindow(store, postId, order, requestedTitle, showWind
 }
 
 async function exportPdfViaDialog(store, id, order, title, dialogTitle) {
-  const prepared = await preparePrintWindow(store, id, order, title, false);
+  const prepared = await preparePrintWindow(store, id, order, title);
   try {
     const target = await dialog.showSaveDialog(mainWindow, {
       title: dialogTitle,
@@ -837,9 +679,36 @@ async function generateAnswerPdf(answerId, order, title) {
   return exportPdfViaDialog(answerStore, answerId, order, title, "保存作答 PDF");
 }
 
-async function printPost(postId, order, title) {
-  const prepared = await preparePrintWindow(postStore, postId, order, title, true);
-  return printAndCleanup(prepared.printWindow, prepared.printDirectory);
+// 试卷直接打印与错题本同机制：主窗口 window.print() 唤起系统打印界面。
+// 整理后的页面以内存数据直出（不落盘、无临时文件），渲染层在打印结束后自行释放。
+async function preparePrintPages(store, postId, order, requestedTitle) {
+  const post = await store.getPost(postId);
+  if (!post.pageOrder.length) throw new Error("这份试卷没有可打印的图片");
+  const pageOrder = Array.isArray(order) ? order : post.pageOrder;
+  if (pageOrder.length !== post.pageOrder.length || new Set(pageOrder).size !== pageOrder.length || pageOrder.some((file) => !post.pageOrder.includes(file))) {
+    throw new Error("页面顺序已发生变化，请重新打开试卷详情");
+  }
+  const title = String(requestedTitle || post.title).trim().slice(0, 160) || post.title;
+  const pages = [];
+  for (const file of pageOrder) {
+    const image = post.images.find((item) => item.file === file);
+    if (!image) throw new Error("试卷图片不完整，请检查帖子池");
+    const original = await fs.readFile(path.join(store.postDirectory(post.id), image.file));
+    let dataUrl = "data:" + (image.mime || "image/jpeg") + ";base64," + original.toString("base64");
+    let width = image.width;
+    let height = image.height;
+    // 打印前自动整理（裁边/纠偏/EXIF 方向/缩放/JPEG），失败时回退原始文件
+    try {
+      const processed = processPrintImage(original, image.mime);
+      if (processed) {
+        dataUrl = "data:image/jpeg;base64," + processed.data.toString("base64");
+        width = processed.width;
+        height = processed.height;
+      }
+    } catch { /* 回退原始文件 */ }
+    pages.push({ dataUrl, width, height });
+  }
+  return { title, pages };
 }
 
 ipcMain.on("desktop:xhs-bounds", updateXhsView);
@@ -970,7 +839,7 @@ appHandle("posts:remove-page", async (id, file) => {
   return post;
 });
 appHandle("posts:pdf", (id, order, title) => generatePostPdf(id, order, title));
-appHandle("posts:print", (id, order, title) => printPost(id, order, title));
+appHandle("posts:prepare-print", (id, order, title) => preparePrintPages(postStore, id, order, title));
 appHandle("answers:export-pdf", (id, order, title) => generateAnswerPdf(id, order, title));
 appHandle("answers:parse-external-review", (text) => parseExternalReview(typeof text === "string" ? text : ""));
 appHandle("mistakes:export-pdf", async (title) => {
@@ -1069,10 +938,9 @@ appHandle("mobile-upload:start", async () => {
     if (mobileUploadServer) return mobileUploadState(mobileUploadServer);
     const studentName = (await studentStore.list()).find(student => student.id === studentId)?.name || "当前学生";
     const server = await startMobileUploadServer({
-      answerStore: scopedStore(rawAnswerStore, () => studentId),
       getStudentId: () => studentId,
       studentName,
-      onUploaded: (answer) => notifyAnswersChanged(answer.id)
+      onUploadReceived: notifyMobileUploadReceived
     });
     if (activeStudentId !== studentId || revision !== workspaceRevision) { await server.close(); throw new Error("学生已切换，请重新开启上传"); }
     mobileUploadServer = server;
@@ -1141,6 +1009,8 @@ appHandle("backup:restore", async () => {
 });
 appHandle("answers:get", (id) => answerStore.getPost(id));
 appHandle("answers:create", async (payload) => {
+  // 关联原卷的存在性与学生归属由带防护的试卷库校验（跨目录，仓库层无法自检）
+  if (payload && payload.linkedPostId) await postStore.getPost(String(payload.linkedPostId));
   const result = await answerStore.createPost({
     ...payload,
     recordType: "answer",
@@ -1154,6 +1024,13 @@ appHandle("answers:create", async (payload) => {
 });
 appHandle("answers:set-subject", (id, subject) => {
   return answerStore.setSubject(id, subject).then((post) => {
+    notifyAnswersChanged(id);
+    return post;
+  });
+});
+appHandle("answers:link-post", async (id, postId) => {
+  if (postId) await postStore.getPost(String(postId)); // 确认原卷存在且属于当前学生
+  return answerStore.setLinkedPost(id, postId).then((post) => {
     notifyAnswersChanged(id);
     return post;
   });

@@ -1,6 +1,6 @@
 const http = require("node:http");
 const os = require("node:os");
-const { randomBytes, timingSafeEqual } = require("node:crypto");
+const { randomBytes, randomUUID, timingSafeEqual } = require("node:crypto");
 
 const MAX_FILES = 24;
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
@@ -15,18 +15,29 @@ const UPLOAD_PAGE = `<!doctype html>
 <html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>上传学生作答</title>
 <style>body{font:16px system-ui,sans-serif;max-width:620px;margin:0 auto;padding:24px 18px;color:#202733;background:#f5f7fb}main{background:white;border:1px solid #dce2ec;border-radius:18px;padding:22px}h1{font-size:22px;margin:0 0 8px}p{color:#637083;line-height:1.55}label{display:block;margin:18px 0 7px;font-weight:600}input{box-sizing:border-box;width:100%;min-height:48px;border:1px solid #ccd4e0;border-radius:10px;padding:10px;font:inherit}input[type=file]{padding:12px;background:#f8f9fb}button{width:100%;min-height:50px;margin-top:20px;border:0;border-radius:11px;background:#1764ff;color:white;font:inherit;font-weight:700}button:disabled{opacity:.55}#status{min-height:24px;margin-top:14px}</style>
-<main><h1>上传学生作答</h1><p>选择学生完成后的答题照片，提交后会直接保存到电脑上的「家卷」作答记录。支持 JPG、PNG、WebP，最多 24 张，每张不超过 16 MB。</p>
+<main><h1>上传学生作答</h1><p>选择学生完成后的答题照片，提交后会传到电脑上的「家卷」，在电脑上核对页序并确认保存。支持 JPG、PNG、WebP，最多 24 张，每张不超过 16 MB。</p>
 <form id="uploadForm"><label for="title">试卷名称</label><input id="title" name="title" maxlength="160" placeholder="例如：八年级数学周练">
 <p>当前学生：<strong>__STUDENT_LABEL__</strong>。如需上传给另一位学生，请先在电脑上切换并重新开启上传。</p>
 <label for="images">作答照片</label><input id="images" name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple required>
 <button id="submit" type="submit">上传到电脑</button></form><p id="status" role="status" aria-live="polite"></p></main>
-<script>const form=document.querySelector('#uploadForm'),status=document.querySelector('#status'),button=document.querySelector('#submit');form.addEventListener('submit',async event=>{event.preventDefault();const files=document.querySelector('#images').files;if(!files.length){status.textContent='请先选择作答照片';return}button.disabled=true;status.textContent='正在上传…';try{const response=await fetch(location.pathname+'/upload',{method:'POST',body:new FormData(form)});const result=await response.json();if(!response.ok)throw new Error(result.error||'上传失败');status.textContent='已保存：'+result.title+'（'+result.pages+' 张），可以关闭此页。';form.reset()}catch(error){status.textContent=error.message||'上传失败，请重试'}finally{button.disabled=false}})</script></html>`;
+<script>const form=document.querySelector('#uploadForm'),status=document.querySelector('#status'),button=document.querySelector('#submit');form.addEventListener('submit',async event=>{event.preventDefault();const files=document.querySelector('#images').files;if(!files.length){status.textContent='请先选择作答照片';return}button.disabled=true;status.textContent='正在上传…';try{const response=await fetch(location.pathname+'/upload',{method:'POST',body:new FormData(form)});const result=await response.json();if(!response.ok)throw new Error(result.error||'上传失败');status.textContent='已传到电脑：'+result.title+'（'+result.pages+' 张），请在电脑上核对后保存。';form.reset()}catch(error){status.textContent=error.message||'上传失败，请重试'}finally{button.disabled=false}})</script></html>`;
+
+// 只展示 RFC1918 私网地址：Tailscale（100.64.0.0/10 CGNAT）等虚拟网卡不在同一 Wi-Fi 内，手机无法访问
+function isPrivateLanAddress(address) {
+  const match = /^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(address);
+  if (!match) return false;
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  return first === 10
+    || (first === 172 && second >= 16 && second <= 31)
+    || (first === 192 && second === 168);
+}
 
 function getLanAddresses(networkInterfaces = os.networkInterfaces()) {
   const addresses = [];
   for (const entries of Object.values(networkInterfaces)) {
     for (const entry of entries || []) {
-      if (!entry.internal && (entry.family === "IPv4" || entry.family === 4)) addresses.push(entry.address);
+      if (!entry.internal && (entry.family === "IPv4" || entry.family === 4) && isPrivateLanAddress(entry.address)) addresses.push(entry.address);
     }
   }
   return [...new Set(addresses)];
@@ -115,8 +126,8 @@ function sendJson(response, statusCode, body) {
   response.end(JSON.stringify(body));
 }
 
-function createUploadHandler({ token, answerStore, onUploaded, getStudentId, studentName }) {
-  if (!token || !answerStore || typeof answerStore.createPost !== "function") throw new Error("手机上传服务配置无效");
+function createUploadHandler({ token, onUploadReceived, getStudentId, studentName }) {
+  if (!token || typeof onUploadReceived !== "function") throw new Error("手机上传服务配置无效");
   const tokenPath = "/u/" + token;
   return async (request, response) => {
     try {
@@ -143,15 +154,16 @@ function createUploadHandler({ token, answerStore, onUploaded, getStudentId, stu
       }
       const body = await readRequestBody(request);
       const { fields, files } = parseMultipart(request.headers["content-type"], body);
-      const result = await answerStore.createPost({
-        recordType: "answer",
+      // 不直接落库：照片原样移交渲染层，进「待保存页面」暂存区，用户在电脑上确认后才保存
+      const payload = {
+        id: randomUUID(),
         title: fields.title || "手机上传作答",
         studentName: studentName === undefined ? (fields.studentName || "") : studentName,
         studentId: typeof getStudentId === "function" ? getStudentId() : null,
         images: files.map(({ mime, bytes }) => ({ mime, base64: bytes.toString("base64") }))
-      });
-      if (typeof onUploaded === "function") await onUploaded(result.post);
-      sendJson(response, 201, { id: result.post.id, title: result.post.title, pages: result.post.pages });
+      };
+      await onUploadReceived(payload);
+      sendJson(response, 201, { id: payload.id, title: payload.title, pages: payload.images.length });
     } catch (error) {
       if (response.headersSent || response.destroyed) return;
       const message = String(error && error.message || "上传失败");
@@ -160,11 +172,11 @@ function createUploadHandler({ token, answerStore, onUploaded, getStudentId, stu
   };
 }
 
-async function startMobileUploadServer({ answerStore, onUploaded, getStudentId, studentName, host = "0.0.0.0", port = 0, networkInterfaces } = {}) {
-  if (!answerStore || typeof answerStore.createPost !== "function") throw new Error("作答记录存储尚未就绪");
+async function startMobileUploadServer({ onUploadReceived, getStudentId, studentName, host = "0.0.0.0", port = 0, networkInterfaces } = {}) {
+  if (typeof onUploadReceived !== "function") throw new Error("手机上传服务配置无效");
   const token = randomBytes(32).toString("hex");
   const tokenPath = "/u/" + token;
-  const server = http.createServer(createUploadHandler({ token, answerStore, onUploaded, getStudentId, studentName }));
+  const server = http.createServer(createUploadHandler({ token, onUploadReceived, getStudentId, studentName }));
   server.requestTimeout = 120_000;
   server.headersTimeout = 15_000;
   await new Promise((resolve, reject) => {

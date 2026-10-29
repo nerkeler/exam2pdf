@@ -3,9 +3,7 @@ const assert = require("node:assert/strict");
 const {
   buildSearchQuery,
   buildSearchUrl,
-  resolveSearchGuidePosition,
-  SEARCH_BUTTON_WIDTH,
-  SEARCH_BUTTON_HEIGHT
+  resolveSearchPanelBounds
 } = require("./xhs-search.cjs");
 
 const viewport = { width: 1220, height: 813 };
@@ -26,47 +24,19 @@ test("builds a Xiaohongshu search URL and rejects an empty query", () => {
   assert.equal(buildSearchUrl("   "), null);
 });
 
-test("anchors right of the Xiaohongshu search magnifier, vertically centered on it", () => {
-  const position = resolveSearchGuidePosition(
-    { left: 286, right: 1099, top: 83, bottom: 124 },
-    { left: 265, right: 1119, top: 62, bottom: 178 },
-    { left: 1100, right: 1130, top: 70, bottom: 110 },
-    viewport
-  );
-  // 放大镜右缘 + 8 超出视口安全边时被右缘钳制（贴边显示）
-  // 按钮顶边与搜索框顶边对齐（row.top = 62）
-  assert.deepEqual(position, {
-    left: Math.min(1130 + 8, viewport.width - SEARCH_BUTTON_WIDTH - 12),
-    top: 62,
-    width: SEARCH_BUTTON_WIDTH,
-    height: SEARCH_BUTTON_HEIGHT
-  });
+test("search drawer stays at the webpage edge without depending on page content", () => {
+  assert.deepEqual(resolveSearchPanelBounds(viewport),{left:1128,top:12,width:80,height:32});
+});
+test("search drawer stays within narrow and short viewports", () => {
+  for (const width of [1,10,50,320,1200]) for (const height of [1,10,100,800]) {
+    const panel=resolveSearchPanelBounds({width,height},true);
+    assert.ok(panel.left>=0 && panel.left+panel.width<=width);
+    assert.ok(panel.top>=0 && panel.top+panel.height<=height);
+  }
 });
 
-test("clamps to the viewport when the magnifier sits at the right edge", () => {
-  const position = resolveSearchGuidePosition(
-    { left: 286, right: 1099, top: 83, bottom: 124 },
-    { left: 265, right: 1119, top: 62, bottom: 178 },
-    { left: 1150, right: 1210, top: 70, bottom: 110 },
-    viewport
-  );
-  assert.equal(position.left, viewport.width - SEARCH_BUTTON_WIDTH - 12);
-  assert.ok(position.top >= 12);
-});
-
-test("falls back to the search row and the corner when no magnifier is found", () => {
-  const rowOnly = resolveSearchGuidePosition(
-    { left: 286, right: 1099, top: 83, bottom: 124 },
-    { left: 265, right: 1119, top: 62, bottom: 178 },
-    null,
-    viewport
-  );
-  assert.equal(rowOnly.left, 1119 + 8);
-  const corner = resolveSearchGuidePosition(null, null, null, viewport);
-  assert.deepEqual(corner, {
-    left: viewport.width - SEARCH_BUTTON_WIDTH - 12,
-    top: 12,
-    width: SEARCH_BUTTON_WIDTH,
-    height: SEARCH_BUTTON_HEIGHT
-  });
+test('opening the panel leaves the button anchored at the same top-right corner',()=>{
+  const closed=resolveSearchPanelBounds(viewport), open=resolveSearchPanelBounds(viewport,true);
+  assert.equal(closed.left+closed.width,open.left+open.width);
+  assert.equal(closed.top,open.top);
 });

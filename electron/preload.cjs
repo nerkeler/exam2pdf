@@ -47,6 +47,9 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   onAnswersChanged(callback) {
     return listen("answers:changed", callback);
   },
+  onMobileUploadReceived(callback) {
+    return listen("mobile-upload:received", callback);
+  },
   onStudentsChanged(callback) {
     return listen("students:changed", callback);
   },
@@ -103,8 +106,8 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   generatePostPdf(id, order, title) {
     return invoke("posts:pdf", id, order, title);
   },
-  printPost(id, order, title) {
-    return invoke("posts:print", id, order, title);
+  preparePostPrint(id, order, title) {
+    return invoke("posts:prepare-print", id, order, title);
   },
   listAnswers() {
     return invoke("answers:list");
@@ -141,6 +144,9 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   },
   setAnswerSubject(id, subject) {
     return invoke("answers:set-subject", id, subject);
+  },
+  linkAnswerPost(id, postId) {
+    return invoke("answers:link-post", id, postId);
   },
   exportMistakePdf(title) {
     return invoke("mistakes:export-pdf", title);

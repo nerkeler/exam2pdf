@@ -28,22 +28,18 @@ async function invoke(handler, url, { method = "GET", form } = {}) {
   return { status: outgoing.statusCode, headers: outgoing.headers, body: outgoing.body };
 }
 
-test("serves a private upload page and stores submitted answer photos locally", async () => {
+test("serves a private upload page and hands submitted photos to the workspace unstaged", async () => {
   const token = randomBytes(32).toString("hex");
-  const saved = [];
-  const events = [];
+  const received = [];
   const handler = createUploadHandler({
     token,
-    answerStore: { async createPost(payload) {
-      saved.push(payload);
-      return { post: { id: "answer-1", title: payload.title, pages: payload.images.length } };
-    } },
-    onUploaded: async (answer) => events.push(answer.id)
+    onUploadReceived: async (payload) => { received.push(payload); }
   });
   const page = await invoke(handler, "/u/" + token);
   assert.equal(page.status, 200);
   assert.match(page.headers["Content-Security-Policy"], /default-src 'none'/);
   assert.match(page.body, /上传学生作答/);
+  assert.match(page.body, /核对页序并确认保存/);
 
   const form = new FormData();
   form.set("title", "八年级周练");
@@ -52,21 +48,41 @@ test("serves a private upload page and stores submitted answer photos locally", 
   form.append("images", new Blob([PNG], { type: "image/png" }), "answer-2.png");
   const response = await invoke(handler, "/u/" + token + "/upload", { method: "POST", form });
   assert.equal(response.status, 201);
-  assert.deepEqual(JSON.parse(response.body), { id: "answer-1", title: "八年级周练", pages: 2 });
-  assert.equal(saved.length, 1);
-  assert.equal(saved[0].recordType, "answer");
-  assert.equal(saved[0].studentName, "小明");
-  assert.equal(saved[0].images.length, 2);
-  assert.equal(Buffer.from(saved[0].images[0].base64, "base64").toString("hex"), PNG.toString("hex"));
-  assert.deepEqual(events, ["answer-1"]);
+  assert.equal(received.length, 1);
+  const payload = received[0];
+  assert.ok(/^[0-9a-f-]{36}$/.test(payload.id), "each upload batch must carry a fresh id");
+  assert.equal(payload.title, "八年级周练");
+  assert.equal(payload.studentName, "小明");
+  assert.equal(payload.images.length, 2);
+  assert.equal(Buffer.from(payload.images[0].base64, "base64").toString("hex"), PNG.toString("hex"));
+  assert.deepEqual(JSON.parse(response.body), { id: payload.id, title: "八年级周练", pages: 2 });
+});
+
+test("falls back to a default title and passes the bound student through", async () => {
+  const token = randomBytes(32).toString("hex");
+  const received = [];
+  const handler = createUploadHandler({
+    token,
+    studentName: "小红",
+    getStudentId: () => "student-7",
+    onUploadReceived: async (payload) => { received.push(payload); }
+  });
+  const form = new FormData();
+  form.append("images", new Blob([PNG], { type: "image/png" }), "answer.png");
+  const response = await invoke(handler, "/u/" + token + "/upload", { method: "POST", form });
+  assert.equal(response.status, 201);
+  assert.equal(received[0].title, "手机上传作答");
+  assert.equal(received[0].studentName, "小红");
+  assert.equal(received[0].studentId, "student-7");
+  assert.deepEqual(JSON.parse(response.body), { id: received[0].id, title: "手机上传作答", pages: 1 });
 });
 
 test("rejects unknown tokens and images whose content does not match their declared type", async () => {
   const token = randomBytes(32).toString("hex");
-  const saved = [];
+  const received = [];
   const handler = createUploadHandler({
     token,
-    answerStore: { async createPost(payload) { saved.push(payload); return { post: { id: "answer-1", title: payload.title, pages: 1 } }; } }
+    onUploadReceived: async (payload) => { received.push(payload); }
   });
   const invalid = await invoke(handler, "/u/not-the-token");
   assert.equal(invalid.status, 404);
@@ -81,15 +97,22 @@ test("rejects unknown tokens and images whose content does not match their decla
   const mismatch = await invoke(handler, "/u/" + token + "/upload", { method: "POST", form: mislabeled });
   assert.equal(mismatch.status, 400);
   assert.match(JSON.parse(mismatch.body).error, /格式无效/);
-  assert.equal(saved.length, 0);
+  assert.equal(received.length, 0);
 });
 
 test("returns only non-internal IPv4 addresses for phone links", () => {
   assert.deepEqual(getLanAddresses({
     lo: [{ family: "IPv4", address: "127.0.0.1", internal: true }],
     en0: [{ family: "IPv4", address: "192.168.1.20", internal: false }],
-    bridge: [{ family: "IPv6", address: "fd00::1", internal: false }]
+    bridge: [{ family: "IPv6", address: "fd00::1", internal: false }],
+    utun: [{ family: "IPv4", address: "100.110.91.123", internal: false }]
   }), ["192.168.1.20"]);
+});
+
+test("keeps RFC1918 LAN ranges and drops CGNAT or virtual adapters like Tailscale", () => {
+  const pick = (addresses) => getLanAddresses(Object.fromEntries(addresses.map((address, index) => ["nic" + index, [{ family: "IPv4", address, internal: false }]])));
+  assert.deepEqual(pick(["192.168.1.20", "10.0.0.5", "172.16.9.9", "172.32.0.1"]), ["192.168.1.20", "10.0.0.5", "172.16.9.9"]);
+  assert.deepEqual(pick(["100.110.91.123", "100.64.0.1", "198.18.0.1", "169.254.3.7", "8.8.8.8"]), []);
 });
 
 test("serves an upload over a real local HTTP socket and closes the temporary address", async (t) => {
@@ -98,11 +121,7 @@ test("serves an upload over a real local HTTP socket and closes the temporary ad
     host: "127.0.0.1",
     port: 0,
     networkInterfaces: { en0: [{ family: "IPv4", address: "192.168.1.20", internal: false }] },
-    answerStore: { async createPost(payload) {
-      const post = { id: "socket-answer", title: payload.title, pages: payload.images.length };
-      saved.push({ payload, post });
-      return { post };
-    } }
+    onUploadReceived: async (payload) => { saved.push(payload); }
   });
   let closed = false;
   t.after(async () => { if (!closed) await server.close(); });
@@ -116,10 +135,10 @@ test("serves an upload over a real local HTTP socket and closes the temporary ad
   form.append("images", new Blob([PNG], { type: "image/png" }), "answer.png");
   const response = await fetch(server.localUrl + "/upload", { method: "POST", body: form });
   assert.equal(response.status, 201);
-  assert.deepEqual(await response.json(), { id: "socket-answer", title: "本机网络上传验证", pages: 1 });
+  assert.deepEqual(await response.json(), { id: saved[0].id, title: "本机网络上传验证", pages: 1 });
   assert.equal(saved.length, 1);
-  assert.equal(saved[0].payload.recordType, "answer");
-  assert.equal(Buffer.from(saved[0].payload.images[0].base64, "base64").toString("hex"), PNG.toString("hex"));
+  assert.equal(saved[0].images.length, 1);
+  assert.equal(Buffer.from(saved[0].images[0].base64, "base64").toString("hex"), PNG.toString("hex"));
 
   await server.close();
   closed = true;
@@ -129,7 +148,7 @@ test("serves an upload over a real local HTTP socket and closes the temporary ad
 test("phone page and forged form cannot override the student bound to the session", async () => {
   const token = randomBytes(32).toString("hex");
   const saved = [];
-  const handler = createUploadHandler({ token, studentName: '甲<script>', getStudentId: () => 'student-A', answerStore: { async createPost(payload) { saved.push(payload); return { post: { id: 'one', title: payload.title, pages: 1 } }; } } });
+  const handler = createUploadHandler({ token, studentName: '甲<script>', getStudentId: () => 'student-A', onUploadReceived: async (payload) => { saved.push(payload); } });
   const page = await invoke(handler, '/u/' + token);
   assert.match(page.body, /甲&lt;script&gt;/);
   assert.doesNotMatch(page.body, /name="studentName"/);

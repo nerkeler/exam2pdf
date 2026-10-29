@@ -40,6 +40,7 @@ function toSummary(post) {
     removedImages: Math.max(0, post.images.length - post.pageOrder.length),
     reviewStatus: post.reviewStatus || "pending",
     trainingId: post.trainingId || "",
+    linkedPostId: post.linkedPostId || null,
     subject: post.subject || "",
     studentId: post.studentId || null,
     images: post.images,
@@ -265,6 +266,7 @@ class PostStore {
       // 每条记录都必须有科目：显式指定 > 标题推断 > 默认科目
       subject: cleanText(input.subject, 20) || this.defaultSubject,
       studentId: typeof input.studentId === "string" && UUID_PATTERN.test(input.studentId) ? input.studentId : null,
+      linkedPostId: this.resolveLinkedPostId(input.linkedPostId),
       images: postImages,
       pendingIndexes: Array.from({ length: expectedImages }, (_, index) => index).filter((index) => !postImages.some((image) => image.sourceIndex === index)),
       pageOrder: postImages.map((image) => image.file),
@@ -410,6 +412,25 @@ class PostStore {
     return this.serialize(async () => {
       const post = await this.readPost(id);
       post.subject = cleanText(subject, 20);
+      post.updatedAt = new Date().toISOString();
+      await this.writePost(post);
+      return toSummary(post);
+    });
+  }
+
+  // 作答记录可关联试卷库里的原卷。原卷的存在性、类型与学生归属由主进程
+  // 通过带学生防护的试卷库校验，这里只做形状检查（两个目录是独立的存储）。
+  resolveLinkedPostId(input) {
+    if (!input) return null;
+    if (typeof input !== "string" || !UUID_PATTERN.test(input)) throw new Error("要关联的原卷记录无效");
+    return input;
+  }
+
+  async setLinkedPost(id, linkedPostId) {
+    return this.serialize(async () => {
+      const post = await this.readPost(id);
+      if ((post.recordType || "post") !== "answer") throw new Error("只有作答记录可以关联原卷");
+      post.linkedPostId = this.resolveLinkedPostId(linkedPostId);
       post.updatedAt = new Date().toISOString();
       await this.writePost(post);
       return toSummary(post);

@@ -46,7 +46,7 @@ test("print palette explicitly overrides dark body variables and paper backgroun
   for (const [property, value] of [["--surface", "#fff"], ["--text", "#20242b"], ["--muted", "#526073"], ["color-scheme", "light"]]) {
     assert.ok(palette.declarations.includes(property + ": " + value + " !important;"), property + " must retain its light print value");
   }
-  for (const selector of ["html", "body", ".app", ".surface", "#mistakePrintArea", ".training-result"]) {
+  for (const selector of ["html", "body", ".app", ".surface", "#mistakePrintArea", "#postPrintArea", ".training-result"]) {
     assert.ok(rules.some((rule) => rule.selectors.includes(selector) && /background:\s*#fff\s*!important/.test(rule.declarations)), selector + " must have white paper in every print mode");
   }
   assert.ok(rules.some((rule) => rule.selectors.includes("mark.key-point") && /color:\s*#584000\s*!important/.test(rule.declarations)));
@@ -97,4 +97,51 @@ test("workspace HTML has valid inline JavaScript and unique static IDs", () => {
   assert.match(html, /data-theme-mode="dark"/);
   assert.match(html, /localStorage\.setItem\("exam2pdf-theme", mode\)/);
   assert.match(html, /onSystemThemeChange/);
+});
+
+test("grading screen hosts the mobile upload tab and the old settings entry is gone", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "docs", "原型图.html"), "utf8");
+  assert.match(html, /id="gradeTabLocal"/, "grading import must offer a local tab");
+  assert.match(html, /id="gradeTabMobile"/, "grading import must offer a mobile upload tab");
+  assert.match(html, /id="gradePaneMobile" role="tabpanel" hidden/, "mobile pane starts hidden behind its tab");
+  // 手机上传面板整体迁入批阅页：开关与二维码容器必须位于手机标签页内
+  const mobilePaneIndex = html.indexOf('id="gradePaneMobile"');
+  const lanSwitchIndex = html.indexOf('id="lanSwitch"');
+  const qrIndex = html.indexOf('id="uploadQrCodes"');
+  assert.ok(mobilePaneIndex >= 0 && mobilePaneIndex < lanSwitchIndex && lanSwitchIndex < qrIndex, "mobile upload controls must live inside the grading mobile pane");
+  assert.ok(!html.includes('data-action="show-upload-link"'), "old settings QR entry must be removed with the panel");
+  // 手机上传不直接落库：主进程移交渲染层进暂存区，确认后才保存（与本地导入同流水线）
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.cjs"), "utf8");
+  assert.match(main, /onUploadReceived: notifyMobileUploadReceived/, "upload server must hand photos to the renderer, not save them");
+  assert.match(main, /send\("mobile-upload:received", payload\)/);
+  assert.doesNotMatch(main, /source: "mobile-upload" \}\)/, "direct-save notifications must be retired");
+  assert.match(html, /function receiveMobileUpload/, "uploaded photos must be staged through the renderer");
+  assert.match(html, /desktop\.onMobileUploadReceived\(/, "renderer must subscribe to upload payloads");
+  assert.match(html, /importImage\(blob, \{ kind: "answer" \}\)/, "uploaded photos must reuse the local-import compression");
+  assert.match(html, /state\.gradePages\.push\(\.\.\.staged\)/, "uploaded photos must land in the editable staging area");
+  // 局域网上传默认开启：必须等当前学生上下文加载完再自动拉起服务
+  assert.match(html, /function autoStartMobileUpload/, "LAN upload must auto-start as the default state");
+  assert.match(html, /loadStudents\(\)\.then\(autoStartMobileUpload\)/, "auto-start must wait for the active student context");
+  // 收到上传必须是弹窗引导核对保存，而非"已保存"轻提示
+  assert.match(html, /id="mobileUploadDoneDialog"/, "upload receipt must surface a dialog");
+  assert.match(html, /function showMobileUploadReceived/, "receipt dialog must be wired to the upload event");
+  assert.match(html, /请核对页序后点「保存作答记录」入库/, "dialog must instruct confirming before save");
+});
+
+test("post library offers one-click direct printing with preparation feedback", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "docs", "原型图.html"), "utf8");
+  assert.match(html, /data-action="print-post"/, "post library cards must offer direct printing");
+  assert.match(html, /action === "print-post"\) await runPostExport\("print", post\)/, "card print must reuse the shared export runner");
+  assert.match(html, /正在准备打印/, "printing must show preparation feedback before the dialog appears");
+  assert.match(html, /postExportBusy/, "print and PDF exports must be re-entrancy guarded");
+  assert.match(html, /id="postPrintArea"/, "direct print must render through the main-window print area like the mistake book");
+  assert.match(html, /body\.printing-post \.app { display: none !important; }/, "post print mode must hide the app shell");
+  assert.match(html, /desktop\.preparePostPrint\(/, "renderer must request in-memory print pages");
+  assert.doesNotMatch(html, /desktop\.printPost\(/, "the hidden-window print bridge must be retired");
+  assert.match(html, /requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => area\.replaceChildren\(\)\)\)/, "print cleanup must release page data a frame after the dialog closes to avoid flicker");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.cjs"), "utf8");
+  assert.match(main, /appHandle\("posts:prepare-print"/, "main must serve in-memory print pages");
+  assert.ok(!/"posts:print"/.test(main), "the hidden-window print IPC must be retired");
+  assert.match(main, /paintWhenInitiallyHidden: true/, "PDF export host window must keep rendering while hidden");
+  assert.ok(!/printWindow\.show(?:Inactive)?\(/.test(main), "no print path may surface a host window");
 });

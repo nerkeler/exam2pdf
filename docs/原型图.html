@@ -410,6 +410,8 @@
     /* 筛选栏：搜索框与下拉框统一固定宽度，避免随文字长短出现参差 */
     .filter-search, .field.filter-search { width: 280px; max-width: 100%; }
     .filter-select, .field.filter-select { width: 148px; }
+    .select-post, .field.select-post { width: 220px; max-width: 100%; }
+    .answer-link-row { border-bottom: 1px dashed var(--line); padding-bottom: 10px; margin-bottom: 12px; }
     .field, select, textarea {
       width: 100%;
       padding: 9px 11px;
@@ -465,6 +467,17 @@
     .dropzone strong { display: block; margin-bottom: 4px; font-size: 14px; }
     .dropzone p { margin: 0 0 14px; color: var(--muted); font-size: 12px; }
     .dropzone .toolbar { justify-content: center; }
+    .import-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .import-tab {
+      appearance: none; border: 1px solid var(--line); background: transparent; color: var(--muted);
+      padding: 7px 16px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer;
+      transition: color .16s ease, background-color .16s ease, border-color .16s ease;
+    }
+    .import-tab:hover { color: var(--text); }
+    .import-tab.active { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+    .import-pane:not([hidden]) { animation: pane-in .18s var(--ease-out); }
+    @keyframes pane-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .import-pane:not([hidden]) { animation: none; } }
     .file-input { display: none; }
     .empty {
       padding: 32px 20px;
@@ -850,6 +863,18 @@
       #mistakePrintArea .print-item h3 .print-source { color: #626d7d; font-weight: 500; }
       #mistakePrintArea .print-item p { margin: 4px 0; line-height: 1.7; }
     }
+    #postPrintArea { display: none; }
+    @media print {
+      @page portrait { size: A4 portrait; margin: 0; }
+      @page landscape { size: A4 landscape; margin: 0; }
+      body.printing-post .app { display: none !important; }
+      body.printing-post #postPrintArea { display: block !important; }
+      #postPrintArea .sheet { page-break-after: always; break-after: page; display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 210mm; height: 297mm; padding: 8mm; overflow: hidden; }
+      #postPrintArea .sheet.landscape { page: landscape; width: 297mm; height: 210mm; }
+      #postPrintArea .sheet.portrait { page: portrait; }
+      #postPrintArea .sheet:last-child { page-break-after: auto; break-after: auto; }
+      #postPrintArea img { display: block; max-width: 100%; max-height: 100%; }
+    }
     .learning-overview { margin-bottom: 16px; }
     .overview-meta { display: flex; justify-content: flex-end; margin: 0 0 8px; }
     .learning-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
@@ -1004,7 +1029,7 @@
         --warning: #795000 !important;
         --warning-soft: #fff7e5 !important;
       }
-      html, body, .app, .surface, #mistakePrintArea, .training-result {
+      html, body, .app, .surface, #mistakePrintArea, #postPrintArea, .training-result {
         background: #fff !important;
         color: var(--text) !important;
         box-shadow: none !important;
@@ -1031,6 +1056,7 @@
       body.printing-report .screen { display: none !important; }
       body.printing-report #s4 { display: block !important; }
       body.printing-report #s4 .section-head .btn { display: none !important; }
+      body.printing-report .answer-link-row { display: none !important; }
       body.printing-report #s4 > .toolbar,
       body.printing-report #s4 .pager { display: none !important; }
       body.printing-report #s4 .surface { border: 0; border-radius: 0; box-shadow: none; }
@@ -1119,7 +1145,7 @@
       .learning-stat { padding: 12px; }
       .learning-stat strong { font-size: 21px; }
       .form-grid { grid-template-columns: 1fr; gap: 7px; }
-      .filter-search, .field.filter-search, .filter-select, .field.filter-select { width: 100%; }
+      .filter-search, .field.filter-search, .filter-select, .field.filter-select, .select-post, .field.select-post { width: 100%; }
       .bar-row { grid-template-columns: 110px 1fr 25px; gap: 8px; font-size: 12px; }
       .mistake-row { grid-template-columns: 1fr; }
       .report-question-row { grid-template-columns: minmax(0, 1fr); }
@@ -1282,17 +1308,36 @@
             <div class="toolbar" style="margin-bottom:12px">
               <input class="field" id="gradeTitle" style="max-width:300px" placeholder="试卷名称" aria-label="试卷名称" />
               <select id="gradeSubject" class="field" style="max-width:130px" aria-label="科目"></select>
+              <select id="gradeLinkedPost" class="field select-post" aria-label="关联原卷"></select>
             </div>
-            <div class="dropzone" data-drop-kind="grade">
-              <strong>导入学生作答照片</strong>
-              <p>选择照片、PDF 或使用电脑摄像头拍摄；PDF 需要系统提供 Poppler，页面会在本机转成图片（最多 24 页），先检查顺序再保存。</p>
-              <div class="toolbar"><button class="btn" type="button" data-action="pick-grade">选择照片</button><button class="btn" type="button" data-action="pick-grade-camera">拍摄作答页</button><button class="btn ghost" type="button" data-action="clear-grade">清空待保存图片</button></div>
-              <input class="file-input" id="gradeFiles" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple />
-              <input class="file-input" id="gradeCamera" type="file" accept="image/*" capture="environment" multiple />
+            <div id="gradeImportArea">
+            <div class="import-tabs" role="tablist" aria-label="作答导入方式">
+              <button class="import-tab active" id="gradeTabLocal" type="button" role="tab" aria-selected="true" aria-controls="gradePaneLocal">本地导入</button>
+              <button class="import-tab" id="gradeTabMobile" type="button" role="tab" aria-selected="false" aria-controls="gradePaneMobile">手机上传</button>
             </div>
+            <div class="import-pane" id="gradePaneLocal" role="tabpanel">
+              <div class="dropzone" data-drop-kind="grade">
+                <strong>本地导入作答照片</strong>
+                <p>选择照片、PDF 或使用电脑摄像头拍摄；PDF 需要系统提供 Poppler，页面会在本机转成图片（最多 24 页），先检查顺序再保存。</p>
+                <div class="toolbar"><button class="btn" type="button" data-action="pick-grade">选择照片</button><button class="btn" type="button" data-action="pick-grade-camera">拍摄作答页</button><button class="btn ghost" type="button" data-action="clear-grade">清空待保存图片</button></div>
+                <input class="file-input" id="gradeFiles" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple />
+                <input class="file-input" id="gradeCamera" type="file" accept="image/*" capture="environment" multiple />
+              </div>
+            </div>
+            <div class="import-pane" id="gradePaneMobile" role="tabpanel" hidden>
+              <div class="surface panel" style="padding:18px">
+                <div class="section-head" style="margin:0 0 12px"><div><h3>手机扫码上传作答</h3><p class="muted small">手机与电脑连接同一 Wi-Fi，扫描二维码或输入局域网地址上传；照片会进入下方「待保存页面」，核对后点「保存作答记录」才入库。</p></div><span class="pill" id="lanStateLabel">已关闭</span></div>
+                <div class="toolbar"><button class="switch" id="lanSwitch" type="button" role="switch" aria-checked="false" aria-label="开启局域网手机上传"></button><span id="lanText">局域网访问已关闭</span><button class="btn small-btn" type="button" data-action="copy-upload-link">复制手机地址</button></div>
+                <div id="uploadQrCodes" hidden style="margin-top:16px;display:flex;flex-wrap:wrap;gap:20px"></div>
+                <p class="muted small" id="uploadUrl" style="overflow-wrap:anywhere;white-space:pre-line;margin-top:10px">关闭状态</p>
+              </div>
+            </div>
+            </div>
+            <div id="gradeEditorArea" hidden>
             <div class="section-head" style="margin-top:18px"><h3>待保存页面 <span class="pill blue" id="gradePageCount">0 页</span></h3></div>
             <div class="page-grid" id="gradePages"></div>
             <div class="toolbar" style="margin-top:14px"><button class="btn primary" type="button" data-action="save-answer">保存作答记录</button><span class="muted small">图片保存在本机，不会自动发送给 AI。</span></div>
+            </div>
           </div>
           <div class="section-head" style="margin-top:24px"><div><h2>本地作答记录</h2><p class="muted small">每份记录可继续批阅或查看已确认报告。</p></div>
             <select id="answerSubjectFilter" class="field filter-select" aria-label="按科目筛选"></select>
@@ -1308,6 +1353,7 @@
             <h2 id="reviewAnswerTitle">作答记录</h2>
             <p class="muted small" id="reviewAnswerMeta"></p>
             <button class="btn ghost small-btn" id="resetAnswerOrderBtn" type="button" data-action="reset-answer-order" hidden></button>
+            <div class="toolbar answer-link-row" id="answerLinkRow" hidden></div>
             <div class="answer-fields">
               <label class="answer-field" for="answerTraining">
                 <span class="muted small">关联的训练（可选）</span>
@@ -1355,9 +1401,10 @@
         <section class="screen" id="s4" aria-label="批阅报告">
           <div class="section-head">
             <div><h2 id="reportTitle">批阅报告</h2><p class="muted small" id="reportMeta"></p></div>
-            <button class="btn" type="button" data-action="export-report">导出 PDF</button>
+            <div class="toolbar"><button class="btn" type="button" data-action="open-answer-pages">作答原页</button><button class="btn" type="button" data-action="export-report">导出 PDF</button></div>
           </div>
           <div class="surface panel">
+            <div class="toolbar answer-link-row" id="reportLinkRow" hidden></div>
             <h3>结果概览</h3>
             <p id="reportSummary"></p>
             <div class="inline-notice" id="reportNotice">错题已进入错题本，可继续补充错因与知识点。</div>
@@ -1437,7 +1484,7 @@
             <div class="empty" id="trainingHistoryEmpty"><strong>当前学生还没有训练记录</strong>从薄弱知识点生成练习后会保存在这里。</div>
           </div>
           <details class="surface embedded-settings">
-            <summary>应用设置 <span class="muted small">AI 服务、当前学生手机上传</span></summary><div class="toolbar" style="margin-top:12px"><button class="btn" id="manageStudentsButton" type="button" data-action="manage-students">学生设置</button></div>
+            <summary>应用设置 <span class="muted small">AI 服务、学生、备份与诊断</span></summary><div class="toolbar" style="margin-top:12px"><button class="btn" id="manageStudentsButton" type="button" data-action="manage-students">学生设置</button></div>
             <div class="embedded-settings-body">
               <div class="surface panel">
                 <div class="section-head"><div><h2>AI 批阅接口配置</h2><p class="muted small">选择支持图片输入的模型；AI 只生成草稿，不会自动确认批阅。</p></div><span class="pill amber" id="aiState">未配置</span></div>
@@ -1454,13 +1501,6 @@
                   <p>点击“AI 生成批阅草稿”并确认后，本记录的作答图片会通过 HTTPS 发送到此处配置的 AI 服务；请先确认服务商和模型适合处理这些图片。未经确认不会发送，AI 结果仍需家长核对。</p>
                 </div>
               </div>
-              <div class="surface panel" style="margin-top:12px">
-                <div class="section-head"><div><h2>手机上传</h2><p class="muted small">手机与电脑连接同一 Wi-Fi 后，可直接上传作答照片；仅在可信网络内短时开启。</p></div><span class="pill" id="lanStateLabel">已关闭</span></div>
-                <div class="toolbar"><button class="switch" id="lanSwitch" type="button" role="switch" aria-checked="false" aria-label="开启局域网手机上传"></button><span id="lanText">局域网访问已关闭</span><button class="btn small-btn" type="button" data-action="show-upload-link">查看扫码入口</button><button class="btn small-btn" type="button" data-action="copy-upload-link">复制手机地址</button></div>
-                <div id="uploadQrCodes" hidden style="margin-top:16px;display:flex;flex-wrap:wrap;gap:20px"></div>
-                <p class="muted small" id="uploadUrl" style="overflow-wrap:anywhere;white-space:pre-line">关闭状态</p>
-              </div>
-
             </div>
           </details>
         </section>
@@ -1480,11 +1520,13 @@
     </div>
   </div>
   <div id="mistakePrintArea"></div>
+  <div id="postPrintArea"></div>
   <dialog class="dialog" id="infoDialog">
     <div class="dialog-inner">
       <h2>采集浏览说明</h2>
       <p>Electron 应用会在独立网页视图中加载小红书，避免跨站 iframe 导致二维码空白。首次扫码登录后，登录状态会保存在应用的本机持久会话中。</p>
       <p>小红书页面会注入项目现有的采集脚本，在右下角提供采集按钮；普通浏览器预览不包含 Electron 网页视图。</p>
+      <p>采集内容仅用于家庭学习，请遵守平台规则与版权要求：不要批量抓取、传播或转售他人内容。</p>
       <div class="dialog-actions"><button class="btn primary" type="button" data-action="close-dialog">知道了</button></div>
     </div>
   </dialog>
@@ -1495,6 +1537,13 @@
       <p><b>仅限非商业用途。</b>本项目按 PolyForm Noncommercial 1.0.0 许可发布：售卖安装包、付费分发、捆绑广告或推广变现均未获授权；再分发修改版须随附许可、保留版权行并改名，不得暗示官方出品。</p>
       <p><b>资料来源请自行确认。</b>平台公开图片不等于可任意下载传播，请使用自行制作或已获授权的试卷资料；处理真实学生信息前应取得必要授权，涉及未成年人由监护人确认处理范围。</p>
       <p><b>唯一官方渠道：</b><a href="https://github.com/nerkeler/exam2pdf" target="_blank" rel="noreferrer">github.com/nerkeler/exam2pdf</a>，其他渠道的安装包与脚本不受官方支持。版本与运行环境可在学生管理的「整机备份与维护」中导出诊断信息。</p>
+      <div class="dialog-actions"><button class="btn primary" type="button" data-action="close-dialog">知道了</button></div>
+    </div>
+  </dialog>
+  <dialog class="dialog" id="mobileUploadDoneDialog" style="width:min(520px, calc(100% - 32px))">
+    <div class="dialog-inner">
+      <h2>收到手机上传作答</h2>
+      <p id="mobileUploadDoneBody"></p>
       <div class="dialog-actions"><button class="btn primary" type="button" data-action="close-dialog">知道了</button></div>
     </div>
   </dialog>
@@ -1690,13 +1739,13 @@
               <text x="139" y="63" text-anchor="middle">上传作答照片</text>
               <rect x="16" y="96" width="24" height="12" rx="6" class="hl-fill"/>
               <circle cx="34" cy="102" r="4" class="knob"/>
-              <text x="46" y="105">开启手机上传 · 备份 / 诊断同面板</text>
+              <text x="46" y="105">开启手机上传 · 在试卷批阅页扫码</text>
             </svg>
           </figure>
           <div class="guide-step-text">
             <strong>手机上传与日常维护</strong>
             <ul>
-              <li>「学习情况 → 应用设置」开启手机上传：手机连同一 Wi-Fi，扫描本页二维码打开上传页面（也可复制网址），直接上传作答照片，免数据线。</li>
+              <li>「试卷批阅 → 手机上传」标签页开启：手机连同一 Wi-Fi，扫描二维码或复制局域网地址打开上传页面；照片先进「待保存页面」，核对后手动保存入库。</li>
               <li>同一面板里可配置 AI 接口（切换服务商自动带出接口地址和模型）、导出诊断信息、备份 / 恢复全部当前学生数据。</li>
               <li>深浅色外观跟随系统，也可在侧边栏手动切换；所有数据只保存在这台电脑上。</li>
             </ul>
@@ -1831,10 +1880,10 @@
     const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
     const screenInfo = {
       s0: ["采集浏览", "在小红书网页中登录、浏览并采集试卷。"],
-      s0b: ["试卷库", "管理采集和导入的试卷。"],
+      s0b: ["试卷库", "管理采集和导入的试卷，卡片可直接打印。"],
       s0c: ["试卷详情", "预览页面、拖动排序并打印试卷。"],
       s1: ["整理打印", "整理试卷页面并生成 PDF。"],
-      s1b: ["学生作答", "上传学生写完的作答照片；空白试卷仍在试卷库打印。"],
+      s1b: ["学生作答", "本地导入或手机上传作答照片；空白试卷仍在试卷库打印。"],
       s3: ["人工批阅", "核对作答图片、逐题标记并确认；确认后才会进入错题本与学情统计。"],
       s4: ["批阅报告", "查看确认后的逐题结果。"],
       s5: ["错题本", "按知识点复习，跟踪掌握情况。"],
@@ -1883,7 +1932,7 @@
     const state = {
       posts: desktop ? [] : [
         { id: "p1", title: "2026-2027 八年级上册数学沪科版第一次月考试卷", pages: 8, date: "2026-10-18", source: "小红书采集" },
-        { id: "p2", title: "上宝中学八上九月月考数学带答案", pages: 10, date: "2026-10-17", source: "小红书采集" }
+        { id: "p2", title: "示范中学八上九月月考数学带答案", pages: 10, date: "2026-10-17", source: "小红书采集" }
       ],
       printPages: [],
       gradePages: [],
@@ -2041,7 +2090,7 @@
               '<strong>' + escapeHtml(post.title) + '</strong>' +
             '<span class="post-meta">' +  '<span class="pill">' + escapeHtml(post.subject || "未分类") + '</span><span>' + Number(post.pages || (post.pageOrder || []).length) + ' 张图</span>' + (post.missingImages ? '<span class="missing-count">原帖图片已采集 ' + Number(post.sourcePageCount == null ? (post.pages || 0) : post.sourcePageCount) + '/' + Number(post.expectedImages || 0) + ' 张，还缺 ' + post.missingImages + ' 张，可重试采集</span>' : '') + (post.supplementalImages ? '<span>另补充 ' + post.supplementalImages + ' 张本地图片</span>' : '') + '<span>' + escapeHtml(post.author || "") + '</span><span>' + escapeHtml(formatPostDate(post)) + '</span><span>来源：' + escapeHtml(post.source) + '</span></span>' +
             '</button>' +
-            '<div class="post-ops"><button class="btn small-btn" type="button" data-action="rename-post" data-id="' + escapeHtml(post.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="delete-post" data-id="' + escapeHtml(post.id) + '">删除</button></div>' +
+            '<div class="post-ops"><button class="btn small-btn" type="button" data-action="print-post" data-id="' + escapeHtml(post.id) + '">打印</button><button class="btn small-btn" type="button" data-action="rename-post" data-id="' + escapeHtml(post.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="delete-post" data-id="' + escapeHtml(post.id) + '">删除</button></div>' +
           '</div>' +
         '</article>'
         );
@@ -2052,6 +2101,7 @@
           ? "<strong>没有匹配的试卷</strong>换个关键词再试试。"
           : "<strong>当前学生还没有试卷</strong>去小红书笔记详情页点击采集，或从本地导入图片。";
       }
+      renderGradeLinkedPost();
     }
     function formatPostDate(post) {
       const raw = post.collectedAt || post.date;
@@ -2060,6 +2110,46 @@
     }
     function postImageUrl(post, file) {
       return "exam2pdf-media://" + encodeURIComponent(post.id) + "/" + encodeURIComponent(file);
+    }
+    function postPageItems(post) {
+      return post.pageOrder.map((file, index) => ({ src: postImageUrl(post, file), label: post.title + " · 原卷第 " + (index + 1) + " 页" }));
+    }
+    function answerPageItems(answer) {
+      return answer.pageOrder.map((file, index) => ({ src: postImageUrl(answer, file), label: answer.title + " · 作答第 " + (index + 1) + " 页" }));
+    }
+    function linkedPostOf(answer) {
+      if (!answer || !answer.linkedPostId) return null;
+      return state.posts.find((post) => post.id === answer.linkedPostId) || null;
+    }
+    // 原卷关联行：报告和批阅页共用；未关联时可直接选择试卷库中的原卷
+    function renderLinkedPostRow(answer, containerId) {
+      const row = $(containerId);
+      if (!row || !answer) return;
+      const post = linkedPostOf(answer);
+      const options = state.posts.filter((item) => (item.studentId || null) === (answer.studentId || null));
+      let html = '<span class="muted small">原卷：</span>';
+      if (post) {
+        html += '<button class="btn small-btn" type="button" data-action="open-post-pages" data-id="' + escapeHtml(post.id) + '">查看「' + escapeHtml(post.title) + '」</button>' +
+          '<button class="btn ghost small-btn" type="button" data-action="unlink-post">取消关联</button>';
+      } else if (answer.linkedPostId) {
+        html += '<span class="muted small">关联的原卷已被删除</span><button class="btn ghost small-btn" type="button" data-action="unlink-post">移除关联</button>';
+      } else if (!options.length) {
+        html += '<span class="muted small">试卷库中还没有原卷，可先采集或导入试卷再关联</span>';
+      } else {
+        html += '<select class="field select-post">' +
+          '<option value="">选择试卷库中的原卷…</option>' +
+          options.map((item) => '<option value="' + escapeHtml(item.id) + '">' + escapeHtml(item.title) + '</option>').join("") +
+          '</select><button class="btn small-btn" type="button" data-action="link-post">关联原卷</button>' +
+          '<span class="muted small">关联后可在报告和错题本查看原始题目</span>';
+      }
+      row.innerHTML = html;
+      row.hidden = false;
+    }
+    async function refreshCurrentAnswerViews() {
+      if (!state.currentAnswerId || !desktop) return;
+      state.currentAnswer = await desktop.getAnswer(state.currentAnswerId);
+      if ($("#s3").classList.contains("active")) renderLinkedPostRow(state.currentAnswer, "#answerLinkRow");
+      if ($("#s4").classList.contains("active")) renderReport(state.currentAnswer);
     }
     function activePost() {
       return state.posts.find((post) => post.id === state.currentPostId && post.studentId === state.activeStudentId);
@@ -2120,6 +2210,15 @@
           '<div class="page-caption"><strong>' + (index + 1) + '</strong></div>' +
         '</div>'
       )).join("");
+      if (kind === "grade") updateGradeImportVisibility();
+    }
+    // 待保存页面有内容时整块覆盖导入区（本地导入 + 手机二维码）；清空或保存后回到导入流程
+    function updateGradeImportVisibility() {
+      const hasPages = state.gradePages.length > 0;
+      const importArea = $("#gradeImportArea");
+      const editorArea = $("#gradeEditorArea");
+      if (importArea) importArea.hidden = hasPages;
+      if (editorArea) editorArea.hidden = !hasPages;
     }
     function moveItem(items, index, direction) {
       const next = index + direction;
@@ -2153,9 +2252,10 @@
       list.innerHTML = paged.slice.map((answer) => {
         const label = answer.reviewStatus === "confirmed" ? "已确认" : answer.reviewStatus === "draft" ? "草稿" : "待批阅";
         const action = answer.reviewStatus === "confirmed" ? "open-answer-report" : "open-answer-review";
-        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta">' + '<span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + answer.pages + ' 张作答</span><span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">删除</button></div></div></article>';
+        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta">' + '<span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + answer.pages + ' 张作答</span>' + (linkedPostOf(answer) ? '<span>原卷：' + escapeHtml(linkedPostOf(answer).title) + '</span>' : '') + '<span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">删除</button></div></div></article>';
       }).join("");
       $("#answerEmpty").hidden = filtered.length > 0;
+      renderGradeLinkedPost();
     }
     async function loadAnswers() {
       const ticket = studentFocus.ticket();
@@ -2243,6 +2343,7 @@
         $("#answerSubject").value = answer.subject || "";
         $("#reviewAnswerTitle").textContent = answer.title;
         $("#reviewAnswerMeta").textContent = [answerStudentDisplay(answer) ? "学生：" + answerStudentDisplay(answer) : "", answer.pages + " 张作答", formatPostDate(answer)].filter(Boolean).join(" · ");
+        renderLinkedPostRow(answer, "#answerLinkRow");
         const trainingSelect = $("#answerTraining");
         trainingSelect.innerHTML = '<option value="">不关联训练</option>' + state.trainingHistory.filter((training) => training.status === "approved").map((training) => '<option value="' + escapeHtml(training.id) + '">' + escapeHtml(training.topic) + ' · ' + escapeHtml(formatPostDate({ collectedAt: training.createdAt })) + '</option>').join("");
         trainingSelect.value = answer.trainingId || "";
@@ -2278,6 +2379,7 @@
       review.forEach((question) => { if (Object.hasOwn(counts, question.result)) counts[question.result]++; });
       $("#reportTitle").textContent = answer.title + " · 批阅报告";
       $("#reportMeta").textContent = [answerStudentDisplay(answer) ? "学生：" + answerStudentDisplay(answer) : "", "已由家长确认", linkedTraining ? "关联训练：" + linkedTraining.topic : "", formatPostDate(answer)].filter(Boolean).join(" · ");
+      renderLinkedPostRow(answer, "#reportLinkRow");
       $("#reportSummary").textContent = "正确 " + counts["正确"] + " 题 · 部分正确 " + counts["部分正确"] + " 题 · 错误 " + counts["错误"] + " 题 · 未作答 " + counts["未作答"] + " 题";
       $("#reportNotice").hidden = !review.some((question) => question.result !== "正确");
       $("#reportPager").hidden = allQuestions || paged.pageCount <= 1;
@@ -2423,6 +2525,38 @@
       $("#uploadUrl").textContent = enabled
         ? (state.mobileUpload.urls.length ? state.mobileUpload.urls.join("\n") : "已开启，但没有检测到局域网 IPv4 地址。请检查电脑的 Wi-Fi 连接。")
         : "关闭状态";
+    }
+    // 手机上传的照片与本地导入走同一条流水线：压缩 → state.gradePages 暂存区 →
+    // 用户调序核对后点「保存作答记录」才真正入库
+    async function receiveMobileUpload(payload) {
+      const images = Array.isArray(payload.images) ? payload.images : [];
+      if (!images.length) return;
+      if (!$("#gradeTitle").value.trim() && payload.title && payload.title !== "手机上传作答") $("#gradeTitle").value = payload.title;
+      const title = $("#gradeTitle").value.trim() || payload.title || "手机上传作答";
+      toast("正在整理手机上传的 " + images.length + " 张照片…");
+      try {
+        const staged = [];
+        for (const [index, image] of images.entries()) {
+          const binary = atob(image.base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: image.mime });
+          try { blob.name = title + "-" + (index + 1); } catch { /* 只影响出错提示文案 */ }
+          staged.push(await importImage(blob, { kind: "answer" }));
+        }
+        state.gradePages.push(...staged);
+        renderPageGrid("grade");
+        switchScreen("s1b");
+        showMobileUploadReceived({ title, pages: staged.length });
+      } catch (error) {
+        toast("整理手机上传照片失败：" + (error.message || "请重试"));
+      }
+    }
+    function showMobileUploadReceived(detail) {
+      const studentName = state.students.find(student => student.id === state.activeStudentId)?.name || "当前学生";
+      $("#mobileUploadDoneBody").textContent = "「" + (detail.title || "学生作答") + "」已收到 " + detail.pages + " 张作答照片（归属学生 " + studentName + "），已在待保存页面列出；请核对页序后点「保存作答记录」入库。";
+      const dialog = $("#mobileUploadDoneDialog");
+      if (!dialog.open) dialog.showModal();
     }
     function aiProviderPreset(id) {
       return (state.aiSettings?.providers || []).find((provider) => provider.id === id) || null;
@@ -2801,8 +2935,9 @@
       const studentId = state.activeStudentId;
       const studentName = studentById(studentId)?.name || "";
       const subject = $("#gradeSubject").value;
+      const linkedPostId = $("#gradeLinkedPost") ? $("#gradeLinkedPost").value : "";
       try {
-        const result = await desktop.createAnswer({ title, studentName, studentId, subject, images: state.gradePages });
+        const result = await desktop.createAnswer({ title, studentName, studentId, subject, linkedPostId: linkedPostId || null, images: state.gradePages });
         state.gradePages = [];
         $("#gradeTitle").value = "";
         renderPageGrid("grade");
@@ -2810,6 +2945,15 @@
         toast("作答记录已保存在本机，可开始人工批阅");
         await openAnswer(result.post.id);
       } catch (error) { toast("保存作答记录失败：" + (error.message || "请重试")); }
+    }
+    // 保存作答时可选择关联试卷库中的原卷；随学生工作区变化重新填充
+    function renderGradeLinkedPost() {
+      const select = $("#gradeLinkedPost");
+      if (!select) return;
+      const current = select.value;
+      const posts = state.posts.filter((item) => (item.studentId || null) === (state.activeStudentId || null));
+      select.innerHTML = '<option value="">不关联原卷</option>' + posts.map((item) => '<option value="' + escapeHtml(item.id) + '">' + escapeHtml(item.title) + '</option>').join("");
+      if (posts.some((item) => item.id === current)) select.value = current;
     }
     function updateFilterOptions(select, label, values) {
       const current = select.value;
@@ -3021,7 +3165,11 @@
         question ? '<p><span class="muted small">学生作答：</span>' + (renderHighlight(question.studentAnswer) || '<span class="muted">（空）</span>') + '</p>' : "",
         question ? '<p><span class="muted small">正确答案：</span>' + (renderHighlight(question.correctAnswer) || '<span class="muted">（空）</span>') + '</p>' : "",
         question ? '<p><span class="muted small solution-caption">解题说明</span>' + (renderSolution(question.solutionSummary) || '<span class="muted">（空）</span>') + '</p>' : "",
-        (item.knowledgePoints || []).length ? '<div class="tag-list">' + item.knowledgePoints.map((tag) => '<span class="tag">' + escapeHtml(tag) + '</span>').join("") + '</div>' : ""
+        (item.knowledgePoints || []).length ? '<div class="tag-list">' + item.knowledgePoints.map((tag) => '<span class="tag">' + escapeHtml(tag) + '</span>').join("") + '</div>' : "",
+        '<div class="toolbar" style="margin-top:12px">' +
+          (answer && answer.pageOrder.length ? '<button class="btn small-btn" type="button" data-action="open-mistake-answer-pages" data-answer-id="' + escapeHtml(answer.id) + '">查看作答原页（' + answer.pages + ' 张）</button>' : '') +
+          (linkedPostOf(answer) ? '<button class="btn small-btn" type="button" data-action="open-mistake-post-pages" data-post-id="' + escapeHtml(linkedPostOf(answer).id) + '">查看原卷</button>' : '') +
+        '</div>'
       ].join("");
       renderMathIn($("#mistakeDetailBody"));
       $("#mistakeMasteryBtn").textContent = item.status === "mastered" ? "重新复习" : "标记已掌握";
@@ -3296,20 +3444,56 @@
       $("#xhsLoading").hidden = status === "ready";
       $("#xhsRetry").hidden = status !== "error";
     }
-    async function exportActivePost(kind) {
-      const post = activePost();
+    let postExportBusy = false;
+    async function runPostExport(kind, post) {
       if (!post || !desktop || !post.images) { toast("请先打开已采集或导入的试卷"); return; }
+      if (postExportBusy) { toast("正在准备上一次打印或导出，请稍候"); return; }
+      postExportBusy = true;
+      toast(kind === "pdf" ? "正在生成 PDF…" : "正在准备打印…");
       try {
         if (kind === "pdf") {
           const result = await desktop.generatePostPdf(post.id, post.pageOrder, post.title);
           toast(result.canceled ? "已取消 PDF 保存" : "PDF 已保存：" + result.filePath);
         } else {
-          const result = await desktop.printPost(post.id, post.pageOrder, post.title);
-          toast(result.success ? "已提交打印任务" : result.failureReason || "打印未完成");
+          const session = await desktop.preparePostPrint(post.id, post.pageOrder, post.title);
+          if (!session.pages.length) throw new Error("这份试卷没有可打印的图片");
+          printPreparedInWindow(session);
         }
       } catch (error) {
         toast((kind === "pdf" ? "生成 PDF" : "打印") + "失败：" + (error.message || "请重试"));
+      } finally {
+        postExportBusy = false;
       }
+    }
+    async function exportActivePost(kind) { await runPostExport(kind, activePost()); }
+    function printPreparedInWindow(session) {
+      const area = $("#postPrintArea");
+      // 对话框关闭后分帧清理：先摘打印类让界面回稳，下一帧再释放页面数据；
+      // 与打印模式回收挤在同一帧会触发整页重排+纹理回收，表现为闪动
+      let cleaned = false;
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        document.body.classList.remove("printing-post", "printing-report", "printing-mistakes", "printing-training");
+        requestAnimationFrame(() => requestAnimationFrame(() => area.replaceChildren()));
+      };
+      // window.print() 同步阻塞到系统打印对话框关闭；afterprint 兜底（清理幂等），
+      // 无论打印、取消还是失败，都在对话框关闭后开始释放
+      window.addEventListener("afterprint", cleanup, { once: true });
+      area.replaceChildren();
+      for (const page of session.pages) {
+        const sheet = document.createElement("section");
+        sheet.className = "sheet " + (page.width > page.height ? "landscape" : "portrait");
+        const image = document.createElement("img");
+        image.src = page.dataUrl;
+        image.alt = "试卷页";
+        sheet.appendChild(image);
+        area.appendChild(sheet);
+      }
+      document.body.classList.remove("printing-report", "printing-mistakes", "printing-training");
+      document.body.classList.add("printing-post");
+      window.print();
+      cleanup();
     }
     function archiveReview() { void saveReview(true); }
     function saveReviewDraft() { void saveReview(false); }
@@ -3370,7 +3554,11 @@
         await loadPosts();
         if ($("#s0c").classList.contains("active")) renderPostDetail();
       });
-      desktop.onAnswersChanged(() => { void loadAnswers(); void loadTrainingHistory(); });
+      desktop.onAnswersChanged((detail) => {
+        void loadAnswers();
+        void loadTrainingHistory();
+      });
+      if (typeof desktop.onMobileUploadReceived === "function") desktop.onMobileUploadReceived((payload) => { void receiveMobileUpload(payload); });
       desktop.onStudentsChanged(value => { void loadStudents(Boolean(value?.reset)); });
       $("#studentGenderInput").addEventListener("change", renderAvatarPreview);
       $("#activeStudentSelect").addEventListener("change", () => setActiveStudentSelection($("#activeStudentSelect").value));
@@ -3419,6 +3607,7 @@
       const post = state.posts.find((item) => item.id === button.dataset.id);
       if (!post) return;
       if (button.dataset.action === "open-post") openPost(post.id);
+      if (button.dataset.action === "print-post") await runPostExport("print", post);
       if (button.dataset.action === "rename-post") {
         const title = await promptText("修改试卷名称", post.title, "例如：八年级数学第一次月考");
         if (title === null) return;
@@ -3661,7 +3850,32 @@
         }
       }
       if (action === "clear-external-review") $("#externalReviewText").value = "";
-      if (action === "open-answer-report") await openAnswerReport(button.dataset.id);
+      if (action === "open-answer-report") await openAnswerReport(button.dataset.id);      if (action === "open-answer-pages") {
+        const answer = state.currentAnswer || state.answers.find((item) => item.id === state.currentAnswerId);
+        if (answer && answer.pageOrder.length) openPreview(answerPageItems(answer), 0);
+        else toast("这份作答没有可查看的页面");
+      }
+      if (action === "open-post-pages" || action === "open-mistake-post-pages") {
+        const post = state.posts.find((item) => item.id === button.dataset.id || item.id === button.dataset.postId);
+        if (post && post.pageOrder.length) openPreview(postPageItems(post), 0);
+        else toast("原卷不存在或已被删除");
+      }
+      if (action === "open-mistake-answer-pages") {
+        const answer = state.answers.find((item) => item.id === button.dataset.answerId);
+        if (answer && answer.pageOrder.length) openPreview(answerPageItems(answer), 0);
+      }
+      if (action === "link-post" || action === "unlink-post") {
+        if (!state.currentAnswerId || !desktop) { toast("请在 Electron 中操作"); return; }
+        const row = button.closest(".answer-link-row");
+        const select = row ? row.querySelector("select") : null;
+        const postId = action === "unlink-post" ? "" : (select ? select.value : "");
+        try {
+          await desktop.linkAnswerPost(state.currentAnswerId, postId);
+          await refreshCurrentAnswerViews();
+          toast(postId ? "已关联原卷，可在错题本和报告查看原始题目" : "已取消关联");
+        } catch (error) { toast((action === "unlink-post" ? "操作失败：" : "关联失败：") + (error.message || "请重试")); }
+      }
+
       if (action === "rename-answer") {
         const target = state.answers.find((item) => item.id === button.dataset.id);
         if (!target) return;
@@ -3880,11 +4094,6 @@
           }
         } catch (error) { toast("恢复备份失败：" + (error.message || "请检查备份文件")); }
       }
-      if (action === "show-upload-link") {
-        if (!state.mobileUpload.enabled) { toast("请先开启手机上传，手机和电脑需连接同一 Wi-Fi"); return; }
-        $("#uploadQrCodes").scrollIntoView({ block: "center", behavior: "smooth" });
-
-      }
       if (action === "copy-upload-link") {
         const url = state.mobileUpload.urls[0];
         if (!url) { toast("请先开启手机上传，并检查电脑已连接 Wi-Fi"); return; }
@@ -4024,6 +4233,18 @@
     });
     try { document.body.classList.toggle("sidebar-collapsed", localStorage.getItem("exam2pdf-sidebar") === "collapsed"); } catch {}
     $("#aiProvider").addEventListener("change", onAiProviderChange);
+    const gradeImportTabs = { local: $("#gradeTabLocal"), mobile: $("#gradeTabMobile") };
+    function switchGradeImportTab(name) {
+      for (const key of Object.keys(gradeImportTabs)) {
+        const active = key === name;
+        gradeImportTabs[key].classList.toggle("active", active);
+        gradeImportTabs[key].setAttribute("aria-selected", String(active));
+      }
+      $("#gradePaneLocal").hidden = name !== "local";
+      $("#gradePaneMobile").hidden = name !== "mobile";
+    }
+    gradeImportTabs.local.addEventListener("click", () => switchGradeImportTab("local"));
+    gradeImportTabs.mobile.addEventListener("click", () => switchGradeImportTab("mobile"));
     $("#lanSwitch").addEventListener("click", async () => {
       if (!desktop || typeof desktop.startMobileUpload !== "function") { toast("手机上传需要在 Electron 应用中开启"); return; }
       const shouldEnable = $("#lanSwitch").getAttribute("aria-checked") !== "true";
@@ -4044,9 +4265,14 @@
     renderPosts();
     document.body.classList.add("screen-s0");
     $("#gradeSubject").innerHTML = subjectOptions("数学");
+    // 局域网手机上传默认开启：等当前学生上下文加载完成后自动拉起上传服务；
+    // 失败（如无网络接口）保持关闭状态，可手动拨开关重试
+    async function autoStartMobileUpload() {
+      if (!desktop || typeof desktop.startMobileUpload !== "function") return;
+      try { renderMobileUpload(await desktop.startMobileUpload()); } catch { /* 保持关闭 */ }
+    }
     if (desktop) {
-      void loadStudents();
-      if (typeof desktop.getMobileUploadState === "function") desktop.getMobileUploadState().then(renderMobileUpload).catch(() => {});
+      void loadStudents().then(autoStartMobileUpload);
       if (typeof desktop.getAiSettings === "function") desktop.getAiSettings().then(renderAiSettings).catch((error) => toast("读取 AI 配置失败：" + (error.message || "请重试")));
     }
     renderPageGrid("print");

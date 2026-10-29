@@ -4,11 +4,6 @@ const SEARCH_VERSIONS = ["人教版", "部编版", "北师大版", "沪科版", 
 const SEARCH_TYPES = ["期中", "期末", "月考", "单元测试", "开学考", "专题"];
 const SEARCH_FIELDS = ["grade", "subject", "version", "paperType", "unit"];
 
-const SEARCH_BUTTON_WIDTH = 80;
-const SEARCH_BUTTON_HEIGHT = 32;
-const SEARCH_BUTTON_EDGE = 12;
-const SEARCH_BUTTON_GAP = 8;
-
 function buildSearchQuery(selection) {
   const values = selection && typeof selection === "object" ? selection : {};
   return SEARCH_FIELDS
@@ -26,70 +21,14 @@ function buildSearchUrl(query) {
   return url.toString();
 }
 
-function readBox(rect, fallback) {
-  if (!rect) return fallback;
-  const left = Number(rect.left);
-  const right = Number(rect.right);
-  const top = Number(rect.top);
-  const bottom = Number(rect.bottom);
-  if (![left, right, top, bottom].every(Number.isFinite) || right <= left || bottom <= top) return fallback;
-  return { left, right, top, bottom };
-}
-
-const SEARCH_COLLECT_ZONE = 64;  // 右下角采集按钮（约46px 高 + 间距）的预留区
-
-function resolveSearchGuidePosition(inputRect, rowRect, iconRect, viewport, options = {}) {
-  // 定位优先级：小红书搜索放大镜图标右侧（跟随图标）→ 搜索行右缘 → 右上角兜底。
-  const view = viewport && typeof viewport === "object" ? viewport : {};
-  const viewWidth = Math.max(1, Math.round(Number(view.width || viewport) || 1));
-  const viewHeight = Math.max(1, Math.round(Number(view.height) || 1));
-  const wantedWidth = Math.max(64, Math.round(Number(options.width) || SEARCH_BUTTON_WIDTH));
-  const wantedHeight = Math.max(24, Math.round(Number(options.height) || SEARCH_BUTTON_HEIGHT));
-  const width = Math.min(wantedWidth, Math.max(1, viewWidth - SEARCH_BUTTON_EDGE * 2));
-  const height = Math.min(wantedHeight, Math.max(1, viewHeight - SEARCH_BUTTON_EDGE * 2));
-  const corner = {
-    left: viewWidth - width - SEARCH_BUTTON_EDGE,
-    top: SEARCH_BUTTON_EDGE,
-    width,
-    height
-  };
-
-  // 1) 放大镜图标右侧：按钮顶边与搜索框顶边对齐
-  const icon = readBox(iconRect, null);
-  const rowForAlign = readBox(rowRect, null);
-  if (icon) {
-    const alignTop = rowForAlign ? Math.min(rowForAlign.top, icon.top) : icon.top;
-    const left = Math.round(Math.min(
-      icon.right + SEARCH_BUTTON_GAP,
-      viewWidth - width - SEARCH_BUTTON_EDGE
-    ));
-    const top = Math.round(Math.max(SEARCH_BUTTON_EDGE, alignTop));
-    return { left, top, width, height };
-  }
-
-  // 2) 搜索行右缘（无放大镜时按输入框/容器右缘让位）
-  const input = readBox(inputRect, null);
-  if (!input) return corner;
-  const row = readBox(rowRect, input);
-  const rowRight = Math.max(row.right, input.right);
-  const rowTop = Math.min(row.top, input.top);
-  const rowBottom = Math.max(row.bottom, input.bottom);
-  const top = Math.round(Math.min(
-    Math.max(SEARCH_BUTTON_EDGE, input.top + (input.bottom - input.top - height) / 2),
-    Math.max(SEARCH_BUTTON_EDGE, viewHeight - height - SEARCH_BUTTON_EDGE)
-  ));
-  if (rowRight + SEARCH_BUTTON_GAP + width <= viewWidth - SEARCH_BUTTON_EDGE) {
-    return { left: Math.round(rowRight + SEARCH_BUTTON_GAP), top, width, height };
-  }
-  const rightAlignedLeft = Math.round(Math.max(
-    SEARCH_BUTTON_EDGE,
-    Math.min(rowRight - width, viewWidth - width - SEARCH_BUTTON_EDGE)
-  ));
-  const above = Math.round(rowTop - height - SEARCH_BUTTON_GAP);
-  if (above >= SEARCH_BUTTON_EDGE) return { left: rightAlignedLeft, top: above, width, height };
-  const below = Math.round(rowBottom + SEARCH_BUTTON_GAP);
-  if (below + height <= viewHeight - SEARCH_BUTTON_EDGE) return { left: rightAlignedLeft, top: below, width, height };
-  return corner;
+function resolveSearchPanelBounds(viewport, open = false) {
+  const viewWidth = Math.max(1, Math.round(Number(viewport?.width) || 1));
+  const viewHeight = Math.max(1, Math.round(Number(viewport?.height) || 1));
+  const edgeX = Math.min(12, Math.max(0, Math.floor((viewWidth-1)/2)));
+  const top = Math.min(12, Math.max(0, Math.floor((viewHeight-1)/2)));
+  const width = Math.min(open ? 350 : 80, viewWidth-edgeX*2);
+  const height = Math.min(open ? 540 : 32, viewHeight-top*2);
+  return {left:viewWidth-edgeX-width, top, width, height};
 }
 
 module.exports = {
@@ -97,11 +36,7 @@ module.exports = {
   SEARCH_SUBJECTS,
   SEARCH_VERSIONS,
   SEARCH_TYPES,
-  SEARCH_BUTTON_WIDTH,
-  SEARCH_BUTTON_HEIGHT,
-  SEARCH_BUTTON_EDGE,
-  SEARCH_BUTTON_GAP,
   buildSearchQuery,
   buildSearchUrl,
-  resolveSearchGuidePosition
+  resolveSearchPanelBounds
 };
