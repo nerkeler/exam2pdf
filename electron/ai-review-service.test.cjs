@@ -50,20 +50,56 @@ test("surfaces bounded service errors without treating them as review data", asy
   }), /HTTP 400.*model does not support image input/);
 });
 
-test("tests connectivity with a text-only prompt and no answer images", async () => {
-  let request;
+test("tests connectivity with a text-only prompt, then probes image-input support", async () => {
+  const requests = [];
   const result = await testAiConnection({
     baseUrl: "https://api.example.test/v1", model: "vision-model", apiKey: "test-key",
     fetchImpl: async (url, options) => {
-      request = { url, body: JSON.parse(options.body), headers: options.headers };
+      requests.push({ url, body: JSON.parse(options.body), headers: options.headers });
       return new Response(JSON.stringify({ choices: [{ message: { content: "OK" } }] }), { status: 200 });
     }
   });
   assert.equal(result.connected, true);
-  assert.equal(request.url, "https://api.example.test/v1/chat/completions");
-  assert.equal(request.headers.Authorization, "Bearer test-key");
-  assert.equal(request.body.messages[0].content, "连接测试。请只回复 OK。");
-  assert.equal(Object.hasOwn(request.body.messages[0], "images"), false);
+  assert.equal(result.vision, true);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].url, "https://api.example.test/v1/chat/completions");
+  assert.equal(requests[0].headers.Authorization, "Bearer test-key");
+  assert.equal(requests[0].body.messages[0].content, "连接测试。请只回复 OK。");
+  assert.equal(Object.hasOwn(requests[0].body.messages[0], "images"), false);
+  // 第二次请求带 1x1 探针图片，用于判定模型能否接收图片输入
+  const imagePart = requests[1].body.messages[0].content.find((part) => part.type === "image_url");
+  assert.match(imagePart.image_url.url, /^data:image\/png;base64,/);
+});
+
+test("connection test reports text-only models as vision-incapable with the service's reason", async () => {
+  const result = await testAiConnection({
+    baseUrl: "https://api.example.test/v1", model: "deepseek-chat", apiKey: "test-key",
+    fetchImpl: async (url, options) => {
+      const body = JSON.parse(options.body);
+      if (Array.isArray(body.messages[0].content)) {
+        return new Response(JSON.stringify({ error: { message: "Images are not supported by this model" } }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ choices: [{ message: { content: "OK" } }] }), { status: 200 });
+    }
+  });
+  assert.equal(result.connected, true);
+  assert.equal(result.vision, false);
+  assert.match(result.visionDetail, /Images are not supported/);
+});
+
+test("connection test keeps vision unknown when the probe fails at the network level", async () => {
+  let calls = 0;
+  const result = await testAiConnection({
+    baseUrl: "https://api.example.test/v1", model: "m", apiKey: "k",
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls === 1) return new Response(JSON.stringify({ choices: [{ message: { content: "OK" } }] }), { status: 200 });
+      throw new Error("socket hang up");
+    }
+  });
+  assert.equal(result.connected, true);
+  assert.equal(result.vision, null);
+  assert.match(result.visionDetail, /socket hang up/);
 });
 
 test("parses pasted external-AI output into the same normalized draft as the API path", () => {

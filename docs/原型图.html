@@ -2492,7 +2492,14 @@
       button.textContent = "正在测试…";
       try {
         const result = await desktop.testAiConnection();
-        toast("AI 接口连接成功（" + result.model + "）；视觉输入能力还需用图片批阅验证");
+        // 连接测试已同步探测图片输入能力：纯文本模型（如 DeepSeek 官方 API）不能用于直接 API 批阅
+        if (result.vision === false) {
+          toast("已连接（" + result.model + "），但该模型不支持图片输入，直接 API 批阅将失败" + (result.visionDetail ? "：" + result.visionDetail : "") + "。请改用视觉模型（如智谱 GLM-4V、通义 Qwen-VL、Kimi 视觉版）或用「外部 AI 网页批阅」（免费）。AI 练习生成不受影响。");
+        } else if (result.vision === true) {
+          toast("AI 接口连接成功（" + result.model + "），已确认支持图片输入，可以直接 API 批阅");
+        } else {
+          toast("AI 接口连接成功（" + result.model + "）；图片输入能力未能确认，请用一次真实批阅验证");
+        }
       } catch (error) {
         toast("AI 连接测试失败：" + (error.message || "请检查地址、模型和 API Key"));
       } finally {

@@ -153,6 +153,42 @@ async function createAiReview({ baseUrl, model, apiKey, images, fetchImpl = glob
   }
 }
 
+// 1x1 透明 PNG：探测模型是否接受图片输入（纯文本模型如 DeepSeek 官方 API 会明确拒绝）
+const VISION_PROBE_IMAGE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+// 探测结果三态：true 支持图片；false 服务端明确拒绝；null 无法确认（网络层失败，不下定论）
+async function probeVisionSupport({ baseUrl, model, apiKey, fetchImpl, timeoutMs }) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  timeout.unref?.();
+  try {
+    const response = await fetchImpl(completionUrl(baseUrl), {
+      method: "POST",
+      redirect: "error",
+      headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: [
+        { type: "text", text: "图片输入测试。请只回复 OK。" },
+        { type: "image_url", image_url: { url: VISION_PROBE_IMAGE } }
+      ] }], max_tokens: 16, temperature: 0 }),
+      signal: controller.signal
+    });
+    const raw = await readResponseText(response, MAX_RESPONSE_BYTES);
+    let payload = {};
+    try { payload = JSON.parse(raw); } catch {}
+    if (response.ok) {
+      return payload?.choices?.[0]?.message
+        ? { vision: true }
+        : { vision: false, visionDetail: "服务已响应但返回格式异常" };
+    }
+    const detail = cleanText(payload?.error?.message || payload?.message || "", 300);
+    return { vision: false, visionDetail: detail || "HTTP " + response.status };
+  } catch (error) {
+    return { vision: null, visionDetail: error?.name === "AbortError" ? "探测超时" : cleanText(error?.message, 240) };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function testAiConnection({ baseUrl, model, apiKey, fetchImpl = globalThis.fetch, timeoutMs = 30000 }) {
   if (typeof fetchImpl !== "function") throw new Error("当前运行环境不支持 AI 网络请求");
   const normalizedModel = cleanText(model, 120);
@@ -184,7 +220,8 @@ async function testAiConnection({ baseUrl, model, apiKey, fetchImpl = globalThis
       throw new Error("AI 服务请求失败（HTTP " + response.status + "）" + (detail ? "：" + detail : ""));
     }
     if (!textContent(payload?.choices?.[0]?.message?.content)) throw new Error("AI 服务已响应，但没有返回文本；请检查模型配置");
-    return { model: normalizedModel, connected: true };
+    const probe = await probeVisionSupport({ baseUrl, model: normalizedModel, apiKey: normalizedKey, fetchImpl, timeoutMs });
+    return { model: normalizedModel, connected: true, vision: probe.vision, visionDetail: probe.visionDetail || "" };
   } finally {
     clearTimeout(timeout);
   }
