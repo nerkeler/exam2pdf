@@ -2,7 +2,7 @@
 
 家卷（仓库标识 exam2pdf）是一个基于 Electron 的桌面学习工具，用于在同一工作台内浏览试卷资料、整理图片和打印试卷，再将学生作答转成批阅记录、错题本与学习统计。
 
-测试预览版 [v0.1.1-preview.1](https://github.com/nerkeler/exam2pdf/releases/tag/v0.1.1-preview.1)，包含 macOS Apple Silicon / Intel、Windows x64 和 Linux x64 安装包。当前为未签名、未公证测试包，首次使用请先备份学习资料；具体构建与验收范围见[打包说明](docs/打包说明.md)。
+测试预览版 [v0.1.4-preview.1](https://github.com/nerkeler/exam2pdf/releases/tag/v0.1.4-preview.1)，包含 macOS Apple Silicon / Intel、Windows x64 和 Linux x64 安装包。当前为未签名、未公证测试包，首次使用请先备份学习资料；具体构建与验收范围见[打包说明](docs/打包说明.md)。
 
 当前项目处于开发与验证阶段，**仅供个人学习、技术研究和功能测试使用**。请优先使用自行制作、已取得授权或可合法使用的测试资料，并使用虚构或去标识化的学生信息。项目代码的开放许可不代表获得了第三方平台内容、教材、试卷或学生数据的使用授权。
 

@@ -11,7 +11,7 @@
 - `docs/测试与验收报告.md`、`docs/打包说明.md`：验证证据、历史评分与实际安装包状态。
 - `LICENSE`、`THIRD_PARTY_NOTICES.md`：本项目代码许可与第三方组件说明。
 
-`frontend/src/`、`frontend/exam2pdf.html`、`build.sh` 和 `spikes/` 是历史原型材料，当前 Electron 入口是 `electron/main.cjs`。历史材料若保留在仓库，不代表它们是当前运行方案。
+历史原型材料（`frontend/src/`、`frontend/exam2pdf.html`、`build.sh`、`spikes/`）已从仓库移除，可在 Git 历史中查阅；当前 Electron 入口是 `electron/main.cjs`，打包输入见 `package.json` 的 `build.files`。
 
 ## 数据和凭据检查
 

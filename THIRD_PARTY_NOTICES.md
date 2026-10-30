@@ -1,5 +1,7 @@
 # Third-party notices
 
+Chromium 授权文本（`LICENSES.chromium.html`）以 gzip 压缩随安装包分发（`LICENSES.chromium.html.gz`），内容完整保留，解压即可查阅。
+
 exam2pdf's own source code is covered by the root [PolyForm Noncommercial 1.0.0 License](LICENSE) (noncommercial use only). That license does not replace the licenses of bundled dependencies, imported content, user documents, or platform content.
 
 ## PDF.js / pdfjs-dist

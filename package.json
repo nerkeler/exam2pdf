@@ -22,6 +22,7 @@
     "test:pdf": "node scripts/check-pdf-import.cjs"
   },
   "build": {
+    "afterPack": "scripts/after-pack.cjs",
     "appId": "com.exam2pdf.desktop",
     "productName": "exam2pdf",
     "asar": true,
@@ -70,12 +71,14 @@
         "dmg",
         "zip"
       ],
-      "category": "public.app-category.education"
+      "category": "public.app-category.education",
+      "icon": "build/icon.icns"
     },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -92,7 +95,8 @@
         "deb"
       ],
       "category": "Education",
-      "maintainer": "nerkeler <nerkeler@users.noreply.github.com>"
+      "maintainer": "nerkeler <nerkeler@users.noreply.github.com>",
+      "icon": "build/icon.png"
     },
     "publish": {
       "provider": "github",

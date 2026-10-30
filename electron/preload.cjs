@@ -154,6 +154,36 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   exportDiagnostics() {
     return invoke("diagnostics:export");
   },
+  getXhsCacheStats() {
+    return invoke("xhs:cache-stats");
+  },
+  getRuntimeInfo() {
+    return invoke("app:runtime-info");
+  },
+  clearXhsCache() {
+    return invoke("xhs:clear-cache");
+  },
+  resetXhsData() {
+    return invoke("xhs:reset-data");
+  },
+  getUpdateState() {
+    return invoke("updates:state");
+  },
+  checkForAppUpdate() {
+    return invoke("updates:check");
+  },
+  downloadAppUpdate() {
+    return invoke("updates:download");
+  },
+  installAppUpdate() {
+    return invoke("updates:install");
+  },
+  openLatestReleasePage() {
+    return invoke("updates:open-page");
+  },
+  onUpdateState(callback) {
+    return listen("updates:state", callback);
+  },
   exportWorkspacePdf(title) {
     return invoke("workspace:export-pdf", title);
   },

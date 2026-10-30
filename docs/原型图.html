@@ -948,6 +948,31 @@
       transition: opacity .2s var(--ease-out), transform .24s var(--ease-out);
     }
     .toast.show { opacity: 1; transform: translateY(0) scale(1); }
+    .debug-banner {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      z-index: 2147483000;
+      display: flex;
+      width: min(760px, calc(100vw - 32px));
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      transform: translateX(-50%);
+      border: 1px solid #f0d8a8;
+      border-radius: 10px;
+      background: #fff7e5;
+      box-shadow: 0 8px 26px rgba(88, 62, 8, .18);
+      color: #6b4d00;
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+    .debug-banner[hidden] { display: none !important; }
+    .debug-banner button { flex: 0 0 auto; }
+    body[data-theme="dark"] .debug-banner { background: #33290f; border-color: #6b5416; color: #fbbf24; }
+    .update-banner { background: #e8f0ff; border-color: #c6d8ff; color: #1d4ed8; }
+    .update-banner .btn { min-height: 28px; padding: 3px 10px; font-size: 12px; }
+    body[data-theme="dark"] .update-banner { background: #16283f; border-color: #2f4d7a; color: #9dc0ff; }
     .boot-fatal {
       position: fixed;
       top: 12px;
@@ -1163,6 +1188,14 @@
   </style>
 </head>
 <body>
+  <div class="debug-banner" id="debugBanner" role="status" hidden>
+    <span>⚠ 当前以调试端口模式运行（--remote-debugging-port=9222）：本机任意程序都能读取该窗口的页面与登录状态。日常使用请不要带这个参数启动。</span>
+    <button class="btn small-btn" type="button" id="debugBannerClose">知道了</button>
+  </div>
+  <div class="debug-banner update-banner" id="updateBanner" role="status" hidden>
+    <span id="updateBannerText"></span>
+    <span class="toolbar" id="updateBannerActions" style="margin:0;flex:0 0 auto"></span>
+  </div>
   <div class="boot-fatal" id="renderFatal" role="alert" hidden>
     <strong>工作台初始化失败</strong>
     <p>工作台脚本发生错误。可先重启应用；如果问题持续，请把下面的错误信息提供给开发者。</p>
@@ -1794,6 +1827,7 @@
       <div class="toolbar" style="margin:12px 0"><span id="studentAvatarPreview" class="student-avatar" aria-hidden="true"></span><button class="btn small-btn" type="button" data-action="pick-student-avatar">选择本地图片</button><button class="btn small-btn" type="button" data-action="reset-student-avatar">使用系统预置</button><span class="muted small">居中裁为方形 · JPG / PNG / WebP</span></div>
       <div class="student-roster" id="studentRoster"></div>
       <details style="margin-top:18px"><summary>整机备份与维护（所有学生）</summary><p class="muted small">包含所有学生名册与学习资料；恢复会替换所有学生的数据，不是仅恢复当前学生。</p><div class="toolbar"><button class="btn" type="button" data-action="backup">导出整机备份</button><button class="btn" type="button" data-action="restore-backup">恢复整机备份</button><button class="btn" type="button" data-action="export-diagnostics">导出诊断信息</button></div></details>
+      <details style="margin-top:10px"><summary>小红书浏览数据</summary><p class="muted small" id="xhsCacheSummary">点击「刷新占用」查看当前占用。缓存是浏览产生的临时文件，清理不影响登录；重置会退出小红书并清空全部网页数据，学生资料不受影响。</p><div class="toolbar"><button class="btn" type="button" data-action="refresh-xhs-stats">刷新占用</button><button class="btn" type="button" data-action="clear-xhs-cache">清理缓存（保留登录）</button><button class="btn danger" type="button" data-action="reset-xhs-data">重置网页数据（退出登录）</button></div></details>
 
       <div class="dialog-actions">
         <button class="btn" type="button" data-action="close-dialog">关闭</button>
@@ -2955,6 +2989,20 @@
       select.innerHTML = '<option value="">不关联原卷</option>' + posts.map((item) => '<option value="' + escapeHtml(item.id) + '">' + escapeHtml(item.title) + '</option>').join("");
       if (posts.some((item) => item.id === current)) select.value = current;
     }
+    function formatBytes(value) {
+      const bytes = Number(value);
+      if (!Number.isFinite(bytes) || bytes < 0) return "未知";
+      if (bytes < 1024) return bytes + " B";
+      const units = ["KB", "MB", "GB"];
+      let size = bytes / 1024, index = 0;
+      while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; }
+      return size.toFixed(1) + " " + units[index];
+    }
+    function renderXhsCacheSummary(stats) {
+      if (!stats || !$("#xhsCacheSummary")) return;
+      $("#xhsCacheSummary").textContent = "小红书网页数据共 " + formatBytes(stats.totalBytes) + "，其中缓存 " + formatBytes(stats.cacheBytes) +
+        (stats.cookieCount ? " · 已保存登录 Cookie " + stats.cookieCount + " 条" : " · 未检测到登录 Cookie");
+    }
     function updateFilterOptions(select, label, values) {
       const current = select.value;
       select.innerHTML = '<option value="all">' + label + '</option>' + values.map((value) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>').join("");
@@ -3748,6 +3796,9 @@
         renderStudentRoster();
         $("#studentDialog").showModal();
         $("#studentNameInput").focus();
+        if (desktop && typeof desktop.getXhsCacheStats === "function") {
+          desktop.getXhsCacheStats().then(renderXhsCacheSummary).catch(() => {});
+        }
       }
       if (action === "add-student") await addStudent();
       if (action === "rename-student") {
@@ -3850,7 +3901,43 @@
         }
       }
       if (action === "clear-external-review") $("#externalReviewText").value = "";
-      if (action === "open-answer-report") await openAnswerReport(button.dataset.id);      if (action === "open-answer-pages") {
+      if (action === "refresh-xhs-stats") {
+        if (!desktop || typeof desktop.getXhsCacheStats !== "function") { toast("请在 Electron 应用中查看"); return; }
+        try { renderXhsCacheSummary(await desktop.getXhsCacheStats()); } catch (error) { toast("读取占用失败：" + (error.message || "请重试")); }
+      }
+      if (action === "clear-xhs-cache") {
+        if (!desktop || typeof desktop.clearXhsCache !== "function") { toast("请在 Electron 应用中操作"); return; }
+        const confirmed = await confirmAction("清理小红书缓存", "清理浏览产生的缓存文件（图片、脚本等），保留登录状态和学生资料。", "清理");
+        if (!confirmed) return;
+        try {
+          const result = await desktop.clearXhsCache();
+          toast("已清理 " + formatBytes(result.freedBytes));
+          renderXhsCacheSummary(await desktop.getXhsCacheStats());
+        } catch (error) { toast("清理失败：" + (error.message || "请重试")); }
+      }
+      if (action === "reset-xhs-data") {
+        if (!desktop || typeof desktop.resetXhsData !== "function") { toast("请在 Electron 应用中操作"); return; }
+        const confirmed = await confirmAction("重置小红书数据", "将退出小红书登录，并清空该浏览器的全部网页数据（缓存、Cookie、本地存储）。学生资料与备份不受影响，重置后需重新扫码登录。", "重置");
+        if (!confirmed) return;
+        try {
+          await desktop.resetXhsData();
+          $("#xhsCacheSummary").textContent = "已重置；小红书正在重新打开，需要重新扫码登录。";
+          toast("小红书网页数据已重置");
+        } catch (error) { toast("重置失败：" + (error.message || "请重试")); }
+      }
+      if (action === "open-answer-report") await openAnswerReport(button.dataset.id);      if (action === "download-update") {
+        if (!desktop || typeof desktop.downloadAppUpdate !== "function") return;
+        desktop.downloadAppUpdate().catch((error) => toast("下载更新失败：" + (error.message || "请重试")));
+      }
+      if (action === "install-update") {
+        if (!desktop || typeof desktop.installAppUpdate !== "function") return;
+        desktop.installAppUpdate();
+      }
+      if (action === "open-update-page") {
+        if (typeof desktop.openLatestReleasePage === "function") desktop.openLatestReleasePage();
+        else window.open("https://github.com/nerkeler/exam2pdf/releases/latest", "_blank");
+      }
+      if (action === "open-answer-pages") {
         const answer = state.currentAnswer || state.answers.find((item) => item.id === state.currentAnswerId);
         if (answer && answer.pageOrder.length) openPreview(answerPageItems(answer), 0);
         else toast("这份作答没有可查看的页面");
@@ -4232,6 +4319,38 @@
       try { localStorage.setItem("exam2pdf-sidebar", collapsed ? "collapsed" : "expanded"); } catch {}
     });
     try { document.body.classList.toggle("sidebar-collapsed", localStorage.getItem("exam2pdf-sidebar") === "collapsed"); } catch {}
+    // 调试端口提醒：带 --remote-debugging-port 启动时本机任意进程都能读取页面与登录态
+    $("#debugBannerClose").addEventListener("click", () => { $("#debugBanner").hidden = true; });
+    if (desktop && typeof desktop.getRuntimeInfo === "function") {
+      desktop.getRuntimeInfo().then((info) => { if (info && info.remoteDebugging) $("#debugBanner").hidden = false; }).catch(() => {});
+    }
+    // 应用内更新提醒：启动后延时检查一次，状态变化驱动提醒条
+    function renderUpdateBanner(state) {
+      const banner = $("#updateBanner");
+      const text = $("#updateBannerText");
+      const actions = $("#updateBannerActions");
+      if (!banner || !state) return;
+      if (["idle", "checking", "not-available", "error"].includes(state.stage)) { banner.hidden = true; return; }
+      if (state.stage === "available") {
+        text.textContent = "发现新版本 v" + state.version + (state.current ? "（当前 v" + state.current + "）" : "") +
+          (state.manualDownload ? "。当前安装包未签名，macOS 需要手动下载安装。" : "");
+        actions.innerHTML = state.manualDownload
+          ? '<button class="btn small-btn" type="button" data-action="open-update-page">打开下载页</button>'
+          : '<button class="btn small-btn" type="button" data-action="download-update">下载更新</button>';
+      } else if (state.stage === "downloading") {
+        text.textContent = "正在下载更新… " + (Number.isFinite(state.percent) ? state.percent + "%" : "");
+        actions.innerHTML = "";
+      } else if (state.stage === "downloaded") {
+        text.textContent = "更新已下载，重启应用即可完成安装。";
+        actions.innerHTML = '<button class="btn small-btn primary" type="button" data-action="install-update">重启并安装</button>';
+      } else { banner.hidden = true; return; }
+      banner.hidden = false;
+    }
+    if (desktop && typeof desktop.onUpdateState === "function") {
+      desktop.onUpdateState((state) => renderUpdateBanner(state));
+      setTimeout(() => { desktop.checkForAppUpdate().catch(() => {}); }, 3000);
+    }
+
     $("#aiProvider").addEventListener("change", onAiProviderChange);
     const gradeImportTabs = { local: $("#gradeTabLocal"), mobile: $("#gradeTabMobile") };
     function switchGradeImportTab(name) {

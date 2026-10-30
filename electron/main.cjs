@@ -9,6 +9,7 @@ const { pathToFileURL } = require("node:url");
 const { randomUUID } = require("node:crypto");
 const { PostStore } = require("./post-store.cjs");
 const { createPrintHtml, safePdfFileName } = require("./print-document.cjs");
+const { compareVersions, RELEASES_PAGE, LATEST_RELEASE_API } = require("./app-update.cjs");
 const { deriveLearningStats } = require("./learning-stats.cjs");
 const { generatePractice } = require("./training-generator.cjs");
 const { generateAiPractice } = require("./ai-practice-service.cjs");
@@ -855,6 +856,81 @@ appHandle("mistakes:export-pdf", async (title) => {
   return { canceled: false, filePath: target.filePath };
 });
 
+// 递归统计目录占用；读不到的条目按 0 处理
+async function measurePathSize(target) {
+  let bytes = 0;
+  let entries = [];
+  try { entries = await fs.readdir(target, { withFileTypes: true }); } catch { return 0; }
+  for (const entry of entries) {
+    const full = path.join(target, entry.name);
+    if (entry.isDirectory()) bytes += await measurePathSize(full);
+    else { try { bytes += (await fs.stat(full)).size; } catch {} }
+  }
+  return bytes;
+}
+const XHS_CACHE_DIRS = ["Cache", "Code Cache", "GPUCache", "DawnWebGPUCache", "DawnGraphiteCache", "ShaderCache", "GrShaderCache"];
+const XHS_RESET_DIRS = [...XHS_CACHE_DIRS, "Local Storage", "Session Storage", "IndexedDB", "Service Worker", "WebStorage", "Trust Tokens", "Shared Dictionary", "blob_storage"];
+function xhsSessionPartition() {
+  return path.join(app.getPath("userData"), "Partitions", "xhs");
+}
+function xhsSessionInstance() {
+  return xhsSession || session.fromPartition("persist:xhs");
+}
+// 小红书网页数据占用：分区总量、可清理的缓存部分与登录 Cookie 数
+appHandle("xhs:cache-stats", async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) throw new Error("窗口不可用");
+  const partitionDir = xhsSessionPartition();
+  const items = [];
+  let total = 0;
+  let cacheBytes = 0;
+  let entries = [];
+  try { entries = await fs.readdir(partitionDir, { withFileTypes: true }); } catch {}
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const bytes = await measurePathSize(path.join(partitionDir, entry.name));
+    total += bytes;
+    if (XHS_CACHE_DIRS.includes(entry.name)) cacheBytes += bytes;
+    items.push({ name: entry.name, bytes });
+  }
+  items.sort((a, b) => b.bytes - a.bytes);
+  let cookieCount = 0;
+  try { cookieCount = (await xhsSessionInstance().getCookies({})).length; } catch {}
+  return { totalBytes: total, cacheBytes, items, cookieCount };
+});
+// 清理浏览缓存：HTTP 缓存与着色器缓存，保留登录 Cookie 和本地资料
+appHandle("xhs:clear-cache", async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) throw new Error("窗口不可用");
+  const ses = xhsSessionInstance();
+  const partitionDir = xhsSessionPartition();
+  let freed = 0;
+  for (const name of XHS_CACHE_DIRS) {
+    const dir = path.join(partitionDir, name);
+    freed += await measurePathSize(dir);
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+  await ses.clearCache().catch(() => {});
+  await ses.clearStorageData({ storages: ["shadercache", "cachestorage"] }).catch(() => {});
+  const totalBytes = await measurePathSize(partitionDir);
+  return { freedBytes: freed, totalBytes };
+});
+// 重置小红书网页数据：退出登录并清空全部网页数据，学生资料不受影响
+appHandle("xhs:reset-data", async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) throw new Error("窗口不可用");
+  const ses = xhsSessionInstance();
+  const partitionDir = xhsSessionPartition();
+  const freedBytes = await measurePathSize(partitionDir);
+  await ses.clearStorageData().catch(() => {});
+  await ses.clearCache().catch(() => {});
+  for (const name of XHS_RESET_DIRS) {
+    await fs.rm(path.join(partitionDir, name), { recursive: true, force: true }).catch(() => {});
+  }
+  sendXhsState("loading", "小红书数据已重置，正在重新打开…");
+  if (xhsView && !xhsView.webContents.isDestroyed()) {
+    xhsView.webContents.loadURL("https://www.xiaohongshu.com/explore").catch(() => {});
+  }
+  return { freedBytes };
+});
+
 appHandle("diagnostics:export", async () => {
   if (!mainWindow || mainWindow.isDestroyed()) throw new Error("窗口不可用");
   let libraryCounts = {};
@@ -884,6 +960,84 @@ appHandle("diagnostics:export", async () => {
   await fs.writeFile(target.filePath, JSON.stringify(payload, null, 2));
   return { canceled: false, filePath: target.filePath };
 });
+// 应用内更新：Windows / Linux 用 electron-updater 手动下载并确认安装；
+// macOS 安装包未签名，Squirrel 自动更新不可用，只查询最新版本并引导到下载页
+let updateState = { stage: "idle" };
+function pushUpdateState(patch) {
+  updateState = { current: app.getVersion(), ...updateState, ...patch };
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("updates:state", updateState);
+  }
+}
+function setupUpdateService() {
+  if (!app.isPackaged) return;
+  const { autoUpdater } = require("electron-updater");
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.logger = null;
+  autoUpdater.on("update-available", (info) => pushUpdateState({ stage: "available", version: info.version }));
+  autoUpdater.on("update-not-available", () => pushUpdateState({ stage: "not-available" }));
+  autoUpdater.on("download-progress", (progress) => pushUpdateState({ stage: "downloading", percent: Math.round(progress.percent || 0) }));
+  autoUpdater.on("update-downloaded", (info) => pushUpdateState({ stage: "downloaded", version: info.version }));
+  autoUpdater.on("error", (error) => pushUpdateState({ stage: "error", error: String((error && error.message) || error) }));
+  setTimeout(() => { void checkForAppUpdate(); }, 5000);
+}
+async function fetchLatestReleaseVersion() {
+  const response = await fetch(LATEST_RELEASE_API, {
+    headers: { "User-Agent": "exam2pdf" },
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!response.ok) throw new Error("GitHub API " + response.status);
+  const data = await response.json();
+  return String(data.tag_name || "").replace(/^v/i, "");
+}
+async function checkForAppUpdate() {
+  if (!app.isPackaged) { pushUpdateState({ stage: "not-available", reason: "开发模式" }); return updateState; }
+  if (process.platform === "darwin") {
+    try {
+      const latest = await fetchLatestReleaseVersion();
+      pushUpdateState(compareVersions(latest, app.getVersion()) > 0
+        ? { stage: "available", version: latest, manualDownload: true }
+        : { stage: "not-available" });
+    } catch (error) {
+      pushUpdateState({ stage: "error", error: String(error.message || error) });
+    }
+    return updateState;
+  }
+  pushUpdateState({ stage: "checking" });
+  try {
+    const result = await require("electron-updater").autoUpdater.checkForUpdates();
+    const version = result && result.updateInfo ? result.updateInfo.version : "";
+    pushUpdateState(compareVersions(version, app.getVersion()) > 0
+      ? { stage: "available", version }
+      : { stage: "not-available" });
+  } catch (error) {
+    pushUpdateState({ stage: "error", error: String(error.message || error) });
+  }
+  return updateState;
+}
+appHandle("updates:state", () => updateState);
+appHandle("updates:check", async () => { await checkForAppUpdate(); return updateState; });
+appHandle("updates:download", async () => {
+  if (process.platform === "darwin") { await shell.openExternal(RELEASES_PAGE); return updateState; }
+  const { autoUpdater } = require("electron-updater");
+  await autoUpdater.downloadUpdate();
+  return updateState;
+});
+appHandle("updates:install", () => {
+  if (process.platform === "darwin") throw new Error("macOS 未签名包请在下载页手动安装");
+  require("electron-updater").autoUpdater.quitAndInstall();
+});
+appHandle("updates:open-page", async () => {
+  await shell.openExternal(RELEASES_PAGE);
+  return { ok: true };
+});
+// 运行时信息：带 --remote-debugging-port 启动时，本机任意进程都能通过调试端口
+// 读取页面与登录态；渲染层据此显示常驻提醒，避免调试参数被当作日常用法
+appHandle("app:runtime-info", () => ({
+  remoteDebugging: app.commandLine.hasSwitch("remote-debugging-port") ||
+    process.argv.some((arg) => String(arg).includes("remote-debugging-port"))
+}));
 // 将当前工作台页面按打印样式导出为 PDF（批阅报告等纯 HTML 页面），不弹系统打印面板
 appHandle("workspace:export-pdf", async (title) => {
   if (!mainWindow || mainWindow.isDestroyed()) throw new Error("窗口不可用");
@@ -1177,6 +1331,7 @@ if (!hasSingleInstanceLock) {
     postStore = scopedStore(postStore, requestStudentId);
     answerStore = scopedStore(answerStore, requestStudentId);
     trainingStore = scopedStore(trainingStore, requestStudentId, "training");
+    setupUpdateService();
     protocol.handle("exam2pdf-media", async (request) => {
       try {
         const url = new URL(request.url);
