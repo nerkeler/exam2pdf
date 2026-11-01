@@ -1859,6 +1859,8 @@
       <div class="image-toolbar">
         <span class="pill" id="imagePreviewIndex">1 / 1</span>
         <span class="spacer"></span>
+        <button class="btn ghost small-btn" type="button" data-action="preview-rotate" data-dir="-1" id="previewRotateLeft" aria-label="逆时针旋转 90°" title="逆时针旋转 90°" hidden>↺</button>
+        <button class="btn ghost small-btn" type="button" data-action="preview-rotate" data-dir="1" id="previewRotateRight" aria-label="顺时针旋转 90°" title="顺时针旋转 90°" hidden>↻</button>
         <button class="btn ghost small-btn" type="button" data-action="zoom-out" aria-label="缩小">−</button>
         <span class="pill" id="imageZoomLevel">100%</span>
         <button class="btn ghost small-btn" type="button" data-action="zoom-in" aria-label="放大">＋</button>
@@ -2145,8 +2147,33 @@
     function postImageUrl(post, file) {
       return "exam2pdf-media://" + encodeURIComponent(post.id) + "/" + encodeURIComponent(file);
     }
+    function postImageRotation(post, file) {
+      const image = (post.images || []).find((item) => item.file === file);
+      return (image && image.rotation) || 0;
+    }
+    function rotationStyle(deg) {
+      const rot = ((Number(deg) || 0) % 360 + 360) % 360;
+      return rot ? ' style="transform:rotate(' + rot + 'deg)"' : "";
+    }
     function postPageItems(post) {
-      return post.pageOrder.map((file, index) => ({ src: postImageUrl(post, file), label: post.title + " · 原卷第 " + (index + 1) + " 页" }));
+      return post.pageOrder.map((file, index) => ({ src: postImageUrl(post, file), label: post.title + " · 原卷第 " + (index + 1) + " 页", rotation: postImageRotation(post, file) }));
+    }
+    // 预览器旋转写回：试卷库页持久化为元数据（打印/导出按 rotation 转正），暂存页改内存、保存时烘焙
+    function postRotateContext(post) {
+      return { onRotate: (index, deg) => {
+        const file = post.pageOrder[index];
+        if (!file || typeof desktop?.rotatePostPage !== "function") return;
+        void desktop.rotatePostPage(post.id, file, deg).then((saved) => {
+          Object.assign(post, saved);
+          if (state.currentPostId === post.id) renderPostDetail();
+          renderPosts();
+        }).catch((error) => toast("旋转保存失败：" + (error.message || "请重试")));
+      } };
+    }
+    function gradeRotateContext() {
+      return { onRotate: (index, deg) => {
+        if (state.gradePages[index]) { state.gradePages[index].rotation = deg; renderPageGrid("grade"); }
+      } };
     }
     function answerPageItems(answer) {
       return answer.pageOrder.map((file, index) => ({ src: postImageUrl(answer, file), label: answer.title + " · 作答第 " + (index + 1) + " 页" }));
@@ -2220,7 +2247,7 @@
             '<span class="page-drag-hint" data-reorder-handle aria-hidden="true" title="按住并拖动调整顺序">⠿</span>' +
             '<button class="page-tile-remove" type="button" data-action="delete-post-page" data-index="' + index + '" aria-label="移除第 ' + (index + 1) + ' 页" title="移除本页">✕</button>' +
             '<button class="page-preview" type="button" data-action="preview-page" data-index="' + index + '">' +
-              (typeof page === "string" && post.images ? '<img src="' + escapeHtml(postImageUrl(post, page)) + '" alt="试卷第 ' + (index + 1) + ' 页" loading="lazy">' : '试卷页面 ' + page) +
+              (typeof page === "string" && post.images ? '<img' + rotationStyle(postImageRotation(post, page)) + ' src="' + escapeHtml(postImageUrl(post, page)) + '" alt="试卷第 ' + (index + 1) + ' 页" loading="lazy">' : '试卷页面 ' + page) +
             '</button>' +
           '</article>' +
           '<div class="page-caption"><strong>' + (index + 1) + '</strong></div>' +
@@ -2238,7 +2265,7 @@
             '<span class="page-drag-hint" aria-hidden="true">⠿</span>' +
             '<button class="page-tile-remove" type="button" data-action="delete-page" data-kind="' + kind + '" data-index="' + index + '" aria-label="移除第 ' + (index + 1) + ' 页" title="移除本页">✕</button>' +
             '<button class="page-preview" type="button" data-action="preview-page" data-kind="' + kind + '" data-index="' + index + '">' +
-              (kind === "grade" && page && page.base64 ? '<img src="data:' + escapeHtml(page.mime) + ';base64,' + page.base64 + '" alt="学生作答第 ' + (index + 1) + ' 页" loading="lazy">' : '页面 ' + (page && page.name ? escapeHtml(page.name) : page)) +
+              (kind === "grade" && page && page.base64 ? '<img' + rotationStyle(page.rotation) + ' src="data:' + escapeHtml(page.mime) + ';base64,' + page.base64 + '" alt="学生作答第 ' + (index + 1) + ' 页" loading="lazy">' : '页面 ' + (page && page.name ? escapeHtml(page.name) : page)) +
             '</button>' +
           '</article>' +
           '<div class="page-caption"><strong>' + (index + 1) + '</strong></div>' +
@@ -2962,6 +2989,32 @@
       renderPageGrid(kind);
       toast("已加入 " + files.length + " 页（整理打印示例）");
     }
+    // 保存前把暂存页的旋转烘焙进图片字节（画布转正），入库后的作答不再需要旋转元数据
+    async function bakePageRotation(item) {
+      const rot = ((item.rotation || 0) % 360 + 360) % 360;
+      if (!rot) return item;
+      const binary = atob(item.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: item.mime }));
+      const swap = rot === 90 || rot === 270;
+      const canvas = document.createElement("canvas");
+      canvas.width = swap ? bitmap.height : bitmap.width;
+      canvas.height = swap ? bitmap.width : bitmap.height;
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.translate(canvas.width / 2, canvas.height / 2);
+      context.rotate(rot * Math.PI / 180);
+      context.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+      if (bitmap.close) bitmap.close();
+      const outW = canvas.width;
+      const outH = canvas.height;
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      canvas.width = 1;
+      canvas.height = 1;
+      return { ...item, mime: "image/jpeg", base64: bufferToBase64(await blob.arrayBuffer()), width: outW, height: outH, rotation: 0 };
+    }
     async function saveAnswerRecord() {
       if (!desktop) { toast("请在 Electron 中保存本地作答记录"); return; }
       if (!state.gradePages.length) { toast("请先上传学生作答照片"); return; }
@@ -2971,7 +3024,8 @@
       const subject = $("#gradeSubject").value;
       const linkedPostId = $("#gradeLinkedPost") ? $("#gradeLinkedPost").value : "";
       try {
-        const result = await desktop.createAnswer({ title, studentName, studentId, subject, linkedPostId: linkedPostId || null, images: state.gradePages });
+        const images = await Promise.all(state.gradePages.map(bakePageRotation));
+        const result = await desktop.createAnswer({ title, studentName, studentId, subject, linkedPostId: linkedPostId || null, images });
         state.gradePages = [];
         $("#gradeTitle").value = "";
         renderPageGrid("grade");
@@ -3094,7 +3148,7 @@
       box.closest(".mistake-row")?.classList.toggle("mistake-selected", box.checked);
       updateMistakeSelectionCount();
     });
-    const previewState = { items: [], index: 0 };
+    const previewState = { items: [], index: 0, rotation: 0, ctx: null };
     const imageZoom = { scale: 1 };
     function clampScale(value) { return Math.min(8, Math.max(1, value)); }
     // Windows 查看器 + 滚动条模型：100% = 整页适应窗口；普通滚轮滚动页面，
@@ -3104,11 +3158,18 @@
       const img = $("#imagePreview");
       const natW = img.naturalWidth || 0;
       const natH = img.naturalHeight || 0;
+      const rot = previewState.rotation || 0;
+      const swap = rot === 90 || rot === 270;
+      const effW = swap ? natH : natW;
+      const effH = swap ? natW : natH;
       let fitW = stage.clientWidth;
       if (natW && natH) {
-        fitW = Math.min(natW, stage.clientWidth, stage.clientHeight * natW / natH);
+        // 旋转页按可视尺寸适配舞台：布局盒保持旋转前宽高，缩放后视觉正好放满
+        const fitScale = Math.min(1, stage.clientWidth / effW, stage.clientHeight / effH);
+        fitW = (swap ? natH : natW) * fitScale;
       }
       img.style.width = Math.max(1, Math.round(fitW * imageZoom.scale)) + "px";
+      img.style.transform = rot ? "rotate(" + rot + "deg)" : "";
       $("#imageZoomLevel").textContent = Math.round(imageZoom.scale * 100) + "%";
     }
     function resetImageZoom() {
@@ -3137,13 +3198,17 @@
       if (!previewState.items.length) return;
       previewState.index = Math.min(Math.max(index, 0), previewState.items.length - 1);
       const item = previewState.items[previewState.index];
+      previewState.rotation = ((Number(item.rotation) || 0) % 360 + 360) % 360;
+      $("#previewRotateLeft").hidden = !previewState.ctx;
+      $("#previewRotateRight").hidden = !previewState.ctx;
       $("#imagePreview").src = item.src;
       $("#imagePreviewTitle").textContent = item.label;
       $("#imagePreviewIndex").textContent = (previewState.index + 1) + " / " + previewState.items.length;
       resetImageZoom();
     }
-    function openPreview(items, index) {
+    function openPreview(items, index, ctx) {
       previewState.items = items;
+      previewState.ctx = ctx && typeof ctx.onRotate === "function" ? ctx : null;
       $("#imageDialog").showModal();
       showPreviewAt(index);
     }
@@ -3182,6 +3247,8 @@
       $("#imageDialog").addEventListener("close", () => {
         previewState.items = [];
         previewState.index = 0;
+        previewState.rotation = 0;
+        previewState.ctx = null;
         img.removeAttribute("src");
         resetImageZoom();
       });
@@ -3256,7 +3323,7 @@
         const post = activePost();
         if (!post) return;
         if (action === "preview" && post.images && index >= 0 && index < post.pageOrder.length) {
-          openPreview(post.pageOrder.map((file, pageAt) => ({ src: postImageUrl(post, file), label: post.title + " · 第 " + (pageAt + 1) + " 页" })), index);
+          openPreview(post.pageOrder.map((file, pageAt) => ({ src: postImageUrl(post, file), label: post.title + " · 第 " + (pageAt + 1) + " 页", rotation: postImageRotation(post, file) })), index, postRotateContext(post));
         }
         if (action === "move-up" || action === "move-down") {
           reorderPostPages(index, action === "move-up" ? index - 1 : index + 1);
@@ -3281,7 +3348,7 @@
         if (action === "preview") {
           const page = state.gradePages[index];
           if (page) {
-            openPreview(state.gradePages.map((item, pageAt) => ({ src: "data:" + item.mime + ";base64," + item.base64, label: "学生作答 · 第 " + (pageAt + 1) + " 页" })), index);
+            openPreview(state.gradePages.map((item, pageAt) => ({ src: "data:" + item.mime + ";base64," + item.base64, label: "学生作答 · 第 " + (pageAt + 1) + " 页", rotation: item.rotation || 0 })), index, gradeRotateContext());
           }
         }
         if (action === "move-up" || action === "move-down") {
@@ -3391,7 +3458,7 @@
       state.currentAnswer = null; state.reviewDraft = []; state.gradePages = []; state.printPages = [];
       state.training = null; state.trainingAnswersViewed = false; state.reviewPreviewMode = false;
       state.mistakeSelection.clear(); state.visibleMistakeIds = [];
-      previewState.items = []; previewState.index = 0; $("#imagePreview").removeAttribute("src");
+      previewState.items = []; previewState.index = 0; previewState.rotation = 0; previewState.ctx = null; $("#imagePreview").removeAttribute("src");
       for (const key of ["postPage", "answerPage", "mistakePage", "reportPage", "trainingPage"]) state[key] = 1;
       document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
       document.querySelectorAll('input[type="file"]').forEach(input => input.value = "");
@@ -3530,11 +3597,26 @@
       window.addEventListener("afterprint", cleanup, { once: true });
       area.replaceChildren();
       for (const page of session.pages) {
+        // 旋转页：纸张方向按可视尺寸选择，img 布局盒保持旋转前宽高并 CSS 转正（与 PDF 导出一致）
+        const rot = ((page.rotation || 0) % 360 + 360) % 360;
+        const swap = rot === 90 || rot === 270;
+        const visualW = swap ? page.height : page.width;
+        const visualH = swap ? page.width : page.height;
+        const contentW = Math.round(194 / 25.4 * 96);
+        const contentH = Math.round(281 / 25.4 * 96);
+        const boxW = swap ? contentH : contentW;
+        const boxH = swap ? contentW : contentH;
+        const scale = Math.min(boxW / visualW, boxH / visualH, 1);
         const sheet = document.createElement("section");
-        sheet.className = "sheet " + (page.width > page.height ? "landscape" : "portrait");
+        sheet.className = "sheet " + (visualW > visualH ? "landscape" : "portrait");
         const image = document.createElement("img");
         image.src = page.dataUrl;
         image.alt = "试卷页";
+        if (rot) {
+          image.style.width = Math.max(1, Math.round(page.width * scale)) + "px";
+          image.style.height = Math.max(1, Math.round(page.height * scale)) + "px";
+          image.style.transform = "rotate(" + rot + "deg)";
+        }
         sheet.appendChild(image);
         area.appendChild(sheet);
       }
@@ -3937,6 +4019,16 @@
         if (typeof desktop.openLatestReleasePage === "function") desktop.openLatestReleasePage();
         else window.open("https://github.com/nerkeler/exam2pdf/releases/latest", "_blank");
       }
+      if (action === "preview-rotate") {
+        if (!previewState.ctx) return;
+        const dir = Number(button.dataset.dir) || 1;
+        const index = previewState.index;
+        const next = ((previewState.rotation + dir * 90) % 360 + 360) % 360;
+        previewState.rotation = next;
+        if (previewState.items[index]) previewState.items[index].rotation = next;
+        applyImageZoom();
+        previewState.ctx.onRotate(index, next);
+      }
       if (action === "open-answer-pages") {
         const answer = state.currentAnswer || state.answers.find((item) => item.id === state.currentAnswerId);
         if (answer && answer.pageOrder.length) openPreview(answerPageItems(answer), 0);
@@ -3944,7 +4036,7 @@
       }
       if (action === "open-post-pages" || action === "open-mistake-post-pages") {
         const post = state.posts.find((item) => item.id === button.dataset.id || item.id === button.dataset.postId);
-        if (post && post.pageOrder.length) openPreview(postPageItems(post), 0);
+        if (post && post.pageOrder.length) openPreview(postPageItems(post), 0, postRotateContext(post));
         else toast("原卷不存在或已被删除");
       }
       if (action === "open-mistake-answer-pages") {
@@ -4034,16 +4126,18 @@
           if (index >= 0 && index < post.pageOrder.length) {
             openPreview(post.pageOrder.map((file, pageAt) => ({
               src: postImageUrl(post, file),
-              label: post.title + " · 第 " + (pageAt + 1) + " 页"
-            })), index);
+              label: post.title + " · 第 " + (pageAt + 1) + " 页",
+              rotation: postImageRotation(post, file)
+            })), index, postRotateContext(post));
           }
         } else if (button.dataset.kind === "grade") {
           const page = state.gradePages[index];
           if (page) {
             openPreview(state.gradePages.map((item, pageAt) => ({
               src: "data:" + item.mime + ";base64," + item.base64,
-              label: "学生作答 · 第 " + (pageAt + 1) + " 页"
-            })), index);
+              label: "学生作答 · 第 " + (pageAt + 1) + " 页",
+              rotation: item.rotation || 0
+            })), index, gradeRotateContext());
           }
         } else showDialog("页面预览", "请在 Electron 中保存作答记录后查看图片。");
       }

@@ -103,6 +103,9 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   removePostPage(id, file) {
     return invoke("posts:remove-page", id, file);
   },
+  rotatePostPage(id, file, rotation) {
+    return invoke("posts:rotate-page", id, file, rotation);
+  },
   generatePostPdf(id, order, title) {
     return invoke("posts:pdf", id, order, title);
   },

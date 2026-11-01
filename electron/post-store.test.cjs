@@ -347,3 +347,29 @@ test("re-collecting the same note refreshes stored page bytes for higher quality
   const same = await store.createPost(better);
   assert.equal(same.updated, 0);
 });
+
+test("setPageRotation persists per-page rotation metadata without touching files", async (t) => {
+  const { store } = await makeStore(t);
+  const pageBytes = Buffer.from("rotation-test-bytes");
+  const created = await store.createPost({
+    title: "旋转测试",
+    images: [{ mime: "image/jpeg", base64: pageBytes.toString("base64") }]
+  });
+  const id = created.post.id;
+  const file = created.post.pageOrder[0];
+  const pageFile = path.join(store.postDirectory(id), file);
+
+  const rotated = await store.setPageRotation(id, file, 90);
+  const image = rotated.images.find((item) => item.file === file);
+  assert.equal(image.rotation, 90);
+  assert.equal(await fs.readFile(pageFile).then((buffer) => buffer.length === pageBytes.length), true, "文件字节必须保持不变");
+
+  // 重读持久化结果；非法角度与未知页拒绝
+  const reread = await store.getPost(id);
+  assert.equal(reread.images.find((item) => item.file === file).rotation, 90);
+  await assert.rejects(store.setPageRotation(id, file, 45), /旋转角度无效/);
+  await assert.rejects(store.setPageRotation(id, "page-999.jpg", 90), /找不到/);
+
+  const reset = await store.setPageRotation(id, file, 0);
+  assert.equal(reset.images.find((item) => item.file === file).rotation, 0);
+});

@@ -398,6 +398,22 @@ class PostStore {
     });
   }
 
+  // 页面旋转只存元数据（0/90/180/270），文件字节不动；
+  // 展示与打印输出按 rotation 用 CSS 转正，随时可改回
+  async setPageRotation(id, file, rotation) {
+    return this.serialize(async () => {
+      const post = await this.readPost(id);
+      if (!FILE_PATTERN.test(file) || !post.images.some((image) => image.file === file)) throw new Error("找不到要旋转的图片");
+      const angle = Number(rotation);
+      if (![0, 90, 180, 270].includes(angle)) throw new Error("旋转角度无效");
+      const image = post.images.find((item) => item.file === file);
+      image.rotation = angle;
+      post.updatedAt = new Date().toISOString();
+      await this.writePost(post);
+      return toSummary(post);
+    });
+  }
+
   // 原始页序 = 来源页按采集页序 + 补充页按追加序；恢复不改动任何文件
   deriveSourceOrder(post) {
     const sourcePages = post.images

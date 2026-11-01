@@ -707,7 +707,7 @@ async function preparePrintPages(store, postId, order, requestedTitle) {
         height = processed.height;
       }
     } catch { /* 回退原始文件 */ }
-    pages.push({ dataUrl, width, height });
+    pages.push({ dataUrl, width, height, rotation: image.rotation || 0 });
   }
   return { title, pages };
 }
@@ -836,6 +836,11 @@ appHandle("posts:reset-order", async (id) => {
 });
 appHandle("posts:remove-page", async (id, file) => {
   const post = await postStore.removePostPage(id, file);
+  notifyPostsChanged(id);
+  return post;
+});
+appHandle("posts:rotate-page", async (id, file, rotation) => {
+  const post = await postStore.setPageRotation(id, file, rotation);
   notifyPostsChanged(id);
   return post;
 });

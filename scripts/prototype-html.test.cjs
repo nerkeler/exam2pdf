@@ -145,3 +145,21 @@ test("post library offers one-click direct printing with preparation feedback", 
   assert.match(main, /paintWhenInitiallyHidden: true/, "PDF export host window must keep rendering while hidden");
   assert.ok(!/printWindow\.show(?:Inactive)?\(/.test(main), "no print path may surface a host window");
 });
+
+test("image preview supports rotation with write-back across print paths", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "docs", "原型图.html"), "utf8");
+  assert.match(html, /data-action="preview-rotate"/, "viewer must expose rotate controls");
+  assert.match(html, /previewState\.rotation/, "viewer zoom fit must account for preview rotation");
+  assert.match(html, /function postRotateContext/, "post pages must persist rotation via the desktop bridge");
+  assert.match(html, /function gradeRotateContext/, "staged pages must keep rotation in memory until save");
+  assert.match(html, /function bakePageRotation/, "staged rotation must be baked into saved answer images");
+  assert.match(html, /state\.gradePages\.map\(bakePageRotation\)/, "answer save must bake staged rotations");
+  assert.match(html, /desktop\.rotatePostPage\(/, "renderer must call the rotation bridge");
+  assert.match(html, /rotation: postImageRotation\(post, file\)/, "post page items must carry rotation into the viewer");
+  assert.match(html, /transform:rotate/, "print sheets must honor rotation");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.cjs"), "utf8");
+  assert.match(main, /appHandle\("posts:rotate-page"/, "main must expose the rotation IPC");
+  assert.match(main, /rotation: image\.rotation \|\| 0/, "direct-print pages must carry rotation");
+  const store = fs.readFileSync(path.join(__dirname, "..", "electron", "post-store.cjs"), "utf8");
+  assert.match(store, /async setPageRotation/, "post store must persist rotation metadata");
+});
