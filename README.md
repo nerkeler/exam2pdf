@@ -2,9 +2,9 @@
 
 家卷（仓库标识 exam2pdf）是一个基于 Electron 的桌面学习工具，用于在同一工作台内浏览试卷资料、整理图片和打印试卷，再将学生作答转成批阅记录、错题本与学习统计。
 
-测试预览版 [v0.1.7-preview.1](https://github.com/nerkeler/exam2pdf/releases/tag/v0.1.7-preview.1)，包含 macOS Apple Silicon / Intel、Windows x64 和 Linux x64 安装包。当前为未签名、未公证测试包，首次使用请先备份学习资料；具体构建与验收范围见[打包说明](docs/打包说明.md)。
+测试预览版 [v0.1.8-preview.1](https://github.com/nerkeler/exam2pdf/releases/tag/v0.1.8-preview.1)，包含 macOS Apple Silicon / Intel、Windows x64 和 Linux x64 安装包。当前为未签名、未公证测试包，首次使用请先备份学习资料；具体构建与验收范围见[打包说明](docs/打包说明.md)。
 
-**macOS 安装提示**：安装包未签名（带无效的临时签名），首次打开大概率提示"**已损坏，无法打开**"。可靠解决：终端执行 `xattr -cr /Applications/exam2pdf.app` 清除隔离属性后正常打开；或到 **系统设置 → 隐私与安全性** 尝试"仍要打开"（新系统对该提示可能不出现此按钮，方法一更稳）。另外大文件下载可能被网络中断或截断（报"无法识别映像"即为此因），安装前请核对 [SHA256SUMS](https://github.com/nerkeler/exam2pdf/releases/download/v0.1.7-preview.1/SHA256SUMS) 中对应条目的哈希（`shasum -a 256 文件名`），不一致就重新下载。
+**macOS 安装提示**：安装包未签名（带无效的临时签名），首次打开大概率提示"**已损坏，无法打开**"。可靠解决：终端执行 `xattr -cr /Applications/exam2pdf.app` 清除隔离属性后正常打开；或到 **系统设置 → 隐私与安全性** 尝试"仍要打开"（新系统对该提示可能不出现此按钮，方法一更稳）。另外大文件下载可能被网络中断或截断（报"无法识别映像"即为此因），安装前请核对 [SHA256SUMS](https://github.com/nerkeler/exam2pdf/releases/download/v0.1.8-preview.1/SHA256SUMS) 中对应条目的哈希（`shasum -a 256 文件名`），不一致就重新下载。
 
 当前项目处于开发与验证阶段，**仅供个人学习、技术研究和功能测试使用**。请优先使用自行制作、已取得授权或可合法使用的测试资料，并使用虚构或去标识化的学生信息。项目代码的开放许可不代表获得了第三方平台内容、教材、试卷或学生数据的使用授权。
 
