@@ -316,6 +316,7 @@
       body.sidebar-collapsed .side-util { padding: 8px 15.5px; gap: 0; min-height: 0; }
       body.sidebar-collapsed #guideButton,
       body.sidebar-collapsed #aboutButton,
+      body.sidebar-collapsed #langToggle,
       body.sidebar-collapsed #themeToggle { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; pointer-events: none; }
       body.sidebar-collapsed .side-util .side-util-label { opacity: 0; max-width: 0; }
       body.sidebar-collapsed #sidebarToggle svg { transform: rotate(180deg); }
@@ -873,7 +874,7 @@
       #postPrintArea .sheet.landscape { page: landscape; width: 297mm; height: 210mm; }
       #postPrintArea .sheet.portrait { page: portrait; }
       #postPrintArea .sheet:last-child { page-break-after: auto; break-after: auto; }
-      #postPrintArea img { display: block; max-width: 100%; max-height: 100%; }
+      #postPrintArea img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
     }
     .learning-overview { margin-bottom: 16px; }
     .overview-meta { display: flex; justify-content: flex-end; margin: 0 0 8px; }
@@ -1064,7 +1065,7 @@
       mark.key-point { background: #fff0bb !important; color: #584000 !important; }
       /* Print only learning content. Keep dialogs open in the interactive UI,
          but exclude their top-layer content and other transient overlays on paper. */
-      dialog, dialog::backdrop, [popover], .toast, .boot-fatal, .theme-menu {
+      dialog, dialog::backdrop, [popover], .toast, .boot-fatal, .theme-menu, .debug-banner, .update-banner, .context-menu {
         display: none !important;
         visibility: hidden !important;
       }
@@ -1205,46 +1206,50 @@
     <div class="shell">
       <aside class="sidebar" aria-label="主导航">
         <div class="brand"><strong>家卷</strong><span>家庭试卷工作台</span></div>
-        <div class="nav-label">学习流程</div>
+        <div class="nav-label" data-i18n="学习流程">学习流程</div>
         <nav class="nav-list">
-          <button class="nav-item active" type="button" data-screen="s0"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span><span class="nav-caption-desktop">采集浏览</span><span class="nav-caption-mobile">浏览</span></button>
-          <button class="nav-item" type="button" data-screen="s0b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-caption-desktop">试卷库</span><span class="nav-caption-mobile">试卷</span></button>
-          <button class="nav-item" type="button" data-screen="s1" hidden><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span><span class="nav-caption-desktop">整理打印</span><span class="nav-caption-mobile">打印</span></button>
-          <button class="nav-item" type="button" data-screen="s1b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span><span class="nav-caption-desktop">试卷批阅</span><span class="nav-caption-mobile">批阅</span></button>
-          <button class="nav-item" type="button" data-screen="s5"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span><span class="nav-caption-desktop">错题本</span><span class="nav-caption-mobile">错题</span></button>
-          <button class="nav-item" type="button" data-screen="s6"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span><span class="nav-caption-desktop">学习情况</span><span class="nav-caption-mobile">学习</span></button>
+          <button class="nav-item active" type="button" data-screen="s0"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span><span class="nav-caption-desktop" data-i18n="采集浏览">采集浏览</span><span class="nav-caption-mobile" data-i18n="浏览">浏览</span></button>
+          <button class="nav-item" type="button" data-screen="s0b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-caption-desktop" data-i18n="试卷库">试卷库</span><span class="nav-caption-mobile" data-i18n="试卷">试卷</span></button>
+          <button class="nav-item" type="button" data-screen="s1" hidden><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span><span class="nav-caption-desktop" data-i18n="整理打印">整理打印</span><span class="nav-caption-mobile" data-i18n="打印">打印</span></button>
+          <button class="nav-item" type="button" data-screen="s1b"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span><span class="nav-caption-desktop" data-i18n="试卷批阅">试卷批阅</span><span class="nav-caption-mobile" data-i18n="批阅">批阅</span></button>
+          <button class="nav-item" type="button" data-screen="s5"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span><span class="nav-caption-desktop" data-i18n="错题本">错题本</span><span class="nav-caption-mobile" data-i18n="错题">错题</span></button>
+          <button class="nav-item" type="button" data-screen="s6"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span><span class="nav-caption-desktop" data-i18n="学习情况">学习情况</span><span class="nav-caption-mobile" data-i18n="学习">学习</span></button>
         </nav>
         <div class="sidebar-foot">
-          <div class="foot-label">当前学生数据</div>
+          <div class="foot-label" data-i18n="当前学生数据">当前学生数据</div>
           <div class="side-account" id="sideDataOverview" aria-label="当前学生数据总览">
             <div class="overview-grid">
-              <span class="overview-cell"><strong id="overviewPosts">0</strong><small>试卷</small></span>
-              <span class="overview-cell"><strong id="overviewAnswers">0</strong><small>作答</small></span>
-              <span class="overview-cell"><strong id="overviewMistakes">0</strong><small>错题</small></span>
-              <span class="overview-cell"><strong id="overviewTrainings">0</strong><small>训练</small></span>
+              <span class="overview-cell"><strong id="overviewPosts">0</strong><small data-i18n="试卷">试卷</small></span>
+              <span class="overview-cell"><strong id="overviewAnswers">0</strong><small data-i18n="作答">作答</small></span>
+              <span class="overview-cell"><strong id="overviewMistakes">0</strong><small data-i18n="错题">错题</small></span>
+              <span class="overview-cell"><strong id="overviewTrainings">0</strong><small data-i18n="训练">训练</small></span>
             </div>
 
           </div>
-          <button id="studentAvatarButton" class="student-profile" type="button" data-action="switch-student" aria-label="切换当前学生"><span id="studentAvatar" class="student-avatar" aria-hidden="true"></span><span class="student-profile-copy"><strong id="studentProfileName">正在加载</strong><small>当前学生 · 点击切换</small></span></button>
+          <button id="studentAvatarButton" class="student-profile" type="button" data-action="switch-student" aria-label="切换当前学生"><span id="studentAvatar" class="student-avatar" aria-hidden="true"></span><span class="student-profile-copy"><strong id="studentProfileName">正在加载</strong><small data-i18n="当前学生 · 点击切换">当前学生 · 点击切换</small></span></button>
           <select id="activeStudentSelect" hidden aria-label="当前学生"></select>
           <div class="side-utils">
             <button class="side-util" id="guideButton" type="button" data-action="show-guide">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.2 9a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4"/><line x1="12" y1="17.4" x2="12.01" y2="17.4"/></svg>
-              <span class="side-util-label">使用引导</span>
+              <span class="side-util-label" data-i18n="使用引导">使用引导</span>
             </button>
             <button class="side-util" id="aboutButton" type="button" data-action="show-about">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="11" x2="12" y2="16.5"/><line x1="12" y1="7.6" x2="12.01" y2="7.6"/></svg>
-              <span class="side-util-label">关于声明</span>
+              <span class="side-util-label" data-i18n="关于声明">关于声明</span>
+            </button>
+            <button class="side-util" id="langToggle" type="button" data-action="toggle-language">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span class="side-util-label" data-i18n="切换到 English">切换到 English</span>
             </button>
             <button class="side-util" id="themeToggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="外观模式：跟随系统">
               <svg class="theme-icon theme-icon-system" data-mode="system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 21a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg>
               <svg class="theme-icon theme-icon-light" data-mode="light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="4.3" y1="4.3" x2="6.1" y2="6.1"/><line x1="17.9" y1="17.9" x2="19.7" y2="19.7"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="4.3" y1="19.7" x2="6.1" y2="17.9"/><line x1="17.9" y1="6.1" x2="19.7" y2="4.3"/></svg>
               <svg class="theme-icon theme-icon-dark" data-mode="dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-              <span class="side-util-label">跟随系统</span>
+              <span class="side-util-label" id="themeUtilLabel">跟随系统</span>
             </button>
             <button class="side-util" id="sidebarToggle" type="button" aria-label="折叠侧边栏">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
-              <span class="side-util-label">收起</span>
+              <span class="side-util-label" data-i18n="收起">收起</span>
             </button>
           </div>
         </div>
@@ -1252,7 +1257,7 @@
 
       <main class="main">
         <header class="page-head">
-          <div><h1 id="pageTitle">采集浏览</h1><p id="pageSubtitle">在小红书网页中登录、浏览并采集试卷。</p></div>
+          <div><h1 id="pageTitle" data-i18n="采集浏览">采集浏览</h1><p id="pageSubtitle" data-i18n="在小红书网页中登录、浏览并采集试卷。">在小红书网页中登录、浏览并采集试卷。</p></div>
           <button class="btn small-btn" type="button" data-action="switch-student" id="currentStudentLabel" aria-live="polite">正在加载当前学生</button>
         </header>
 
@@ -1303,15 +1308,15 @@
           </div>
           <div class="surface panel">
             <div class="section-head">
-              <div><h2 id="postDetailTitle">试卷详情</h2><p class="muted small" id="postDetailMeta">拖动页面卡片调整打印顺序；也可用前后移按钮微调。</p></div>
+              <div><h2 id="postDetailTitle" data-i18n="试卷详情">试卷详情</h2><p class="muted small" id="postDetailMeta">拖动页面卡片调整打印顺序；也可用前后移按钮微调。</p></div>
             </div>
             <div class="page-grid" id="postPages"></div>
           </div>
           <div class="toolbar detail-actions">
             <button class="btn" type="button" id="resetPostOrderBtn" data-action="reset-post-order" hidden>恢复原始页序</button>
-            <button class="btn" type="button" data-action="pick-post-detail-files">补充图片</button>
-            <button class="btn primary" type="button" data-action="post-pdf">生成 PDF</button>
-            <button class="btn" type="button" data-action="print">直接打印</button>
+            <button class="btn" type="button" data-action="pick-post-detail-files" data-i18n="补充图片">补充图片</button>
+            <button class="btn primary" type="button" data-action="post-pdf" data-i18n="生成 PDF">生成 PDF</button>
+            <button class="btn" type="button" data-action="print" data-i18n="直接打印">直接打印</button>
             <input class="file-input" id="postDetailFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple />
           </div>
         </section>
@@ -1332,7 +1337,7 @@
           <div class="toolbar" style="margin-top:18px">
             <input class="field" id="printTitle" style="max-width:260px" value="试卷" aria-label="PDF 文件名" />
             <button class="btn primary" type="button" data-action="make-pdf">生成 PDF（下载）</button>
-            <button class="btn" type="button" data-action="print">直接打印</button>
+            <button class="btn" type="button" data-action="print" data-i18n="直接打印">直接打印</button>
           </div>
         </section>
 
@@ -1345,39 +1350,39 @@
             </div>
             <div id="gradeImportArea">
             <div class="import-tabs" role="tablist" aria-label="作答导入方式">
-              <button class="import-tab active" id="gradeTabLocal" type="button" role="tab" aria-selected="true" aria-controls="gradePaneLocal">本地导入</button>
-              <button class="import-tab" id="gradeTabMobile" type="button" role="tab" aria-selected="false" aria-controls="gradePaneMobile">手机上传</button>
+              <button class="import-tab active" id="gradeTabLocal" type="button" role="tab" aria-selected="true" aria-controls="gradePaneLocal" data-i18n="本地导入">本地导入</button>
+              <button class="import-tab" id="gradeTabMobile" type="button" role="tab" aria-selected="false" aria-controls="gradePaneMobile" data-i18n="手机上传">手机上传</button>
             </div>
             <div class="import-pane" id="gradePaneLocal" role="tabpanel">
               <div class="dropzone" data-drop-kind="grade">
-                <strong>本地导入作答照片</strong>
-                <p>选择照片、PDF 或使用电脑摄像头拍摄；PDF 需要系统提供 Poppler，页面会在本机转成图片（最多 24 页），先检查顺序再保存。</p>
-                <div class="toolbar"><button class="btn" type="button" data-action="pick-grade">选择照片</button><button class="btn" type="button" data-action="pick-grade-camera">拍摄作答页</button><button class="btn ghost" type="button" data-action="clear-grade">清空待保存图片</button></div>
+                <strong data-i18n="本地导入作答照片">本地导入作答照片</strong>
+                <p data-i18n="选择照片、PDF 或使用电脑摄像头拍摄；PDF 需要系统提供 Poppler，页面会在本机转成图片（最多 24 页），先检查顺序再保存。">选择照片、PDF 或使用电脑摄像头拍摄；PDF 需要系统提供 Poppler，页面会在本机转成图片（最多 24 页），先检查顺序再保存。</p>
+                <div class="toolbar"><button class="btn" type="button" data-action="pick-grade" data-i18n="选择照片">选择照片</button><button class="btn" type="button" data-action="pick-grade-camera" data-i18n="拍摄作答页">拍摄作答页</button><button class="btn ghost" type="button" data-action="clear-grade" data-i18n="清空待保存图片">清空待保存图片</button></div>
                 <input class="file-input" id="gradeFiles" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple />
                 <input class="file-input" id="gradeCamera" type="file" accept="image/*" capture="environment" multiple />
               </div>
             </div>
             <div class="import-pane" id="gradePaneMobile" role="tabpanel" hidden>
               <div class="surface panel" style="padding:18px">
-                <div class="section-head" style="margin:0 0 12px"><div><h3>手机扫码上传作答</h3><p class="muted small">手机与电脑连接同一 Wi-Fi，扫描二维码或输入局域网地址上传；照片会进入下方「待保存页面」，核对后点「保存作答记录」才入库。</p></div><span class="pill" id="lanStateLabel">已关闭</span></div>
-                <div class="toolbar"><button class="switch" id="lanSwitch" type="button" role="switch" aria-checked="false" aria-label="开启局域网手机上传"></button><span id="lanText">局域网访问已关闭</span><button class="btn small-btn" type="button" data-action="copy-upload-link">复制手机地址</button></div>
+                <div class="section-head" style="margin:0 0 12px"><div><h3 data-i18n="手机扫码上传作答">手机扫码上传作答</h3><p class="muted small" data-i18n="手机与电脑连接同一 Wi-Fi，扫描二维码或输入局域网地址上传；照片会进入下方「待保存页面」，核对后点「保存作答记录」才入库。">手机与电脑连接同一 Wi-Fi，扫描二维码或输入局域网地址上传；照片会进入下方「待保存页面」，核对后点「保存作答记录」才入库。</p></div><span class="pill" id="lanStateLabel">已关闭</span></div>
+                <div class="toolbar"><button class="switch" id="lanSwitch" type="button" role="switch" aria-checked="false" aria-label="开启局域网手机上传"></button><span id="lanText">局域网访问已关闭</span><button class="btn small-btn" type="button" data-action="copy-upload-link" data-i18n="复制手机地址">复制手机地址</button></div>
                 <div id="uploadQrCodes" hidden style="margin-top:16px;display:flex;flex-wrap:wrap;gap:20px"></div>
                 <p class="muted small" id="uploadUrl" style="overflow-wrap:anywhere;white-space:pre-line;margin-top:10px">关闭状态</p>
               </div>
             </div>
             </div>
             <div id="gradeEditorArea" hidden>
-            <div class="section-head" style="margin-top:18px"><h3>待保存页面 <span class="pill blue" id="gradePageCount">0 页</span></h3></div>
+            <div class="section-head" style="margin-top:18px"><h3><span data-i18n="待保存页面">待保存页面</span> <span class="pill blue" id="gradePageCount">0 页</span></h3></div>
             <div class="page-grid" id="gradePages"></div>
-            <div class="toolbar" style="margin-top:14px"><button class="btn primary" type="button" data-action="save-answer">保存作答记录</button><span class="muted small">图片保存在本机，不会自动发送给 AI。</span></div>
+            <div class="toolbar" style="margin-top:14px"><button class="btn primary" type="button" data-action="save-answer" data-i18n="保存作答记录">保存作答记录</button><span class="muted small" data-i18n="图片保存在本机，不会自动发送给 AI。">图片保存在本机，不会自动发送给 AI。</span></div>
             </div>
           </div>
-          <div class="section-head" style="margin-top:24px"><div><h2>本地作答记录</h2><p class="muted small">每份记录可继续批阅或查看已确认报告。</p></div>
+          <div class="section-head" style="margin-top:24px"><div><h2 data-i18n="本地作答记录">本地作答记录</h2><p class="muted small" data-i18n="每份记录可继续批阅或查看已确认报告。">每份记录可继续批阅或查看已确认报告。</p></div>
             <select id="answerSubjectFilter" class="field filter-select" aria-label="按科目筛选"></select>
           </div>
           <div class="post-list" id="answerList"></div>
           <nav class="pager" id="answerPager" aria-label="作答记录分页"></nav>
-          <div class="empty" id="answerEmpty" hidden><strong>还没有学生作答记录</strong>导入学生完成后的照片，再开始批阅。</div>
+          <div class="empty" id="answerEmpty" hidden><strong data-i18n="还没有学生作答记录">还没有学生作答记录</strong><span data-i18n="导入学生完成后的照片，再开始批阅。">导入学生完成后的照片，再开始批阅。</span></div>
         </section>
 
         <section class="screen" id="s3" aria-label="批阅确认">
@@ -1467,8 +1472,8 @@
             <button class="btn small-btn" type="button" data-action="toggle-mistake-select-all">全选当前筛选结果</button>
             <button class="btn small-btn" type="button" data-action="clear-mistake-selection">清空勾选</button>
             <span class="spacer" style="flex:1"></span>
-            <button class="btn" type="button" data-action="export-mistake-pdf">生成 PDF</button>
-            <button class="btn" type="button" data-action="print-mistakes">直接打印</button>
+            <button class="btn" type="button" data-action="export-mistake-pdf" data-i18n="生成 PDF">生成 PDF</button>
+            <button class="btn" type="button" data-action="print-mistakes" data-i18n="直接打印">直接打印</button>
           </div>
           <div class="surface mistake-list" id="mistakeList"></div>
           <nav class="pager" id="mistakePager" aria-label="错题本分页"></nav>
@@ -1565,7 +1570,7 @@
   </dialog>
   <dialog class="dialog" id="aboutDialog" style="width:min(660px, calc(100% - 32px))">
     <div class="dialog-inner">
-      <h2>关于家卷 · 使用声明</h2>
+      <h2 data-i18n="关于家卷 · 使用声明">关于家卷 · 使用声明</h2>
       <p><b>家卷（exam2pdf）</b>面向家庭学习场景：整理打印 → 拍照批阅，全程在本机完成，学生资料不上传服务器。</p>
       <p><b>仅限非商业用途。</b>本项目按 PolyForm Noncommercial 1.0.0 许可发布：售卖安装包、付费分发、捆绑广告或推广变现均未获授权；再分发修改版须随附许可、保留版权行并改名，不得暗示官方出品。</p>
       <p><b>资料来源请自行确认。</b>平台公开图片不等于可任意下载传播，请使用自行制作或已获授权的试卷资料；处理真实学生信息前应取得必要授权，涉及未成年人由监护人确认处理范围。</p>
@@ -1826,7 +1831,7 @@
       </div>
       <div class="toolbar" style="margin:12px 0"><span id="studentAvatarPreview" class="student-avatar" aria-hidden="true"></span><button class="btn small-btn" type="button" data-action="pick-student-avatar">选择本地图片</button><button class="btn small-btn" type="button" data-action="reset-student-avatar">使用系统预置</button><span class="muted small">居中裁为方形 · JPG / PNG / WebP</span></div>
       <div class="student-roster" id="studentRoster"></div>
-      <details style="margin-top:18px"><summary>整机备份与维护（所有学生）</summary><p class="muted small">包含所有学生名册与学习资料；恢复会替换所有学生的数据，不是仅恢复当前学生。</p><div class="toolbar"><button class="btn" type="button" data-action="backup">导出整机备份</button><button class="btn" type="button" data-action="restore-backup">恢复整机备份</button><button class="btn" type="button" data-action="export-diagnostics">导出诊断信息</button></div></details>
+      <details style="margin-top:18px"><summary data-i18n="整机备份与维护（所有学生）">整机备份与维护（所有学生）</summary><p class="muted small">包含所有学生名册与学习资料；恢复会替换所有学生的数据，不是仅恢复当前学生。</p><div class="toolbar"><button class="btn" type="button" data-action="backup" data-i18n="导出整机备份">导出整机备份</button><button class="btn" type="button" data-action="restore-backup" data-i18n="恢复整机备份">恢复整机备份</button><button class="btn" type="button" data-action="export-diagnostics" data-i18n="导出诊断信息">导出诊断信息</button></div></details>
       <details style="margin-top:10px"><summary>小红书浏览数据</summary><p class="muted small" id="xhsCacheSummary">点击「刷新占用」查看当前占用。缓存是浏览产生的临时文件，清理不影响登录；重置会退出小红书并清空全部网页数据，学生资料不受影响。</p><div class="toolbar"><button class="btn" type="button" data-action="refresh-xhs-stats">刷新占用</button><button class="btn" type="button" data-action="clear-xhs-cache">清理缓存（保留登录）</button><button class="btn danger" type="button" data-action="reset-xhs-data">重置网页数据（退出登录）</button></div></details>
 
       <div class="dialog-actions">
@@ -1895,6 +1900,7 @@
 
   <script src="../frontend/page-reorder.js"></script>
   <script src="../frontend/student-focus.js"></script>
+  <script src="../frontend/i18n.js"></script>
   <script>
     window.__exam2pdfBootComplete = false;
     function reportBootError(reason) {
@@ -1912,6 +1918,9 @@
       const reason = event.reason;
       reportBootError(reason?.stack || reason?.message || reason);
     });
+    // 多语言：中文为源语言；tt 走 i18n 字典，未覆盖键回退中文原文
+    const tt = (key, params) => window.exam2pdfI18n ? window.exam2pdfI18n.t(key, params) : key;
+    if (window.exam2pdfI18n) window.exam2pdfI18n.applyStatic();
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
     const screenInfo = {
@@ -2034,8 +2043,8 @@
         item.classList.toggle("active", active);
         if (active) item.setAttribute("aria-current", "page"); else item.removeAttribute("aria-current");
       });
-      $("#pageTitle").textContent = screenInfo[id][0];
-      $("#pageSubtitle").textContent = screenInfo[id][1];
+      $("#pageTitle").textContent = tt(screenInfo[id][0]);
+      $("#pageSubtitle").textContent = tt(screenInfo[id][1]);
       const head = document.querySelector(".page-head");
       if (head) {
         head.classList.remove("head-switch");
@@ -2124,9 +2133,9 @@
           '<div class="post-head">' +
             '<button class="post-open" type="button" data-action="open-post" data-id="' + escapeHtml(post.id) + '">' +
               '<strong>' + escapeHtml(post.title) + '</strong>' +
-            '<span class="post-meta">' +  '<span class="pill">' + escapeHtml(post.subject || "未分类") + '</span><span>' + Number(post.pages || (post.pageOrder || []).length) + ' 张图</span>' + (post.missingImages ? '<span class="missing-count">原帖图片已采集 ' + Number(post.sourcePageCount == null ? (post.pages || 0) : post.sourcePageCount) + '/' + Number(post.expectedImages || 0) + ' 张，还缺 ' + post.missingImages + ' 张，可重试采集</span>' : '') + (post.supplementalImages ? '<span>另补充 ' + post.supplementalImages + ' 张本地图片</span>' : '') + '<span>' + escapeHtml(post.author || "") + '</span><span>' + escapeHtml(formatPostDate(post)) + '</span><span>来源：' + escapeHtml(post.source) + '</span></span>' +
+            '<span class="post-meta">' +  '<span class="pill">' + escapeHtml(post.subject || "未分类") + '</span><span>' + tt('{n} 张图', { n: Number(post.pages || (post.pageOrder || []).length) }) + '</span>' + (post.missingImages ? '<span class="missing-count">原帖图片已采集 ' + Number(post.sourcePageCount == null ? (post.pages || 0) : post.sourcePageCount) + '/' + Number(post.expectedImages || 0) + ' 张，还缺 ' + post.missingImages + ' 张，可重试采集</span>' : '') + (post.supplementalImages ? '<span>另补充 ' + post.supplementalImages + ' 张本地图片</span>' : '') + '<span>' + escapeHtml(post.author || "") + '</span><span>' + escapeHtml(formatPostDate(post)) + '</span><span>' + tt('来源：{x}', { x: escapeHtml(post.source) }) + '</span></span>' +
             '</button>' +
-            '<div class="post-ops"><button class="btn small-btn" type="button" data-action="print-post" data-id="' + escapeHtml(post.id) + '">打印</button><button class="btn small-btn" type="button" data-action="rename-post" data-id="' + escapeHtml(post.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="delete-post" data-id="' + escapeHtml(post.id) + '">删除</button></div>' +
+            '<div class="post-ops"><button class="btn small-btn" type="button" data-action="print-post" data-id="' + escapeHtml(post.id) + '">' + tt("打印") + '</button><button class="btn small-btn" type="button" data-action="rename-post" data-id="' + escapeHtml(post.id) + '">' + tt("编辑") + '</button><button class="btn danger small-btn" type="button" data-action="delete-post" data-id="' + escapeHtml(post.id) + '">' + tt("删除") + '</button></div>' +
           '</div>' +
         '</article>'
         );
@@ -2223,7 +2232,7 @@
       $("#postDetailTitle").textContent = post.title;
       $("#postDetailMeta").textContent = [
         post.author ? "作者：" + post.author : "",
-        post.sourceUrl ? "来源：小红书" : "来源：" + (post.source || "本地导入"),
+        post.sourceUrl ? "来源：小红书" : tt("来源：{x}", { x: post.source || "本地导入" }),
         post.missingImages ? "小红书图片已采集 " + Number(post.sourcePageCount == null ? post.pages : post.sourcePageCount) + "/" + post.expectedImages + " 张，还缺 " + post.missingImages + " 张" : "",
         post.removedImages > 0 ? "已移除 " + post.removedImages + " 页（原文件保留，可恢复）" : "",
         post.supplementalImages ? "另补充 " + post.supplementalImages + " 张本地图片" : "",
@@ -2258,7 +2267,7 @@
       const pages = state[kind + "Pages"];
       const target = $("#" + kind + "Pages");
       const count = $("#" + kind + "PageCount");
-      if (count) count.textContent = pages.length + " 页";
+      if (count) count.textContent = tt("{n} 页", { n: pages.length });
       target.innerHTML = pages.map((page, index) => (
         '<div class="page-item">' +
           '<article class="page-tile">' +
@@ -2271,7 +2280,7 @@
           '<div class="page-caption"><strong>' + (index + 1) + '</strong></div>' +
         '</div>'
       )).join("");
-      if (kind === "grade") updateGradeImportVisibility();
+      if (kind === "grade") { updateGradeImportVisibility(); persistGradeStaging(); }
     }
     // 待保存页面有内容时整块覆盖导入区（本地导入 + 手机二维码）；清空或保存后回到导入流程
     function updateGradeImportVisibility() {
@@ -2294,7 +2303,7 @@
       if (!window.exam2pdfPageReorder.moveArrayItem(order, from, to)) return;
       renderPostDetail();
       persistPostOrder(post);
-      toast("页面顺序已调整");
+      toast(tt("页面顺序已调整"));
     }
     function reorderAnswerPages(from, to) {
       if (!state.currentAnswer) return;
@@ -2313,7 +2322,7 @@
       list.innerHTML = paged.slice.map((answer) => {
         const label = answer.reviewStatus === "confirmed" ? "已确认" : answer.reviewStatus === "draft" ? "草稿" : "待批阅";
         const action = answer.reviewStatus === "confirmed" ? "open-answer-report" : "open-answer-review";
-        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta">' + '<span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + answer.pages + ' 张作答</span>' + (linkedPostOf(answer) ? '<span>原卷：' + escapeHtml(linkedPostOf(answer).title) + '</span>' : '') + '<span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">删除</button></div></div></article>';
+        return '<article class="surface post-card"><div class="post-head"><button class="post-open" type="button" data-action="' + action + '" data-id="' + escapeHtml(answer.id) + '"><strong>' + escapeHtml(answer.title) + '</strong><span class="post-meta">' + '<span class="pill">' + escapeHtml(answer.subject || "未分类") + '</span><span>' + tt('{n} 张作答', { n: answer.pages }) + '</span>' + (linkedPostOf(answer) ? '<span>原卷：' + escapeHtml(linkedPostOf(answer).title) + '</span>' : '') + '<span>' + escapeHtml(formatPostDate(answer)) + '</span></span></button><div class="post-ops"><span class="pill ' + (answer.reviewStatus === "confirmed" ? "green" : "amber") + '">' + label + '</span><button class="btn small-btn" type="button" data-action="rename-answer" data-id="' + escapeHtml(answer.id) + '">' + tt("编辑") + '</button><button class="btn danger small-btn" type="button" data-action="delete-answer" data-id="' + escapeHtml(answer.id) + '">' + tt("删除") + '</button></div></div></article>';
       }).join("");
       $("#answerEmpty").hidden = filtered.length > 0;
       renderGradeLinkedPost();
@@ -2576,42 +2585,112 @@
         image.style.cssText = "display:block;width:220px;max-width:100%;height:auto;background:#fff;border-radius:8px";
         const caption = document.createElement("figcaption");
         caption.className = "muted small";
-        caption.textContent = "手机扫码上传 · " + (state.students.find(student => student.id === state.activeStudentId)?.name || "当前学生") + (state.mobileUpload.urls.length > 1 ? " · 地址 " + (index + 1) : "");
+        caption.textContent = tt("手机扫码上传 · ") + (state.students.find(student => student.id === state.activeStudentId)?.name || "当前学生") + (state.mobileUpload.urls.length > 1 ? " · 地址 " + (index + 1) : "");
         figure.append(image, caption); qrContainer.append(figure);
       });
       $("#lanSwitch").setAttribute("aria-checked", String(enabled));
       $("#lanSwitch").disabled = false;
-      $("#lanStateLabel").textContent = enabled ? "已开启" : "已关闭";
-      $("#lanText").textContent = enabled ? "同一 Wi-Fi 下可上传作答照片" : "局域网访问已关闭";
+      $("#lanStateLabel").textContent = tt(enabled ? "已开启" : "已关闭");
+      $("#lanText").textContent = tt(enabled ? "同一 Wi-Fi 下可上传作答照片" : "局域网访问已关闭");
       $("#uploadUrl").textContent = enabled
-        ? (state.mobileUpload.urls.length ? state.mobileUpload.urls.join("\n") : "已开启，但没有检测到局域网 IPv4 地址。请检查电脑的 Wi-Fi 连接。")
-        : "关闭状态";
+        ? (state.mobileUpload.urls.length ? state.mobileUpload.urls.join("\n") : tt("已开启，但没有检测到局域网 IPv4 地址。请检查电脑的 Wi-Fi 连接。"))
+        : tt("关闭状态");
     }
     // 手机上传的照片与本地导入走同一条流水线：压缩 → state.gradePages 暂存区 →
     // 用户调序核对后点「保存作答记录」才真正入库
     async function receiveMobileUpload(payload) {
       const images = Array.isArray(payload.images) ? payload.images : [];
       if (!images.length) return;
-      if (!$("#gradeTitle").value.trim() && payload.title && payload.title !== "手机上传作答") $("#gradeTitle").value = payload.title;
+      // 批次归属上传时的学生（payload.studentId）：与当前学生不一致时落入该学生的
+      // 暂存文件，绝不串到当前学生名下（收件箱重放/切换学生窗口都可能出现这种情况）
+      const payloadStudentId = typeof payload.studentId === "string" ? payload.studentId : "";
+      const forOtherStudent = Boolean(payloadStudentId && payloadStudentId !== state.activeStudentId);
+      // 24 页上限守卫（只约束当前学生的 UI 暂存）：装不下就整批拒收并明确告知
+      // （收件箱删除，图片仍在手机上可重传），绝不静默截断——那才是"多传几张就丢内容"的根源
+      if (!forOtherStudent) {
+        const overflow = state.gradePages.length + images.length - 24;
+        if (overflow > 0) {
+          toast(tt("待保存页面已有 {n} 页，本批 {m} 张会超出 24 页上限：请先保存或清空已收页面，再重新上传。", { n: state.gradePages.length, m: images.length }));
+          if (payload.inboxFile && typeof desktop?.discardMobileUploadInbox === "function") {
+            try { await desktop.discardMobileUploadInbox(payload.inboxFile); } catch { /* 下次启动重放时会再次拦截 */ }
+          }
+          return;
+        }
+      }
+      if (!forOtherStudent && !$("#gradeTitle").value.trim() && payload.title && payload.title !== "手机上传作答") $("#gradeTitle").value = payload.title;
       const title = $("#gradeTitle").value.trim() || payload.title || "手机上传作答";
-      toast("正在整理手机上传的 " + images.length + " 张照片…");
-      try {
-        const staged = [];
-        for (const [index, image] of images.entries()) {
+      toast(tt("正在整理手机上传的 {n} 张照片…", { n: images.length }));
+      // 单张失败只跳过该张，不再整批丢弃；收件箱文件保留到成功为止，重启可恢复
+      const staged = [];
+      let failed = 0;
+      for (const [index, image] of images.entries()) {
+        try {
           const binary = atob(image.base64);
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
           const blob = new Blob([bytes], { type: image.mime });
           try { blob.name = title + "-" + (index + 1); } catch { /* 只影响出错提示文案 */ }
           staged.push(await importImage(blob, { kind: "answer" }));
-        }
-        state.gradePages.push(...staged);
-        renderPageGrid("grade");
-        switchScreen("s1b");
-        showMobileUploadReceived({ title, pages: staged.length });
-      } catch (error) {
-        toast("整理手机上传照片失败：" + (error.message || "请重试"));
+        } catch { failed++; }
       }
+      if (!staged.length) { toast(tt("整理手机上传照片失败：{n} 张全部无法解析", { n: failed })); return; }
+      if (forOtherStudent) {
+        // 非当前学生的批次：写入该学生的暂存文件（名册校验在主进程），当前界面不受影响
+        try { await desktop.saveGradeStagingFor(payloadStudentId, staged); }
+        catch { toast(tt("暂存落盘失败：数据保留在收件箱，重启应用会自动恢复")); return; }
+        if (payload.inboxFile && typeof desktop?.discardMobileUploadInbox === "function") {
+          try { await desktop.discardMobileUploadInbox(payload.inboxFile); } catch {}
+        }
+        const studentName = state.students.find(student => student.id === payloadStudentId)?.name || "其他学生";
+        toast(tt("已收到 {n} 张，归属学生 {name}；切换到该学生后核对保存", { n: staged.length, name: studentName }));
+        return;
+      }
+      state.gradePages.push(...staged);
+      renderPageGrid("grade");
+      switchScreen("s1b");
+      // 先立即落盘暂存，成功后才删收件箱；落盘失败保留收件箱，重启自动恢复
+      const saveOk = await saveGradeStagingNow();
+      if (!saveOk) { toast(tt("暂存落盘失败：数据保留在收件箱，重启应用会自动恢复")); return; }
+      if (payload.inboxFile && typeof desktop?.discardMobileUploadInbox === "function") {
+        try { await desktop.discardMobileUploadInbox(payload.inboxFile); } catch {}
+      }
+      if (failed) toast(tt("已收到 {n} 张，其中 {m} 张无法解析已跳过", { n: staged.length, m: failed }));
+      if (staged.length) showMobileUploadReceived({ title, pages: staged.length });
+    }
+    // 立即落盘（不走防抖）并返回成败——收件箱的删除以它为前提，杜绝落盘失败却删了收件箱
+    async function saveGradeStagingNow() {
+      if (typeof desktop?.saveGradeStaging !== "function") return true;
+      try { await desktop.saveGradeStaging(state.gradePages); return true; }
+      catch { return false; }
+    }
+    // 暂存持久化：待保存页面按学生落盘，重启/切换学生/语言切换重载都不丢
+    let gradeStagingTimer = null;
+    function persistGradeStaging() {
+      if (!desktop || typeof desktop.saveGradeStaging !== "function") return;
+      clearTimeout(gradeStagingTimer);
+      gradeStagingTimer = setTimeout(() => { void desktop.saveGradeStaging(state.gradePages).catch(() => {}); }, 400);
+    }
+    async function clearGradeStaging() {
+      clearTimeout(gradeStagingTimer);
+      if (typeof desktop?.clearGradeStaging === "function") { try { await desktop.clearGradeStaging(); } catch {} }
+    }
+    async function restoreGradeStaging() {
+      if (typeof desktop?.loadGradeStaging !== "function") return;
+      try {
+        const pages = await desktop.loadGradeStaging();
+        if (pages.length) {
+          state.gradePages = pages.slice();
+          renderPageGrid("grade");
+          toast(tt("已恢复上次未保存的 {n} 页待保存页面", { n: state.gradePages.length }));
+        }
+      } catch { /* 恢复失败按空处理，不影响启动 */ }
+    }
+    async function recoverPendingUploads() {
+      if (typeof desktop?.listPendingMobileUploads !== "function") return;
+      try {
+        const pending = await desktop.listPendingMobileUploads();
+        for (const payload of pending) await receiveMobileUpload(payload);
+      } catch { /* 收件箱保留，下次启动重放 */ }
     }
     function showMobileUploadReceived(detail) {
       const studentName = state.students.find(student => student.id === state.activeStudentId)?.name || "当前学生";
@@ -2977,7 +3056,7 @@
           }
           pages.push(...additions);
           renderPageGrid(kind);
-          toast("已加入 " + additions.length + " 页作答内容");
+          toast(tt("已加入 {n} 页作答内容", { n: additions.length }));
         } catch (error) { toast("读取作答图片失败：" + (error.message || "请重试")); }
         return;
       }
@@ -2987,7 +3066,7 @@
       const start = pages.length;
       files.forEach((_, index) => pages.push(start + index + 1));
       renderPageGrid(kind);
-      toast("已加入 " + files.length + " 页（整理打印示例）");
+      toast(tt("已加入 {n} 页（整理打印示例）", { n: files.length }));
     }
     // 保存前把暂存页的旋转烘焙进图片字节（画布转正），入库后的作答不再需要旋转元数据
     async function bakePageRotation(item) {
@@ -3027,6 +3106,7 @@
         const images = await Promise.all(state.gradePages.map(bakePageRotation));
         const result = await desktop.createAnswer({ title, studentName, studentId, subject, linkedPostId: linkedPostId || null, images });
         state.gradePages = [];
+        await clearGradeStaging();
         $("#gradeTitle").value = "";
         renderPageGrid("grade");
         await loadAnswers();
@@ -3506,7 +3586,7 @@
     function resetStudentEdit() { avatarEditEpoch++; editingStudentAvatar = null; editingStudentId = null; $("#studentNameInput").value = ""; $("#studentGenderInput").value = "male"; $("#saveStudentButton").textContent = "添加学生"; $("#cancelStudentEdit").hidden = true; renderAvatarPreview(); }
     function renderStudentRoster() {
       const roster = $("#studentRoster"); if (!roster) return;
-      roster.innerHTML = state.students.map(student => '<div class="student-row"><span class="student-avatar" aria-hidden="true">' + studentAvatar(student) + '</span><strong>' + escapeHtml(student.name) + '</strong>' + (student.id === state.activeStudentId ? '<span class="pill green">当前</span>' : '') + '<button class="btn small-btn" type="button" data-action="rename-student" data-id="' + escapeHtml(student.id) + '">编辑</button><button class="btn danger small-btn" type="button" data-action="remove-student" data-id="' + escapeHtml(student.id) + '">移除</button></div>').join("");
+      roster.innerHTML = state.students.map(student => '<div class="student-row"><span class="student-avatar" aria-hidden="true">' + studentAvatar(student) + '</span><strong>' + escapeHtml(student.name) + '</strong>' + (student.id === state.activeStudentId ? '<span class="pill green">当前</span>' : '') + '<button class="btn small-btn" type="button" data-action="rename-student" data-id="' + escapeHtml(student.id) + '">' + tt("编辑") + '</button><button class="btn danger small-btn" type="button" data-action="remove-student" data-id="' + escapeHtml(student.id) + '">' + tt("移除") + '</button></div>').join("");
     }
     function renderStudentControls() {
       const select = $("#activeStudentSelect");
@@ -3564,11 +3644,11 @@
       if (!post || !desktop || !post.images) { toast("请先打开已采集或导入的试卷"); return; }
       if (postExportBusy) { toast("正在准备上一次打印或导出，请稍候"); return; }
       postExportBusy = true;
-      toast(kind === "pdf" ? "正在生成 PDF…" : "正在准备打印…");
+      toast(kind === "pdf" ? tt("正在生成 PDF…") : tt("正在准备打印…"));
       try {
         if (kind === "pdf") {
           const result = await desktop.generatePostPdf(post.id, post.pageOrder, post.title);
-          toast(result.canceled ? "已取消 PDF 保存" : "PDF 已保存：" + result.filePath);
+          toast(result.canceled ? tt("已取消 PDF 保存") : tt("PDF 已保存：{x}", { x: result.filePath }));
         } else {
           const session = await desktop.preparePostPrint(post.id, post.pageOrder, post.title);
           if (!session.pages.length) throw new Error("这份试卷没有可打印的图片");
@@ -3862,6 +3942,10 @@
       const action = button.dataset.action;
       if (action === "show-info") $("#infoDialog").showModal();
       if (action === "show-about") $("#aboutDialog").showModal();
+      if (action === "toggle-language") {
+        if (window.exam2pdfI18n) window.exam2pdfI18n.setLanguage(window.exam2pdfI18n.isEnglish() ? "zh-CN" : "en");
+        return;
+      }
       if (action === "show-guide") openGuide();
       if (action === "close-dialog") button.closest("dialog").close();
       if (action === "switch-student") { renderStudentControls(); $("#studentSwitchDialog").showModal(); }
@@ -4013,8 +4097,9 @@
       }
       if (action === "install-update") {
         if (!desktop || typeof desktop.installAppUpdate !== "function") return;
-        desktop.installAppUpdate();
+        desktop.installAppUpdate().catch((error) => toast(tt("安装失败：") + (error.message || "")));
       }
+      if (action === "check-update") { void desktop.checkForAppUpdate().catch(() => {}); }
       if (action === "open-update-page") {
         if (typeof desktop.openLatestReleasePage === "function") desktop.openLatestReleasePage();
         else window.open("https://github.com/nerkeler/exam2pdf/releases/latest", "_blank");
@@ -4105,7 +4190,7 @@
       if (action === "move-answer-page" && state.currentAnswer) {
         const order = state.currentAnswer.pageOrder.slice();
         if (moveItem(order, Number(button.dataset.index), Number(button.dataset.dir))) await persistAnswerOrder(order);
-        else toast("已经到最前或最后");
+        else toast(tt("已经到最前或最后"));
       }
       if (action === "remove-answer-page" && state.currentAnswer) {
         if (state.currentAnswer.pageOrder.length <= 1) { toast("至少保留一张作答图片"); return; }
@@ -4424,19 +4509,26 @@
       const text = $("#updateBannerText");
       const actions = $("#updateBannerActions");
       if (!banner || !state) return;
-      if (["idle", "checking", "not-available", "error"].includes(state.stage)) { banner.hidden = true; return; }
+      if (["idle", "checking", "not-available"].includes(state.stage)) { banner.hidden = true; return; }
+      if (state.stage === "error") {
+        // 出错必须可见可操作：否则 macOS 签名暂存失败之类的问题完全静默
+        text.textContent = tt("更新检查失败：") + String(state.error || "").slice(0, 160);
+        actions.innerHTML = '<button class="btn small-btn" type="button" data-action="check-update">' + tt("重试") + '</button><button class="btn small-btn" type="button" data-action="open-update-page">' + tt("打开下载页") + "</button>";
+        banner.hidden = false;
+        return;
+      }
       if (state.stage === "available") {
-        text.textContent = "发现新版本 v" + state.version + (state.current ? "（当前 v" + state.current + "）" : "") +
-          (state.manualDownload ? "。当前安装包未签名，macOS 需要手动下载安装。" : "");
+        text.textContent = tt("发现新版本 v{v}", { v: state.version }) + (state.current ? tt("（当前 v{c}）", { c: state.current }) : "") +
+          (state.manualDownload ? tt("。当前安装包未签名，macOS 需要手动下载安装。") : "");
         actions.innerHTML = state.manualDownload
-          ? '<button class="btn small-btn" type="button" data-action="open-update-page">打开下载页</button>'
-          : '<button class="btn small-btn" type="button" data-action="download-update">下载更新</button>';
+          ? '<button class="btn small-btn" type="button" data-action="open-update-page">' + tt("打开下载页") + "</button>"
+          : '<button class="btn small-btn" type="button" data-action="download-update">' + tt("下载更新") + "</button>";
       } else if (state.stage === "downloading") {
-        text.textContent = "正在下载更新… " + (Number.isFinite(state.percent) ? state.percent + "%" : "");
+        text.textContent = tt("正在下载更新… {p}", { p: Number.isFinite(state.percent) ? state.percent + "%" : "" });
         actions.innerHTML = "";
       } else if (state.stage === "downloaded") {
-        text.textContent = "更新已下载，重启应用即可完成安装。";
-        actions.innerHTML = '<button class="btn small-btn primary" type="button" data-action="install-update">重启并安装</button>';
+        text.textContent = tt("更新已下载，重启应用即可完成安装。");
+        actions.innerHTML = '<button class="btn small-btn primary" type="button" data-action="install-update">' + tt("重启并安装") + "</button>";
       } else { banner.hidden = true; return; }
       banner.hidden = false;
     }
@@ -4459,15 +4551,15 @@
     gradeImportTabs.local.addEventListener("click", () => switchGradeImportTab("local"));
     gradeImportTabs.mobile.addEventListener("click", () => switchGradeImportTab("mobile"));
     $("#lanSwitch").addEventListener("click", async () => {
-      if (!desktop || typeof desktop.startMobileUpload !== "function") { toast("手机上传需要在 Electron 应用中开启"); return; }
+      if (!desktop || typeof desktop.startMobileUpload !== "function") { toast(tt("手机上传需要在 Electron 应用中开启")); return; }
       const shouldEnable = $("#lanSwitch").getAttribute("aria-checked") !== "true";
       $("#lanSwitch").disabled = true;
       try {
         const result = shouldEnable ? await desktop.startMobileUpload() : await desktop.stopMobileUpload();
         renderMobileUpload(result);
         if (shouldEnable) {
-          toast(result.urls.length ? "手机上传已开启；用手机扫描本页二维码" : "手机上传已开启，但未检测到局域网地址");
-        } else toast("手机上传已关闭，原地址随即失效");
+          toast(result.urls.length ? tt("手机上传已开启；用手机扫描本页二维码") : tt("手机上传已开启，但未检测到局域网地址"));
+        } else toast(tt("手机上传已关闭，原地址随即失效"));
       } catch (error) {
         $("#lanSwitch").disabled = false;
         if (typeof desktop.getMobileUploadState === "function") desktop.getMobileUploadState().then(renderMobileUpload).catch(() => {});
@@ -4485,7 +4577,7 @@
       try { renderMobileUpload(await desktop.startMobileUpload()); } catch { /* 保持关闭 */ }
     }
     if (desktop) {
-      void loadStudents().then(autoStartMobileUpload);
+      void loadStudents().then(async () => { await restoreGradeStaging(); await recoverPendingUploads(); await autoStartMobileUpload(); });
       if (typeof desktop.getAiSettings === "function") desktop.getAiSettings().then(renderAiSettings).catch((error) => toast("读取 AI 配置失败：" + (error.message || "请重试")));
     }
     renderPageGrid("print");

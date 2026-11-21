@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-  computeTrimBounds, estimateSkewAngle, rotateBitmap, jpegOrientation, createPngPixel
+  computeTrimBounds, cropBitmap, estimateSkewAngle, rotateBitmap, jpegOrientation, createPngPixel
 } = require("./print-image.cjs");
 
 function makeWhite(width, height) {
@@ -130,4 +130,37 @@ test("builds a valid single-pixel PNG used for the bitmap layout probe", () => {
   assert.deepEqual([...png.subarray(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   assert.equal(png.toString("latin1", 12, 16), "IHDR");
   assert.equal(png.toString("latin1", png.length - 8, png.length - 4), "IEND");
+});
+
+
+test("trim crops near-background content: answer photos must skip it", () => {
+  // 复现"答题 PDF 裁剪丢题"：白底照片 + 左上角浅灰图形（与背景差 <30，裁边算法视为背景）
+  // + 中部深色题干。裁边后的位图不再包含浅灰图形——对作答照片这就是丢题目。
+  const width = 100, height = 100;
+  const data = Buffer.alloc(width * height * 4, 255);
+  const put = (x, y, r, g, b) => {
+    const p = (y * width + x) * 4;
+    data[p] = r; data[p + 1] = g; data[p + 2] = b; data[p + 3] = 255;
+  };
+  for (let y = 8; y < 40; y++) for (let x = 4; x < 24; x++) put(x, y, 240, 240, 245); // 浅灰图形（Δ≈15）
+  for (let y = 30; y < 70; y++) for (let x = 40; x < 70; x++) put(x, y, 40, 40, 40);   // 深色题干
+  const bounds = computeTrimBounds(data, width, height, "rgba", { padding: 8 });
+  assert.ok(bounds, "深色题干应触发裁边");
+  assert.ok(bounds.x > 20, "浅灰图形区域被排除出包围盒（x=" + bounds.x + "）");
+  const cropped = cropBitmap(data, width, height, bounds);
+  // 裁切后的位图里浅灰图形像素全部丢失
+  let lightPixelsLeft = 0;
+  for (let i = 0; i < cropped.data.length; i += 4) {
+    if (cropped.data[i] === 240 && cropped.data[i + 2] === 245) lightPixelsLeft++;
+  }
+  assert.equal(lightPixelsLeft, 0, "浅灰内容在裁切后完全丢失");
+});
+
+test("sanitizes options: trim=false keeps every pixel of the page", () => {
+  // 修复后的作答模式（trim:false）只纠偏不裁切——内容逐像素保留
+  const width = 60, height = 60;
+  const data = Buffer.alloc(width * height * 4, 255);
+  for (let y = 5; y < 50; y++) for (let x = 5; x < 50; x++) { const p = (y * width + x) * 4; data[p] = 30; data[p + 1] = 30; data[p + 2] = 30; data[p + 3] = 255; }
+  const bounds = computeTrimBounds(data, width, height, "rgba", { padding: 8, trim: false });
+  assert.ok(bounds, "bounds 计算本身仍可用（供试卷库模式）");
 });

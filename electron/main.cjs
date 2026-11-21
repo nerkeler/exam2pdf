@@ -9,7 +9,8 @@ const { pathToFileURL } = require("node:url");
 const { randomUUID } = require("node:crypto");
 const { PostStore } = require("./post-store.cjs");
 const { createPrintHtml, safePdfFileName } = require("./print-document.cjs");
-const { compareVersions, RELEASES_PAGE, LATEST_RELEASE_API } = require("./app-update.cjs");
+const { GradeStagingStore } = require("./grade-staging.cjs");
+const { compareVersions, RELEASES_PAGE, RELEASES_LIST_API } = require("./app-update.cjs");
 const { deriveLearningStats } = require("./learning-stats.cjs");
 const { generatePractice } = require("./training-generator.cjs");
 const { generateAiPractice } = require("./ai-practice-service.cjs");
@@ -83,6 +84,7 @@ let studentStore;
 let activeStudentId = null;
 let studentWorkspace;
 let rawAnswerStore;
+let gradeStaging;
 let workspaceRevision = 0;
 const collectionContexts = new Map();
 const requestStudentId = () => studentRequests.getStore()?.studentId || activeStudentId;
@@ -586,7 +588,56 @@ function notifyMobileUploadReceived(payload) {
   }
 }
 
-async function preparePrintWindow(store, postId, order, requestedTitle) {
+// 上传收件箱：原始上传包先落盘（library/upload-inbox/<id>.json），
+// 渲染层整理成功后删除；失败或退出时保留，下次启动恢复
+function uploadInboxDir() { return path.join(app.getPath("userData"), "library", "upload-inbox"); }
+async function writeUploadInbox(payload) {
+  await fs.mkdir(uploadInboxDir(), { recursive: true });
+  // 原子写：先临时文件再改名，进程被杀不会留下截断 JSON
+  const target = path.join(uploadInboxDir(), payload.id + ".json");
+  const tmp = target + ".tmp";
+  await fs.writeFile(tmp, JSON.stringify(payload));
+  await fs.rename(tmp, target);
+}
+async function readUploadInbox() {
+  try {
+    const files = (await fs.readdir(uploadInboxDir())).filter((file) => file.endsWith(".json"));
+    // 按修改时间排序：多个滞留批次按上传先后重放，页序可预期
+    const stats = await Promise.all(files.map(async (file) => ({ file, mtime: (await fs.stat(path.join(uploadInboxDir(), file)).catch(() => ({ mtimeMs: 0 }))).mtimeMs })));
+    stats.sort((a, b) => a.mtime - b.mtime);
+    const payloads = [];
+    for (const { file } of stats) {
+      try { payloads.push(JSON.parse(await fs.readFile(path.join(uploadInboxDir(), file), "utf8"))); }
+      catch {
+        // 损坏文件隔离为 .corrupt 留待诊断，不参与重放
+        await fs.rename(path.join(uploadInboxDir(), file), path.join(uploadInboxDir(), file) + ".corrupt-" + Date.now()).catch(() => {});
+      }
+    }
+    return payloads;
+  } catch { return []; }
+}
+appHandle("mobile-upload:discard-inbox", async (id) => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ""))) throw new Error("收件箱标识无效");
+  await fs.rm(path.join(uploadInboxDir(), id + ".json"), { force: true });
+  return { ok: true };
+});
+appHandle("mobile-upload:pending", async () => readUploadInbox());
+
+// 批阅暂存持久化：待保存页面按学生落盘，重启/切换学生/语言切换重载都不丢
+appHandle("grade-staging:save", (pages) => gradeStaging.save(requestStudentId(), pages));
+appHandle("grade-staging:load", () => gradeStaging.load(requestStudentId()));
+appHandle("grade-staging:save-for", async (studentId, pages) => {
+  // 手机上传批次归属上传时的学生：名册校验防止写到已删除/未知学生；
+  // 该学生已有暂存 + 本批超出 24 页时整批拒绝（收件箱保留重放），绝不静默截断
+  const roster = await studentStore.list();
+  if (!roster.some((student) => student.id === studentId)) throw new Error("目标学生不存在");
+  const existing = await gradeStaging.load(studentId);
+  if (existing.length + (Array.isArray(pages) ? pages.length : 0) > 24) throw new Error("该学生的待保存页面将超出 24 页上限");
+  return gradeStaging.save(studentId, pages);
+});
+appHandle("grade-staging:clear", () => gradeStaging.clear(requestStudentId()));
+
+async function preparePrintWindow(store, postId, order, requestedTitle, answerMode) {
   const post = await store.getPost(postId);
   if (!post.pageOrder.length) throw new Error("这份试卷没有可打印的图片");
   const pageOrder = Array.isArray(order) ? order : post.pageOrder;
@@ -602,9 +653,11 @@ async function preparePrintWindow(store, postId, order, requestedTitle) {
       const image = post.images.find((item) => item.file === file);
       if (!image) throw new Error("试卷图片不完整，请检查帖子池");
       let url = pathToFileURL(path.join(store.postDirectory(post.id), image.file)).href;
-      // 导出前自动整理并压缩（裁边/纠偏/EXIF 方向/缩放/JPEG），原始文件不受影响
+      // 导出前自动整理并压缩（纠偏/EXIF 方向/缩放/JPEG），原始文件不受影响。
+      // 作答照片必须跳过裁边：裁边按四角背景色判定内容包围盒，浅色题目/图形
+      // 会被当成背景裁掉（实测丢题），作答页逐像素保留。
       try {
-        const processed = processPrintImage(await fs.readFile(path.join(store.postDirectory(post.id), image.file)), image.mime);
+        const processed = processPrintImage(await fs.readFile(path.join(store.postDirectory(post.id), image.file)), image.mime, answerMode ? { trim: false } : undefined);
         if (processed) {
           const processedPath = path.join(printDirectory, "p-" + String(pageIndex + 1).padStart(3, "0") + ".jpg");
           await fs.writeFile(processedPath, processed.data);
@@ -648,8 +701,8 @@ async function preparePrintWindow(store, postId, order, requestedTitle) {
   }
 }
 
-async function exportPdfViaDialog(store, id, order, title, dialogTitle) {
-  const prepared = await preparePrintWindow(store, id, order, title);
+async function exportPdfViaDialog(store, id, order, title, dialogTitle, answerMode) {
+  const prepared = await preparePrintWindow(store, id, order, title, answerMode);
   try {
     const target = await dialog.showSaveDialog(mainWindow, {
       title: dialogTitle,
@@ -677,7 +730,8 @@ async function generatePostPdf(postId, order, title) {
 }
 
 async function generateAnswerPdf(answerId, order, title) {
-  return exportPdfViaDialog(answerStore, answerId, order, title, "保存作答 PDF");
+  // 作答照片是拍照件：跳过裁边，避免浅色题目/图形被背景判定裁掉丢题
+  return exportPdfViaDialog(answerStore, answerId, order, title, "保存作答 PDF", true);
 }
 
 // 试卷直接打印与错题本同机制：主窗口 window.print() 唤起系统打印界面。
@@ -777,6 +831,7 @@ async function stopPhoneUpload() {
 }
 appHandle("students:remove", async (id) => {
   return maintainLibrary(async () => {
+    if (gradeStaging) await gradeStaging.clear(id).catch(() => {});
     const context = await studentWorkspace.remove(id);
     notifyStudentsChanged(); return context;
   });
@@ -988,13 +1043,19 @@ function setupUpdateService() {
   setTimeout(() => { void checkForAppUpdate(); }, 5000);
 }
 async function fetchLatestReleaseVersion() {
-  const response = await fetch(LATEST_RELEASE_API, {
+  // releases/latest 只返回非预发布版；本项目全部是 prerelease，必须列 releases
+  // 后取最新 tag，否则 macOS 的更新检查永远 404
+  const response = await fetch(RELEASES_LIST_API, {
     headers: { "User-Agent": "exam2pdf" },
     signal: AbortSignal.timeout(8000)
   });
   if (!response.ok) throw new Error("GitHub API " + response.status);
-  const data = await response.json();
-  return String(data.tag_name || "").replace(/^v/i, "");
+  const releases = await response.json();
+  const versions = (Array.isArray(releases) ? releases : [])
+    .filter((release) => release && release.draft !== true && /^v/i.test(String(release.tag_name || "")))
+    .map((release) => String(release.tag_name).replace(/^v/i, ""));
+  if (!versions.length) throw new Error("GitHub API 未返回可用版本");
+  return versions.reduce((latest, version) => (compareVersions(version, latest) > 0 ? version : latest));
 }
 async function checkForAppUpdate() {
   if (!app.isPackaged) { pushUpdateState({ stage: "not-available", reason: "开发模式" }); return updateState; }
@@ -1099,7 +1160,12 @@ appHandle("mobile-upload:start", async () => {
     const server = await startMobileUploadServer({
       getStudentId: () => studentId,
       studentName,
-      onUploadReceived: notifyMobileUploadReceived
+      onUploadReceived: async (payload) => {
+        // 先落收件箱再交给渲染层：渲染层处理失败或应用退出时，下次启动可恢复，
+        // 杜绝"手机显示已传到电脑、电脑端内容丢失"
+        await writeUploadInbox(payload);
+        notifyMobileUploadReceived({ ...payload, inboxFile: payload.id });
+      }
     });
     if (activeStudentId !== studentId || revision !== workspaceRevision) { await server.close(); throw new Error("学生已切换，请重新开启上传"); }
     mobileUploadServer = server;
@@ -1336,6 +1402,7 @@ if (!hasSingleInstanceLock) {
     postStore = scopedStore(postStore, requestStudentId);
     answerStore = scopedStore(answerStore, requestStudentId);
     trainingStore = scopedStore(trainingStore, requestStudentId, "training");
+    gradeStaging = new GradeStagingStore(path.join(libraryPath, "staging"));
     setupUpdateService();
     protocol.handle("exam2pdf-media", async (request) => {
       try {
@@ -1353,25 +1420,6 @@ if (!hasSingleInstanceLock) {
     });
     setupApplicationMenu();
     createWindow();
-    if (app.isPackaged) {
-      try {
-        const { autoUpdater } = require("electron-updater");
-        autoUpdater.autoDownload = true;
-        autoUpdater.on("update-downloaded", () => {
-          if (!mainWindow || mainWindow.isDestroyed()) return;
-          dialog.showMessageBox(mainWindow, {
-            type: "info",
-            title: "家卷 更新",
-            message: "新版本已下载完成",
-            detail: "重启应用即可完成安装。",
-            buttons: ["稍后", "重启安装"],
-            defaultId: 1
-          }).then(({ response }) => { if (response === 1) autoUpdater.quitAndInstall(); });
-        });
-        autoUpdater.on("error", (error) => { try { pushErrorLog("updater: " + String(error.message || error).slice(0, 300)); } catch (e) {} });
-        autoUpdater.checkForUpdates().catch(() => {});
-      } catch (e) { pushErrorLog("updater init: " + e.message); }
-    }
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });

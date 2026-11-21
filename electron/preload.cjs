@@ -5,12 +5,12 @@ let pendingStudentRequests = 0;
 async function invoke(channel, ...args) {
   if (channel === "students:set-active" || channel === "backup:restore" || channel === "students:remove") studentGeneration++;
   const generation = studentGeneration;
-  const scoped = /^(posts:|answers:|training:|workspace:|mistakes:|mobile-upload:)/.test(channel);
+  const scoped = /^(posts:|answers:|training:|workspace:|mistakes:|mobile-upload:|grade-staging:)/.test(channel);
   if (scoped) pendingStudentRequests++;
   let result;
   try { result = await ipcRenderer.invoke(channel, ...args); }
   finally { if (scoped) pendingStudentRequests--; }
-  if (/^(posts:|answers:|training:|workspace:|mistakes:|mobile-upload:)/.test(channel) && generation !== studentGeneration) throw new Error("学生已切换，旧页面结果已丢弃");
+  if (/^(posts:|answers:|training:|workspace:|mistakes:|mobile-upload:|grade-staging:)/.test(channel) && generation !== studentGeneration) throw new Error("学生已切换，旧页面结果已丢弃");
   return result;
 }
 function listen(channel, callback) {
@@ -49,6 +49,24 @@ contextBridge.exposeInMainWorld("exam2pdfDesktop", {
   },
   onMobileUploadReceived(callback) {
     return listen("mobile-upload:received", callback);
+  },
+  saveGradeStaging(pages) {
+    return invoke("grade-staging:save", pages);
+  },
+  loadGradeStaging() {
+    return invoke("grade-staging:load");
+  },
+  saveGradeStagingFor(studentId, pages) {
+    return invoke("grade-staging:save-for", studentId, pages);
+  },
+  clearGradeStaging() {
+    return invoke("grade-staging:clear");
+  },
+  discardMobileUploadInbox(id) {
+    return invoke("mobile-upload:discard-inbox", id);
+  },
+  listPendingMobileUploads() {
+    return invoke("mobile-upload:pending");
   },
   onStudentsChanged(callback) {
     return listen("students:changed", callback);

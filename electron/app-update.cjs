@@ -2,7 +2,7 @@
 // macOS 安装包未签名，Squirrel 自动更新不可用，因此 darwin 只提示并打开下载页；
 // Windows / Linux 使用 electron-updater 手动下载、确认后安装。
 const RELEASES_PAGE = "https://github.com/nerkeler/exam2pdf/releases/latest";
-const LATEST_RELEASE_API = "https://api.github.com/repos/nerkeler/exam2pdf/releases/latest";
+const RELEASES_LIST_API = "https://api.github.com/repos/nerkeler/exam2pdf/releases?per_page=10";
 
 function parseVersion(value) {
   const raw = String(value || "").trim().replace(/^v/i, "");
@@ -48,4 +48,4 @@ function compareVersions(a, b) {
   return comparePrerelease(left.prerelease, right.prerelease);
 }
 
-module.exports = { RELEASES_PAGE, LATEST_RELEASE_API, compareVersions };
+module.exports = { RELEASES_PAGE, RELEASES_LIST_API, compareVersions };

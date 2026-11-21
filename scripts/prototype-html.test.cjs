@@ -112,7 +112,7 @@ test("grading screen hosts the mobile upload tab and the old settings entry is g
   assert.ok(!html.includes('data-action="show-upload-link"'), "old settings QR entry must be removed with the panel");
   // 手机上传不直接落库：主进程移交渲染层进暂存区，确认后才保存（与本地导入同流水线）
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.cjs"), "utf8");
-  assert.match(main, /onUploadReceived: notifyMobileUploadReceived/, "upload server must hand photos to the renderer, not save them");
+  assert.match(main, /onUploadReceived: async \(payload\) => \{[\s\S]*?await writeUploadInbox\(payload\)/, "upload server must hand photos to the renderer, not save them");
   assert.match(main, /send\("mobile-upload:received", payload\)/);
   assert.doesNotMatch(main, /source: "mobile-upload" \}\)/, "direct-save notifications must be retired");
   assert.match(html, /function receiveMobileUpload/, "uploaded photos must be staged through the renderer");
@@ -121,7 +121,7 @@ test("grading screen hosts the mobile upload tab and the old settings entry is g
   assert.match(html, /state\.gradePages\.push\(\.\.\.staged\)/, "uploaded photos must land in the editable staging area");
   // 局域网上传默认开启：必须等当前学生上下文加载完再自动拉起服务
   assert.match(html, /function autoStartMobileUpload/, "LAN upload must auto-start as the default state");
-  assert.match(html, /loadStudents\(\)\.then\(autoStartMobileUpload\)/, "auto-start must wait for the active student context");
+  assert.match(html, /loadStudents\(\)\.then\(async \(\) => \{ await restoreGradeStaging\(\)/, "auto-start must wait for the active student context");
   // 收到上传必须是弹窗引导核对保存，而非"已保存"轻提示
   assert.match(html, /id="mobileUploadDoneDialog"/, "upload receipt must surface a dialog");
   assert.match(html, /function showMobileUploadReceived/, "receipt dialog must be wired to the upload event");
@@ -146,6 +146,29 @@ test("post library offers one-click direct printing with preparation feedback", 
   assert.ok(!/printWindow\.show(?:Inactive)?\(/.test(main), "no print path may surface a host window");
 });
 
+test("mobile upload staging survives reloads, restarts and partial failures", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "docs", "原型图.html"), "utf8");
+  // 单张失败只跳过该张，不再整批丢弃；手机端已显示成功时电脑端绝不能静默丢内容
+  assert.ok(html.includes("let failed = 0;"), "receiveMobileUpload must be resilient per image");
+  assert.ok(html.includes("会超出 24 页上限"), "overflow batches must be rejected with a clear message, never silently truncated");
+  assert.ok(html.includes("state.gradePages.push(...staged);") && html.includes("const saveOk = await saveGradeStagingNow();"), "successfully staged pages must land in the editor and persist before the inbox is dropped");
+  assert.match(html, /desktop\.discardMobileUploadInbox\(payload\.inboxFile\)/, "inbox file must be discarded only after successful staging");
+  assert.match(html, /function persistGradeStaging\(\)/, "staged pages must persist per student");
+  assert.match(html, /if \(kind === "grade"\) \{ updateGradeImportVisibility\(\); persistGradeStaging\(\); \}/, "every grade grid re-render must persist staging");
+  assert.match(html, /await restoreGradeStaging\(\); await recoverPendingUploads\(\); await autoStartMobileUpload\(\)/, "boot must restore staging, replay the upload inbox, then auto-start upload");
+  assert.match(html, /await clearGradeStaging\(\);/, "saving an answer must clear the staging file");
+  const preload = fs.readFileSync(path.join(__dirname, "..", "electron", "preload.cjs"), "utf8");
+  assert.match(preload, /saveGradeStaging\(pages\)[\s\S]*?grade-staging:save/, "staging save must be bridged");
+  assert.match(preload, /grade-staging:\)/, "staging channels must be student-generation scoped");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.cjs"), "utf8");
+  assert.match(main, /appHandle\("grade-staging:save"/, "main must expose staging persistence");
+  assert.match(main, /await writeUploadInbox\(payload\);\n        notifyMobileUploadReceived/, "uploads must land in the inbox before the renderer processes them");
+  assert.match(main, /appHandle\("mobile-upload:pending"/, "main must expose the pending inbox for boot recovery");
+  const store = fs.readFileSync(path.join(__dirname, "..", "electron", "grade-staging.cjs"), "utf8");
+  assert.match(store, /class GradeStagingStore/, "staging store module must exist");
+  assert.match(store, /MAX_PAGES = 24/, "staging must keep the 24-page cap");
+});
+
 test("image preview supports rotation with write-back across print paths", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "docs", "原型图.html"), "utf8");
   assert.match(html, /data-action="preview-rotate"/, "viewer must expose rotate controls");
@@ -162,4 +185,7 @@ test("image preview supports rotation with write-back across print paths", () =>
   assert.match(main, /rotation: image\.rotation \|\| 0/, "direct-print pages must carry rotation");
   const store = fs.readFileSync(path.join(__dirname, "..", "electron", "post-store.cjs"), "utf8");
   assert.match(store, /async setPageRotation/, "post store must persist rotation metadata");
+  // 作答照片导出必须跳过裁边：裁边按背景色判定会裁掉浅色题目内容（实测丢题）
+  assert.match(main, /answerMode \? \{ trim: false \} : undefined/, "answer PDF export must skip auto-trim");
+  assert.match(main, /exportPdfViaDialog\(answerStore, answerId, order, title, "保存作答 PDF", true\)/, "answer PDFs must run in answer mode");
 });

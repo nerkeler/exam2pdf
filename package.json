@@ -29,6 +29,7 @@
     "files": [
       "electron/**/*",
       "docs/原型图.html",
+      "frontend/i18n.js",
       "frontend/page-reorder.js",
       "frontend/exam2pdf.user.js",
       "scripts/start-electron.cjs",
