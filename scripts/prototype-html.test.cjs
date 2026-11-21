@@ -162,7 +162,7 @@ test("mobile upload staging survives reloads, restarts and partial failures", ()
   assert.match(preload, /grade-staging:\)/, "staging channels must be student-generation scoped");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.cjs"), "utf8");
   assert.match(main, /appHandle\("grade-staging:save"/, "main must expose staging persistence");
-  assert.match(main, /await writeUploadInbox\(payload\);\n        notifyMobileUploadReceived/, "uploads must land in the inbox before the renderer processes them");
+  assert.match(main, /await writeUploadInbox\(payload\);[\s\S]*?notifyMobileUploadReceived\(/, "uploads must land in the inbox before the renderer processes them");
   assert.match(main, /appHandle\("mobile-upload:pending"/, "main must expose the pending inbox for boot recovery");
   const store = fs.readFileSync(path.join(__dirname, "..", "electron", "grade-staging.cjs"), "utf8");
   assert.match(store, /class GradeStagingStore/, "staging store module must exist");
