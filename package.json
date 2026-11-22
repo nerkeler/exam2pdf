@@ -68,6 +68,7 @@
       "output": "release"
     },
     "mac": {
+      "afterPack": "scripts/mac-resign.cjs",
       "target": [
         "dmg",
         "zip"
