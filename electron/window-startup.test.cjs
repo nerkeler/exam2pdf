@@ -74,6 +74,19 @@ test("reports a page load failure once so the caller can show its fallback page"
   assert.equal(timers.timers[0].cleared, true);
 });
 
+test("a killed renderer is explained as external termination, not a data problem", async () => {
+  const window = new FakeWindow();
+  const failures = [];
+  monitorWindowStartup(window, Promise.resolve(), (error) => failures.push(error));
+
+  window.webContents.emit("render-process-gone", {}, { reason: "killed", exitCode: 15 });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(failures.length, 1);
+  assert.match(failures[0].message, /代码 15/);
+  assert.match(failures[0].message, /被外部终止/);
+});
+
 test("turns a missing first frame into a visible startup timeout", () => {
   const window = new FakeWindow();
   const timers = fakeTimers();
