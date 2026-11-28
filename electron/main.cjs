@@ -37,6 +37,10 @@ const {
 
 // 显示名「家卷」；数据目录显式钉在 exam2pdf（改名不迁移，老数据无缝延续）
 app.setName("家卷");
+// 全量直连（用户拍板）：小红书是国内站点，走代理易被甩到海外出口触发
+// 风控；AI 调用走主进程 Node fetch 本就不经代理，更新检查直连同样更稳。
+// 实现见 whenReady 里的 defaultSession.setProxy 与 createXhsView 的分区会话
+// setProxy——⚠️ --no-proxy-server 命令行开关实测不生效，勿用。
 // Tests and diagnostic launches can supply an isolated absolute profile.
 const isolatedProfile = process.env.EXAM2PDF_USER_DATA;
 if (isolatedProfile && !path.isAbsolute(isolatedProfile)) throw new Error("EXAM2PDF_USER_DATA must be absolute");
@@ -223,7 +227,9 @@ async function checkXhsReachable() {
     });
     response.body?.cancel?.()?.catch?.(() => {});
     return true;
-  } catch {
+  } catch (error) {
+    // 记录失败原因（超时 / DNS / 代理隧道等），供"导出诊断信息"定位
+    pushErrorLog("小红书连通性检查失败：" + String(error?.cause?.code || error?.message || error));
     return false;
   }
 }
@@ -276,11 +282,17 @@ function updateXhsView(event, requested) {
 
 }
 
-function createXhsView() {
+async function createXhsView() {
   xhsSession = session.fromPartition("persist:xhs");
   // 以普通 Chrome 身份访问小红书：UA 里的 Electron 标识属于常见风控特征
   const uaPlatform = process.platform === "win32" ? "Windows NT 10.0; Win64; x64" : "Macintosh; Intel Mac OS X 10_15_7";
   xhsSession.setUserAgent("Mozilla/5.0 (" + uaPlatform + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/" + process.versions.chrome + " Safari/537.36");
+  // 与 defaultSession 一致强制直连（系统代理对内嵌网页风险更高）
+  await xhsSession.setProxy({ mode: "direct" }).catch(() => {});
+  // 留痕实际出网方式（DIRECT=直连 / PROXY x.x.x.x:port=仍在走代理），诊断日志可查
+  xhsSession.resolveProxy("https://www.xiaohongshu.com").then((via) => {
+    pushErrorLog("小红书出网方式：" + via);
+  }).catch(() => {});
   xhsView = new WebContentsView({
     webPreferences: {
       session: xhsSession,
@@ -340,8 +352,9 @@ function createXhsView() {
     }, 1200);
   });
 
-  xhsView.webContents.on("did-fail-load", (_event, errorCode, errorDescription, _validatedUrl, isMainFrame) => {
+  xhsView.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
     if (!isMainFrame || errorCode === -3) return;
+    pushErrorLog("小红书页面加载失败 code=" + errorCode + " " + String(errorDescription || "") + " url=" + String(validatedUrl || ""));
     if (xhsNavOverlayTimer) { clearTimeout(xhsNavOverlayTimer); xhsNavOverlayTimer = null; }
     xhsReady = false;
     hideXhsView();
@@ -375,6 +388,7 @@ function createXhsView() {
 
   sendXhsState("loading", "正在打开小红书…");
   xhsView.webContents.loadURL("https://www.xiaohongshu.com/explore").catch((error) => {
+    pushErrorLog("小红书首次加载失败：" + String(error.message || error));
     sendXhsState("error", "小红书加载失败：" + String(error.message || error));
   });
 }
@@ -795,7 +809,7 @@ ipcMain.on("desktop:xhs-reload", async (event) => {
   const reachable = await checkXhsReachable();
   if (!xhsView || xhsView.webContents.isDestroyed()) return;
   if (!reachable) {
-    sendXhsState("error", "本机当前连不上小红书服务器（图片 CDN 与其他网站正常，多为 IP 被临时风控或代理分流问题）：可切换网络（如手机热点）后点重试，或稍后再试");
+    sendXhsState("error", "本机当前连不上小红书服务器（图片 CDN 与其他网站正常，多为 IP 被临时风控）：可切换网络（如手机热点）后点重试，或稍后再试");
     return;
   }
   xhsView.webContents.reload();
@@ -1386,6 +1400,10 @@ if (!hasSingleInstanceLock) {
   });
 
   app.whenReady().then(async () => {
+    // 全量直连（用户拍板）：--no-proxy-server 开关在新版网络服务栈会被忽略，
+    // 必须用 setProxy({mode:"direct"}) 逐会话设置；小红书视图的分区会话在
+    // createXhsView 里同样设置。
+    await session.defaultSession.setProxy({ mode: "direct" }).catch(() => {});
     const libraryPath = path.join(app.getPath("userData"), "library");
     postStore = new PostStore(path.join(libraryPath, "posts"), { defaultSubject: "数学" });
     answerStore = new PostStore(path.join(libraryPath, "answers"), { defaultSubject: "数学" });
