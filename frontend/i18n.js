@@ -99,9 +99,6 @@
       "知道了": "Got it",
       "关闭": "Close",
       "提示": "Notice",
-      // 多语言切换
-      "切换到 English": "Switch to 中文",
-      "语言": "Language",
       "浏览": "Browse",
       "打印": "Print",
       "批阅": "Grade",

@@ -260,6 +260,18 @@
     .side-util:hover { background: rgba(255,255,255,.72); color: var(--text); }
     .side-util:hover svg { transform: translateX(1px); }
     .side-util:active { transform: scale(.985); }
+    /* 偏好组与信息组之间的细分隔线；折叠时随工具行一起收拢 */
+    .side-util-divider { height: 1px; max-height: 1px; margin: 4px 12px; background: var(--line); transition: margin .26s var(--ease-out), max-height .26s var(--ease-out), opacity .16s ease; }
+    body.sidebar-collapsed .side-util-divider { max-height: 0; margin: 0 12px; opacity: 0; }
+    body[data-theme="dark"] .side-util-divider { background: rgba(255,255,255,.08); }
+    /* 语言分段控件：当前语言高亮，点击即切换（setLanguage 会重载页面） */
+    .lang-seg { display: flex; flex: 1; min-width: 0; gap: 2px; padding: 2px; border-radius: 7px; background: rgba(32,36,43,.06); }
+    .lang-opt { flex: 1; min-width: 0; min-height: 24px; padding: 3px 8px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; text-align: center; cursor: pointer; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+    .lang-opt:hover { color: var(--text); }
+    .lang-opt[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(26,36,54,.16); }
+    .lang-opt:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+    body[data-theme="dark"] .lang-seg { background: rgba(255,255,255,.06); }
+    body[data-theme="dark"] .lang-opt[aria-pressed="true"] { background: rgba(255,255,255,.16); box-shadow: none; }
     /* 外观模式（跟随系统/浅色/深色）：按钮按当前模式显示图标，点击弹出三选菜单 */
     #themeToggle .theme-icon { display: none; }
     body[data-theme-mode="system"] #themeToggle .theme-icon-system,
@@ -1237,16 +1249,20 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="11" x2="12" y2="16.5"/><line x1="12" y1="7.6" x2="12.01" y2="7.6"/></svg>
               <span class="side-util-label" data-i18n="关于声明">关于声明</span>
             </button>
-            <button class="side-util" id="langToggle" type="button" data-action="toggle-language">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              <span class="side-util-label" data-i18n="切换到 English">切换到 English</span>
-            </button>
+            <div class="side-util-divider" aria-hidden="true"></div>
             <button class="side-util" id="themeToggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="外观模式：跟随系统">
               <svg class="theme-icon theme-icon-system" data-mode="system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 21a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg>
               <svg class="theme-icon theme-icon-light" data-mode="light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="4.3" y1="4.3" x2="6.1" y2="6.1"/><line x1="17.9" y1="17.9" x2="19.7" y2="19.7"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="4.3" y1="19.7" x2="6.1" y2="17.9"/><line x1="17.9" y1="6.1" x2="19.7" y2="4.3"/></svg>
               <svg class="theme-icon theme-icon-dark" data-mode="dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
               <span class="side-util-label" id="themeUtilLabel">跟随系统</span>
             </button>
+            <div class="side-util" id="langToggle" role="group" aria-label="界面语言">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span class="lang-seg">
+                <button type="button" class="lang-opt" data-lang="zh-CN">中文</button>
+                <button type="button" class="lang-opt" data-lang="en">English</button>
+              </span>
+            </div>
             <button class="side-util" id="sidebarToggle" type="button" aria-label="折叠侧边栏">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
               <span class="side-util-label" data-i18n="收起">收起</span>
@@ -1921,6 +1937,18 @@
     // 多语言：中文为源语言；tt 走 i18n 字典，未覆盖键回退中文原文
     const tt = (key, params) => window.exam2pdfI18n ? window.exam2pdfI18n.t(key, params) : key;
     if (window.exam2pdfI18n) window.exam2pdfI18n.applyStatic();
+    // 侧栏语言分段控件：高亮当前语言，点击即切换（setLanguage 会写 localStorage 并重载）
+    const langGroup = document.getElementById("langToggle");
+    if (langGroup) {
+      const langIsEnglish = !!(window.exam2pdfI18n && window.exam2pdfI18n.isEnglish());
+      langGroup.querySelectorAll(".lang-opt").forEach((opt) => {
+        opt.setAttribute("aria-pressed", String((opt.dataset.lang === "en") === langIsEnglish));
+        opt.addEventListener("click", () => {
+          if (opt.getAttribute("aria-pressed") === "true") return;
+          if (window.exam2pdfI18n) window.exam2pdfI18n.setLanguage(opt.dataset.lang === "en" ? "en" : "zh-CN");
+        });
+      });
+    }
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
     const screenInfo = {
@@ -3942,10 +3970,6 @@
       const action = button.dataset.action;
       if (action === "show-info") $("#infoDialog").showModal();
       if (action === "show-about") $("#aboutDialog").showModal();
-      if (action === "toggle-language") {
-        if (window.exam2pdfI18n) window.exam2pdfI18n.setLanguage(window.exam2pdfI18n.isEnglish() ? "zh-CN" : "en");
-        return;
-      }
       if (action === "show-guide") openGuide();
       if (action === "close-dialog") button.closest("dialog").close();
       if (action === "switch-student") { renderStudentControls(); $("#studentSwitchDialog").showModal(); }

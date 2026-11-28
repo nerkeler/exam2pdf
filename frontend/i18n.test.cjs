@@ -105,7 +105,10 @@ test("the workspace wires the language toggle and ships the dictionary", () => {
   const html = fs.readFileSync(path.join(root, "docs", "原型图.html"), "utf8");
   assert.match(html, /<script src="\.\.\/frontend\/i18n.js"><\/script>/, "workspace must load the i18n module");
   assert.match(html, /id="langToggle"/, "sidebar must expose the language toggle");
-  assert.match(html, /action === "toggle-language"/, "language toggle must be dispatched");
+  assert.match(html, /class="lang-opt" data-lang="zh-CN"/, "language toggle must offer the chinese option");
+  assert.match(html, /class="lang-opt" data-lang="en"/, "language toggle must offer the english option");
+  assert.match(html, /setLanguage\(opt\.dataset\.lang === "en" \? "en" : "zh-CN"\)/, "language options must dispatch setLanguage");
+  assert.doesNotMatch(html, /切换到 English/, "the old toggle-label row must stay removed");
   assert.match(html, /window\.exam2pdfI18n\.applyStatic\(\)/, "static translations must apply at boot");
   assert.match(html, /const tt = \(key, params\)/, "renderers must translate through tt()");
   const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
